@@ -8,8 +8,7 @@
     :root{
       --bg:#0b0e12; --panel:rgba(255,255,255,.05); --bd:rgba(255,255,255,.14);
       --txt:#eaeef7; --mut:rgba(234,238,247,.72); --acc:#7c5cff;
-      --bad:#ff4d4d; --ok:#39d98a; --warn:#ffcc66;
-      --r:14px;
+      --bad:#ff4d4d; --ok:#39d98a; --r:14px;
     }
     *{box-sizing:border-box}
     body{margin:0;background:var(--bg);color:var(--txt);font-family:system-ui,Segoe UI,Arial}
@@ -18,12 +17,8 @@
     .top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
     .h1{font-size:20px;font-weight:800;letter-spacing:.2px}
     .row{display:flex;gap:12px;flex-wrap:wrap}
-    .card{
-      background:var(--panel); border:1px solid var(--bd); border-radius:var(--r);
-      padding:14px;
-    }
+    .card{background:var(--panel); border:1px solid var(--bd); border-radius:var(--r); padding:14px;}
     .grow{flex:1}
-    .w320{width:320px; max-width:100%}
     .w520{width:520px; max-width:100%}
     .mut{color:var(--mut)}
     .small{font-size:12px}
@@ -38,13 +33,9 @@
     .btn:disabled{opacity:.5;cursor:not-allowed}
     .btn.acc{border-color:rgba(124,92,255,.55)}
     .btn.bad{border-color:rgba(255,77,77,.55)}
-    .in{
-      border:1px solid var(--bd); background:rgba(255,255,255,.06); color:var(--txt);
-      padding:10px 12px;border-radius:12px; outline:none;
-    }
+    .in{border:1px solid var(--bd); background:rgba(255,255,255,.06); color:var(--txt); padding:10px 12px;border-radius:12px; outline:none;}
     .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
     @media (max-width:920px){ .grid{grid-template-columns:1fr} }
-
     .list{display:flex;flex-direction:column;gap:8px;margin-top:10px}
     .item{
       display:flex;align-items:center;justify-content:space-between;gap:10px;
@@ -58,10 +49,7 @@
       padding:10px 12px;border-radius:12px;border:1px solid rgba(124,92,255,.55);
       background:rgba(124,92,255,.12); display:inline-block;
     }
-    .timer{
-      font-variant-numeric:tabular-nums;
-      font-weight:800;
-    }
+    .timer{font-variant-numeric:tabular-nums;font-weight:800;}
     .log{
       height:260px; overflow:auto; white-space:pre-wrap; word-break:break-word;
       padding:10px 12px;border-radius:12px;border:1px solid var(--bd);background:rgba(0,0,0,.18);
@@ -87,7 +75,7 @@
         <div class="row" style="align-items:center;justify-content:space-between">
           <div>
             <div><b>Connexion</b></div>
-            <div class="small mut">Astuce Render gratuit : ouvre d’abord <span class="mut">/health</span> pour réveiller le serveur.</div>
+            <div class="small mut">Si “connecter” ferme au 1er essai : retente une fois (Render gratuit).</div>
           </div>
           <div class="small mut">WS: <span id="wsUrl"></span></div>
         </div>
@@ -96,7 +84,7 @@
           <input id="name" class="in" maxlength="18" placeholder="Ton nom (max 18)" />
           <button id="btnConnect" class="btn acc">Connecter</button>
           <button id="btnDisconnect" class="btn bad" disabled>Déconnecter</button>
-          <a class="btn" id="healthLink" href="#" target="_blank" rel="noreferrer">Ouvrir /health</a>
+          <button id="btnQuit" class="btn">Quitter (Accueil)</button>
         </div>
 
         <div class="hr"></div>
@@ -120,13 +108,12 @@
           <div class="two">
             <button id="btnReady" class="btn" disabled>Prêt: OFF</button>
             <button id="btnStart" class="btn acc" disabled>Démarrer (hôte)</button>
+            <button id="btnBackLobby" class="btn" disabled>Retour Lobby (hôte)</button>
           </div>
         </div>
 
         <div class="row" style="margin-top:10px;align-items:center;justify-content:space-between">
-          <div>
-            <div class="small mut">Option (hôte) : activer le Chasseur</div>
-          </div>
+          <div class="small mut">Option (hôte) : activer le Chasseur</div>
           <button id="btnHunter" class="btn" disabled>Chasseur: ON</button>
         </div>
 
@@ -176,15 +163,13 @@
   const WS_URL = "wss://loup-garou-ws.onrender.com/ws";
 
   const el = (id) => document.getElementById(id);
-
   const dot = el("dot");
   const statusEl = el("status");
   const wsUrlEl = el("wsUrl");
-  const healthLink = el("healthLink");
-
   const nameEl = el("name");
   const btnConnect = el("btnConnect");
   const btnDisconnect = el("btnDisconnect");
+  const btnQuit = el("btnQuit");
 
   const phaseEl = el("phase");
   const dayEl = el("day");
@@ -195,6 +180,7 @@
 
   const btnReady = el("btnReady");
   const btnStart = el("btnStart");
+  const btnBackLobby = el("btnBackLobby");
   const btnHunter = el("btnHunter");
 
   const hunterEnabledEl = el("hunterEnabled");
@@ -207,7 +193,6 @@
   const btnClearLog = el("btnClearLog");
 
   wsUrlEl.textContent = WS_URL;
-  healthLink.href = "https://loup-garou-ws.onrender.com/health";
 
   let ws = null;
 
@@ -237,26 +222,46 @@
     logEl.textContent = (emph ? ("★ " + line) : line) + "\n" + prev;
   }
 
-  function clearActions(){
-    actionsEl.innerHTML = "";
-  }
-
-  function addAction(title, subtitle, buildRight){
-    const row = document.createElement("div");
-    row.className = "item";
-    const left = document.createElement("div");
-    left.innerHTML = `<div><b>${escapeHtml(title)}</b></div><div class="small mut">${escapeHtml(subtitle || "")}</div>`;
-    const right = document.createElement("div");
-    if (buildRight) buildRight(right);
-    row.appendChild(left);
-    row.appendChild(right);
-    actionsEl.appendChild(row);
-  }
-
   function escapeHtml(s){
     return String(s).replace(/[&<>"']/g, (m) => ({
       "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
     }[m]));
+  }
+
+  function resetLocalState(){
+    myId = null;
+    isHost = false;
+    myRole = null;
+    lobby = null;
+    state = null;
+    roleBox.style.display = "none";
+    roleBox.textContent = "";
+    phaseEl.textContent = "—";
+    dayEl.textContent = "—";
+    timerEl.textContent = "—";
+    myIdEl.textContent = "—";
+    hostIdEl.textContent = "—";
+    hunterEnabledEl.textContent = "—";
+    playersEl.innerHTML = "";
+    actionsEl.innerHTML = "";
+    if (timerHandle) { clearInterval(timerHandle); timerHandle = null; }
+  }
+
+  function clearActions(){ actionsEl.innerHTML = ""; }
+
+  function addAction(title, subtitle){
+    const row = document.createElement("div");
+    row.className = "item";
+    const left = document.createElement("div");
+    left.innerHTML = `<div><b>${escapeHtml(title)}</b></div><div class="small mut">${escapeHtml(subtitle || "")}</div>`;
+    row.appendChild(left);
+    actionsEl.appendChild(row);
+  }
+
+  function isMeAlive(){
+    if (!state || !state.players || myId == null) return true;
+    const me = state.players.find(x => x.id === myId);
+    return me ? !!me.alive : true;
   }
 
   function renderPlayers(){
@@ -282,13 +287,11 @@
 
       const right = document.createElement("div");
 
-      // Boutons contextuels (vote / cible) selon phase
       if (ws && ws.readyState === 1 && state && state.phase){
         const phase = state.phase;
         const aliveMe = isMeAlive();
         const isSelf = (p.id === myId);
 
-        // Nuit: loup choisit une cible
         if (phase === "NIGHT" && myRole === "Loup-Garou" && aliveMe && !isSelf && (p.alive !== false)){
           const b = document.createElement("button");
           b.className = "btn";
@@ -297,7 +300,6 @@
           right.appendChild(b);
         }
 
-        // Vote: tout vivant vote
         if (phase === "DAY_VOTE" && aliveMe && !isSelf && (p.alive !== false)){
           const b = document.createElement("button");
           b.className = "btn";
@@ -306,7 +308,6 @@
           right.appendChild(b);
         }
 
-        // Chasseur: tir final
         if (phase === "HUNTER_SHOT" && myId === state.hunterShooterId && !isSelf && (p.alive !== false)){
           const b = document.createElement("button");
           b.className = "btn bad";
@@ -322,12 +323,6 @@
     }
   }
 
-  function isMeAlive(){
-    if (!state || !state.players || myId == null) return true;
-    const me = state.players.find(x => x.id === myId);
-    return me ? !!me.alive : true;
-  }
-
   function renderTop(){
     phaseEl.textContent = state?.phase || lobby?.phase || "—";
     dayEl.textContent = state?.day ?? "—";
@@ -341,9 +336,9 @@
 
     btnReady.disabled = !(ws && ws.readyState === 1);
     btnStart.disabled = !(ws && ws.readyState === 1 && isHost && (lobby?.phase === "LOBBY"));
+    btnBackLobby.disabled = !(ws && ws.readyState === 1 && isHost);
     btnHunter.disabled = !(ws && ws.readyState === 1 && isHost && (lobby?.phase === "LOBBY"));
 
-    // Boutons états
     if (lobby){
       const me = lobby.players.find(x => x.id === myId);
       const ready = !!me?.ready;
@@ -353,7 +348,6 @@
     }
     btnHunter.textContent = "Chasseur: " + ((lobby?.hunterEnabled) ? "ON" : "OFF");
 
-    // Rôle
     if (myRole){
       roleBox.style.display = "inline-block";
       roleBox.textContent = myRole;
@@ -370,75 +364,44 @@
       const left = Math.max(0, timerEndAt - Date.now());
       const s = Math.ceil(left / 1000);
       timerEl.textContent = (state && state.phase !== "LOBBY" && state.phase !== "GAMEOVER") ? (s + "s") : "—";
-      if (left <= 0) {
-        // laisse le serveur avancer; on affiche 0
-        timerEl.textContent = (state && state.phase !== "LOBBY" && state.phase !== "GAMEOVER") ? "0s" : "—";
-      }
+      if (left <= 0) timerEl.textContent = (state && state.phase !== "LOBBY" && state.phase !== "GAMEOVER") ? "0s" : "—";
     }, 250);
   }
 
   function renderActions(){
     clearActions();
     if (!ws || ws.readyState !== 1){
-      addAction("Non connecté", "Clique Connecter puis entre ton nom.", (r) => {});
+      addAction("Non connecté", "Entre ton nom et clique Connecter.");
       return;
     }
-
     if (lobby?.phase === "LOBBY"){
-      addAction("Lobby", "Mets-toi prêt. L’hôte peut démarrer (min 5 joueurs).", (r) => {});
+      addAction("Lobby", "Mets-toi prêt. L’hôte peut démarrer (min 5).");
       return;
     }
-
     if (!state) return;
 
     const aliveMe = isMeAlive();
     const ph = state.phase;
 
-    if (ph === "REVEAL"){
-      addAction("Révélation", "Mémorise ton rôle. La nuit arrive.", (r)=>{});
-      return;
-    }
-
+    if (ph === "REVEAL"){ addAction("Révélation", "Mémorise ton rôle. La nuit arrive."); return; }
     if (ph === "NIGHT"){
-      if (!aliveMe){
-        addAction("Nuit", "Tu es mort. Tu observes.", (r)=>{});
-        return;
-      }
-      if (myRole === "Loup-Garou"){
-        addAction("Nuit (Loup-Garou)", "Choisis une cible dans la liste des joueurs (bouton Cibler).", (r)=>{});
-      } else {
-        addAction("Nuit", "Tu attends. Le loup agit.", (r)=>{});
-      }
+      if (!aliveMe){ addAction("Nuit", "Tu es mort. Tu observes."); return; }
+      if (myRole === "Loup-Garou") addAction("Nuit (Loup-Garou)", "Choisis une cible (bouton Cibler).");
+      else addAction("Nuit", "Tu attends. Le loup agit.");
       return;
     }
-
-    if (ph === "DAY_TALK"){
-      addAction("Jour", "Discussion. Le vote arrive automatiquement.", (r)=>{});
-      return;
-    }
-
+    if (ph === "DAY_TALK"){ addAction("Jour", "Discussion. Le vote arrive."); return; }
     if (ph === "DAY_VOTE"){
-      if (!aliveMe){
-        addAction("Vote", "Tu es mort. Tu ne votes pas.", (r)=>{});
-        return;
-      }
-      addAction("Vote", "Vote un joueur vivant (bouton Voter).", (r)=>{});
+      if (!aliveMe){ addAction("Vote", "Tu es mort. Tu ne votes pas."); return; }
+      addAction("Vote", "Vote un joueur vivant (bouton Voter).");
       return;
     }
-
     if (ph === "HUNTER_SHOT"){
-      if (myId === state.hunterShooterId){
-        addAction("Chasseur", "Tu peux tirer une dernière fois (bouton Tirer).", (r)=>{});
-      } else {
-        addAction("Chasseur", "Le chasseur décide…", (r)=>{});
-      }
+      if (myId === state.hunterShooterId) addAction("Chasseur", "Tire une dernière fois (bouton Tirer).");
+      else addAction("Chasseur", "Le chasseur décide…");
       return;
     }
-
-    if (ph === "GAMEOVER"){
-      addAction("Fin", "Partie terminée. Recharge la page pour relancer (ou on ajoutera un bouton reset).", (r)=>{});
-      return;
-    }
+    if (ph === "GAMEOVER"){ addAction("Fin", "L’hôte peut faire Retour Lobby pour relancer."); return; }
   }
 
   function send(obj){
@@ -449,8 +412,9 @@
   function connect(){
     if (ws && ws.readyState === 1) return;
 
-    myRole = null;
+    resetLocalState();
     renderTop();
+    renderActions();
 
     setConn(false, "Connexion…");
     ws = new WebSocket(WS_URL);
@@ -478,6 +442,8 @@
 
       if (msg.t === "lobby"){
         lobby = msg;
+        state = null; // en lobby, on coupe l'état de partie
+        setTimer(0);
         renderTop();
         renderPlayers();
         renderActions();
@@ -510,19 +476,19 @@
     };
 
     ws.onclose = () => {
-      setConn(false, "Fermé");
+      setConn(false, "Déconnecté");
       btnDisconnect.disabled = true;
       btnConnect.disabled = false;
-      pushLog("Connexion fermée.");
-
-      // On garde les infos affichées mais on désactive les actions
+      pushLog("Déconnecté.");
+      ws = null;
+      resetLocalState();
       renderTop();
       renderActions();
     };
 
     ws.onerror = () => {
       setConn(false, "Erreur");
-      pushLog("Erreur WebSocket. (Souvent : serveur endormi → ouvrir /health puis reconnecter.)", true);
+      pushLog("Erreur WebSocket. Réessaie une fois.", true);
       renderTop();
       renderActions();
     };
@@ -533,8 +499,15 @@
     try { ws.close(); } catch(e) {}
   }
 
+  // Boutons
   btnConnect.onclick = connect;
   btnDisconnect.onclick = disconnect;
+
+  btnQuit.onclick = () => {
+    // Quitter proprement : on ferme la socket puis on revient à l'accueil
+    if (ws && ws.readyState === 1) disconnect();
+    window.location.href = "index.html";
+  };
 
   btnReady.onclick = () => {
     if (!lobby || myId == null) return;
@@ -544,6 +517,7 @@
   };
 
   btnStart.onclick = () => send({ t:"start" });
+  btnBackLobby.onclick = () => send({ t:"backToLobby" });
 
   btnHunter.onclick = () => {
     if (!lobby) return;
@@ -552,8 +526,14 @@
 
   btnClearLog.onclick = () => { logEl.textContent = ""; };
 
+  // Important : fermer la connexion si on ferme l'onglet
+  window.addEventListener("beforeunload", () => {
+    try { if (ws) ws.close(); } catch(e) {}
+  });
+
   // UI initiale
   setConn(false, "Déconnecté");
+  resetLocalState();
   renderTop();
   renderPlayers();
   renderActions();
