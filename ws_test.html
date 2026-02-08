@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Test WebSocket</title>
+  <style>
+    body{font-family:system-ui,Segoe UI,Arial;margin:20px;background:#0b0e12;color:#eaeef7}
+    .box{border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:12px;background:rgba(255,255,255,.04)}
+    .mut{opacity:.75}
+    pre{white-space:pre-wrap;word-break:break-word}
+    input,button{padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.06);color:#eaeef7}
+    button{cursor:pointer}
+  </style>
+</head>
+<body>
+  <h2>Test WebSocket</h2>
+  <div class="box">
+    <div>WS: <span class="mut" id="wsUrl"></span></div>
+    <div>Status: <b id="st">…</b></div>
+    <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+      <input id="name" maxlength="18" placeholder="Ton nom" />
+      <button id="btn">Connecter</button>
+    </div>
+  </div>
+
+  <div class="box" style="margin-top:12px">
+    <div><b>Messages</b></div>
+    <pre id="out"></pre>
+  </div>
+
+<script>
+(function(){
+  const out = document.getElementById("out");
+  const st = document.getElementById("st");
+  const nameEl = document.getElementById("name");
+  const btn = document.getElementById("btn");
+
+  const WS_URL = "wss://loup-garou-ws.onrender.com";
+  document.getElementById("wsUrl").textContent = WS_URL;
+
+  function line(s){
+    out.textContent = (s + "\n" + out.textContent).slice(0, 8000);
+  }
+
+  let ws = null;
+
+  btn.onclick = () => {
+    if (ws && ws.readyState === 1) return;
+
+    st.textContent = "Connexion…";
+    ws = new WebSocket(WS_URL);
+
+    ws.onopen = () => {
+      st.textContent = "Connecté";
+      const nm = (nameEl.value || "Joueur").trim().slice(0,18);
+      ws.send(JSON.stringify({ t:"join", name:nm }));
+    };
+
+    ws.onmessage = (ev) => {
+      line(ev.data);
+    };
+
+    ws.onclose = () => {
+      st.textContent = "Fermé";
+    };
+
+    ws.onerror = () => {
+      st.textContent = "Erreur";
+    };
+  };
+})();
+</script>
+</body>
+</html>
