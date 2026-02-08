@@ -9,7 +9,7 @@
   <!-- Pas de favicon 404 -->
   <link rel="icon" href="data:," />
 
-  <!-- Si tu as déjà un style.css, il est chargé (facultatif). -->
+  <!-- Si tu as déjà un style.css, il est chargé -->
   <link rel="stylesheet" href="style.css" />
 
   <style>
@@ -42,42 +42,21 @@
       overflow-x:hidden;
     }
 
-    .wrap{
-      min-height:100%;
-      display:flex;
-      flex-direction:column;
-    }
-
+    .wrap{min-height:100%; display:flex; flex-direction:column;}
     .topbar{
       padding:18px 18px 10px;
-      display:flex;
-      gap:12px;
-      align-items:center;
-      justify-content:space-between;
+      display:flex; gap:12px;
+      align-items:center; justify-content:space-between;
     }
-    .brand{
-      display:flex; align-items:center; gap:12px;
-      user-select:none;
-    }
+    .brand{display:flex; align-items:center; gap:12px; user-select:none;}
     .logo{
       width:38px; height:38px; border-radius:14px;
       background: linear-gradient(135deg, rgba(124,92,255,.95), rgba(77,214,255,.85));
       box-shadow: 0 12px 30px rgba(124,92,255,.25);
       border:1px solid rgba(255,255,255,.12);
     }
-    .brand h1{
-      margin:0;
-      font-size:18px;
-      font-weight:950;
-      letter-spacing:.2px;
-      line-height:1.1;
-    }
-    .brand .sub{
-      margin-top:4px;
-      font-size:12px;
-      color:var(--mut);
-      line-height:1.25;
-    }
+    .brand h1{margin:0; font-size:18px; font-weight:950; letter-spacing:.2px; line-height:1.1;}
+    .brand .sub{margin-top:4px; font-size:12px; color:var(--mut); line-height:1.25;}
 
     .statusPill{
       display:inline-flex; align-items:center; gap:8px;
@@ -101,9 +80,7 @@
       grid-template-columns: 1.25fr .95fr;
       gap:14px;
     }
-    @media (max-width: 980px){
-      .main{grid-template-columns:1fr}
-    }
+    @media (max-width: 980px){ .main{grid-template-columns:1fr} }
 
     .card{
       background:var(--panel);
@@ -114,26 +91,10 @@
       backdrop-filter: blur(12px);
     }
 
-    .welcome h2{
-      margin:0;
-      font-size:22px;
-      font-weight:950;
-      letter-spacing:.2px;
-    }
-    .welcome p{
-      margin:10px 0 0;
-      color:var(--mut);
-      line-height:1.4;
-      font-size:13px;
-      max-width: 68ch;
-    }
+    .welcome h2{margin:0; font-size:22px; font-weight:950; letter-spacing:.2px;}
+    .welcome p{margin:10px 0 0; color:var(--mut); line-height:1.4; font-size:13px; max-width: 70ch;}
 
-    .actions{
-      margin-top:14px;
-      display:flex;
-      gap:10px;
-      flex-wrap:wrap;
-    }
+    .actions{margin-top:14px; display:flex; gap:10px; flex-wrap:wrap;}
 
     .btn{
       border:1px solid rgba(255,255,255,.14);
@@ -159,32 +120,11 @@
       border-color: rgba(77,214,255,.35);
       background: rgba(77,214,255,.10);
     }
-    .btn.ghost{
-      background:transparent;
-    }
+    .btn.ghost{background:transparent;}
 
-    .hint{
-      margin-top:10px;
-      color:rgba(234,238,247,.68);
-      font-size:12px;
-      line-height:1.35;
-    }
-
-    .sectionTitle{
-      margin:0 0 10px;
-      font-size:14px;
-      font-weight:950;
-      letter-spacing:.2px;
-      color:rgba(234,238,247,.92);
-    }
-
-    .list{
-      margin:0;
-      padding-left:18px;
-      color:var(--mut);
-      font-size:12.5px;
-      line-height:1.45;
-    }
+    .hint{margin-top:10px; color:rgba(234,238,247,.68); font-size:12px; line-height:1.35;}
+    .sectionTitle{margin:0 0 10px; font-size:14px; font-weight:950; letter-spacing:.2px; color:rgba(234,238,247,.92);}
+    .list{margin:0; padding-left:18px; color:var(--mut); font-size:12.5px; line-height:1.45;}
 
     .miniCard{
       background:rgba(255,255,255,.05);
@@ -205,7 +145,7 @@
       color:rgba(234,238,247,.55);
       font-size:12px;
     }
-    .footer .right{display:flex; gap:10px; flex-wrap:wrap}
+    .footer .right{display:flex; gap:10px; flex-wrap:wrap;}
     .kbd{
       display:inline-block; padding:2px 8px;
       border:1px solid rgba(255,255,255,.16);
@@ -216,7 +156,26 @@
       font-size:12px;
     }
 
-    /* Modal */
+    .fieldRow{
+      margin-top:12px;
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:10px;
+    }
+    @media (max-width: 560px){ .fieldRow{grid-template-columns:1fr} }
+    label{font-size:12px; color:rgba(234,238,247,.72); font-weight:850}
+    .field{display:flex; flex-direction:column; gap:6px;}
+    input{
+      padding:12px 12px;
+      border-radius:14px;
+      border:1px solid rgba(255,255,255,.14);
+      background:rgba(255,255,255,.06);
+      color:var(--txt);
+      outline:none;
+    }
+    input::placeholder{color:rgba(234,238,247,.45)}
+
+    /* Modal Options */
     .modalBack{
       position:fixed; inset:0;
       background: rgba(0,0,0,.60);
@@ -235,45 +194,10 @@
       backdrop-filter: blur(12px);
       padding:16px;
     }
-    .modal .row{
-      display:flex; align-items:center; justify-content:space-between; gap:10px;
-    }
+    .modal .row{display:flex; align-items:center; justify-content:space-between; gap:10px;}
     .modal h3{margin:0; font-size:15px; font-weight:950}
     .modal p{margin:8px 0 0; color:var(--mut); font-size:12.5px; line-height:1.4}
-    .field{
-      margin-top:12px;
-      display:flex;
-      flex-direction:column;
-      gap:6px;
-    }
-    label{font-size:12px; color:rgba(234,238,247,.72); font-weight:850}
-    input{
-      padding:12px 12px;
-      border-radius:14px;
-      border:1px solid rgba(255,255,255,.14);
-      background:rgba(255,255,255,.06);
-      color:var(--txt);
-      outline:none;
-    }
-    input::placeholder{color:rgba(234,238,247,.45)}
-    .modalActions{
-      margin-top:14px;
-      display:flex;
-      gap:10px;
-      justify-content:flex-end;
-      flex-wrap:wrap;
-    }
-    .toast{
-      margin-top:10px;
-      font-size:12px;
-      color:rgba(234,238,247,.70);
-      padding:10px 12px;
-      border-radius:14px;
-      border:1px solid rgba(255,255,255,.12);
-      background:rgba(255,255,255,.04);
-      display:none;
-      white-space:pre-wrap;
-    }
+    .modalActions{margin-top:14px; display:flex; gap:10px; justify-content:flex-end; flex-wrap:wrap;}
   </style>
 </head>
 
@@ -289,7 +213,7 @@
       </div>
 
       <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; justify-content:flex-end;">
-        <span class="statusPill" title="État du service">
+        <span class="statusPill" title="État du serveur WebSocket (lobby)">
           <span id="serverDot" class="dot"></span>
           <span id="serverText">Vérification…</span>
         </span>
@@ -298,48 +222,65 @@
     </header>
 
     <main class="main">
-      <!-- Colonne gauche: bienvenue + actions -->
       <section class="card welcome">
         <h2>Bienvenue 👋</h2>
         <p>
-          Ici, tu peux soit lancer une partie <b>Loup-Garou / Murder</b> (multi), soit rejoindre le <b>Salon (Hub 3D)</b>
-          pour te retrouver avec tes amis, choisir ton style, et te balader.
+          Choisis ton pseudo, puis lance une partie <b>Loup-Garou / Murder</b> (multijoueur),
+          ou rejoins le <b>Salon (Hub 3D)</b> pour te retrouver avec les autres, te balader et personnaliser ton avatar.
         </p>
 
-        <div class="actions">
-          <button id="btnPlayOnline" class="btn primary">🕵️ Jouer en ligne</button>
-          <a id="btnOpenHub" class="btn secondary" href="hub_world.html">🌍 Salon (Hub 3D)</a>
-          <button id="btnOptions" class="btn">⚙️ Options</button>
-        </div>
+        <div class="miniCard">
+          <div class="sectionTitle">Avant de jouer</div>
 
-        <div class="hint">
-          Astuce : si “Jouer en ligne” ne répond pas du premier coup, c’est normal sur un hébergement gratuit (réveil).
-          Réessaie une fois. Sur mobile, tu peux jouer aussi.
+          <div class="fieldRow">
+            <div class="field">
+              <label for="inpName">Pseudo</label>
+              <input id="inpName" type="text" maxlength="18" placeholder="Ex: Stan" autocomplete="nickname" />
+            </div>
+            <div class="field">
+              <label for="inpRoom">Code salon (optionnel)</label>
+              <input id="inpRoom" type="text" maxlength="12" placeholder="Ex: ABC123" autocomplete="off" />
+            </div>
+          </div>
+
+          <div class="hint">
+            Le pseudo sert à t’identifier dans le lobby. Le code salon permet de rejoindre exactement la même partie que tes amis.
+          </div>
+
+          <div class="actions">
+            <button id="btnPlayOnline" class="btn primary">🕵️ Jouer en ligne (Lobby)</button>
+            <a id="btnOpenHub" class="btn secondary" href="hub_world.html">🌍 Salon (Hub 3D)</a>
+            <button id="btnOptions" class="btn">⚙️ Options</button>
+          </div>
+
+          <div class="hint">
+            Astuce : si le lobby ne répond pas du premier coup sur Render gratuit, réessaie une fois (réveil du serveur).
+          </div>
         </div>
 
         <div class="miniCard">
           <div class="sectionTitle">Comment ça se passe ?</div>
           <ul class="list">
-            <li>On rejoint un lobby, puis chacun clique “Prêt”.</li>
-            <li>Quand tout le monde est prêt, l’hôte lance la partie.</li>
-            <li>Nuit : le Loup agit. Jour : discussion, puis vote.</li>
-            <li>Le Hub 3D reste séparé : c’est juste un salon communautaire.</li>
+            <li>Rejoignez un lobby, puis chacun clique “Prêt”.</li>
+            <li>Quand tout le monde est prêt, l’hôte démarre.</li>
+            <li>Nuit : le Loup agit. Jour : discussion puis vote.</li>
+            <li>Le Hub 3D est séparé : c’est un salon communautaire.</li>
           </ul>
         </div>
       </section>
 
-      <!-- Colonne droite: infos + raccourcis -->
       <aside class="card">
         <div class="sectionTitle">Accès rapide</div>
 
         <div class="miniCard">
-          <div class="sectionTitle" style="margin-bottom:8px">Multijoueur simple</div>
+          <div class="sectionTitle" style="margin-bottom:8px">Pour tes amis</div>
           <div style="color:var(--mut); font-size:12.5px; line-height:1.4">
-            Un seul lien à partager. Pas besoin d’être sur le même réseau.
+            Partage juste l’URL du site. Ils pourront rejoindre <b>le Lobby</b> et <b>le Hub</b> sans être sur le même réseau.
           </div>
+
           <div class="actions" style="margin-top:12px">
             <button id="btnOpenLobby" class="btn primary">Ouvrir le lobby</button>
-            <a id="btnGoHub2" class="btn secondary" href="hub_world.html">Ouvrir le Hub</a>
+            <a class="btn secondary" href="hub_world.html">Ouvrir le Hub</a>
           </div>
         </div>
 
@@ -352,10 +293,9 @@
         </div>
 
         <div class="miniCard">
-          <div class="sectionTitle" style="margin-bottom:8px">Prototype propre</div>
+          <div class="sectionTitle" style="margin-bottom:8px">Propre</div>
           <div style="color:var(--mut); font-size:12.5px; line-height:1.4">
-            Pas de “pages de test” visibles. Pas de liens vers des endpoints internes.
-            Juste l’accueil, le lobby, et le Hub.
+            Pas de liens vers des pages de test sur l’accueil. Juste l’accueil, le lobby, et le hub.
           </div>
         </div>
       </aside>
@@ -364,39 +304,10 @@
     <footer class="footer">
       <div>© Prototype perso — Loup-Garou</div>
       <div class="right">
-        <a class="btn ghost" href="hub_world.html" style="padding:10px 12px;">Salon (Hub 3D)</a>
+        <a class="btn ghost" href="lg.html" style="padding:10px 12px;">Lobby</a>
+        <a class="btn ghost" href="hub_world.html" style="padding:10px 12px;">Hub 3D</a>
       </div>
     </footer>
-  </div>
-
-  <!-- Modal Lobby -->
-  <div class="modalBack" id="lobbyModalBack" aria-hidden="true">
-    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="lobbyTitle">
-      <div class="row">
-        <h3 id="lobbyTitle">Jouer en ligne</h3>
-        <button class="btn" id="btnCloseLobby">Fermer</button>
-      </div>
-      <p>
-        Entre ton pseudo et (optionnel) un code de salon. Si tu ne mets rien, on créera un salon automatiquement (si ton code multi le gère).
-      </p>
-
-      <div class="field">
-        <label for="inpName">Pseudo</label>
-        <input id="inpName" type="text" maxlength="18" placeholder="Ex: Stan" autocomplete="nickname" />
-      </div>
-
-      <div class="field">
-        <label for="inpRoom">Code salon (optionnel)</label>
-        <input id="inpRoom" type="text" maxlength="12" placeholder="Ex: ABC123" autocomplete="off" />
-      </div>
-
-      <div class="toast" id="lobbyToast"></div>
-
-      <div class="modalActions">
-        <button class="btn" id="btnCreateRoom">Créer / Auto</button>
-        <button class="btn primary" id="btnJoinRoom">Rejoindre</button>
-      </div>
-    </div>
   </div>
 
   <!-- Modal Options (simple) -->
@@ -406,16 +317,14 @@
         <h3 id="optTitle">Options</h3>
         <button class="btn" id="btnCloseOpt">Fermer</button>
       </div>
-      <p>
-        Options côté client (sauvegardées). Tu pourras ensuite les relier au Hub / Lobby.
-      </p>
+      <p>Options côté client (sauvegardées). Tu pourras ensuite les relier au Hub / Lobby.</p>
 
-      <div class="field">
+      <div class="field" style="margin-top:12px">
         <label for="optMusic">Musique (placeholder)</label>
         <input id="optMusic" type="range" min="0" max="100" step="1" />
       </div>
 
-      <div class="field">
+      <div class="field" style="margin-top:12px">
         <label for="optSfx">Effets (placeholder)</label>
         <input id="optSfx" type="range" min="0" max="100" step="1" />
       </div>
@@ -429,7 +338,14 @@
   <script>
     // Aucun console.log visible
 
-    const WS_URL = "wss://loup-garou-ws.onrender.com"; // si ton WS change: remplace ici (optionnel)
+    // Pages réelles (tout le monde peut y accéder)
+    const LOBBY_PAGE = "lg.html";
+    const HUB_PAGE = "hub_world.html";
+
+    // WS (juste pour afficher "Serveur en ligne")
+    const WS_URL = "wss://loup-garou-ws.onrender.com";
+
+    // Stockage (pseudo/room partagé entre pages)
     const LS = {
       name: "lg_name",
       room: "lg_room",
@@ -440,14 +356,13 @@
 
     const serverDot = document.getElementById("serverDot");
     const serverText = document.getElementById("serverText");
-
     function setServer(ok, txt){
       serverDot.classList.remove("good","bad");
       serverDot.classList.add(ok ? "good" : "bad");
       serverText.textContent = txt;
     }
 
-    // Ping WS sans exposer de page de test
+    // Vérif serveur lobby (sans page de test)
     (function checkServer(){
       let done = false;
       try{
@@ -477,76 +392,42 @@
       }
     })();
 
-    // Lobby modal
-    const lobbyBack = document.getElementById("lobbyModalBack");
-    const btnPlayOnline = document.getElementById("btnPlayOnline");
-    const btnOpenLobby = document.getElementById("btnOpenLobby");
-    const btnCloseLobby = document.getElementById("btnCloseLobby");
-    const btnCreateRoom = document.getElementById("btnCreateRoom");
-    const btnJoinRoom = document.getElementById("btnJoinRoom");
+    // Inputs
     const inpName = document.getElementById("inpName");
     const inpRoom = document.getElementById("inpRoom");
-    const lobbyToast = document.getElementById("lobbyToast");
 
-    function openLobbyModal(){
-      lobbyBack.style.display = "flex";
-      lobbyBack.setAttribute("aria-hidden","false");
-      inpName.value = localStorage.getItem(LS.name) || "";
-      inpRoom.value = localStorage.getItem(LS.room) || "";
-      lobbyToast.style.display = "none";
-      setTimeout(() => inpName.focus(), 50);
-    }
-    function closeLobbyModal(){
-      lobbyBack.style.display = "none";
-      lobbyBack.setAttribute("aria-hidden","true");
-    }
-    function toast(msg){
-      lobbyToast.style.display = "block";
-      lobbyToast.textContent = msg;
-    }
-
-    btnPlayOnline.addEventListener("click", openLobbyModal);
-    btnOpenLobby.addEventListener("click", openLobbyModal);
-    btnCloseLobby.addEventListener("click", closeLobbyModal);
-    lobbyBack.addEventListener("click", (e) => { if (e.target === lobbyBack) closeLobbyModal(); });
-
-    function sanitizeCode(s){
+    function sanitizeRoom(s){
       return (s || "").trim().toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,12);
     }
-
-    function persistInputs(){
+    function persist(){
       const name = (inpName.value || "").trim().slice(0,18);
-      const room = sanitizeCode(inpRoom.value);
+      const room = sanitizeRoom(inpRoom.value);
       localStorage.setItem(LS.name, name);
       localStorage.setItem(LS.room, room);
       return { name, room };
     }
+    function restore(){
+      inpName.value = localStorage.getItem(LS.name) || "";
+      inpRoom.value = localStorage.getItem(LS.room) || "";
+    }
+    restore();
 
-    function tryOpenLobby(mode){
-      // 1) si ton game.js expose une API, on l’appelle
-      //    (tu peux implémenter plus tard: window.LG.openLobby({name, room, mode}))
-      const { name, room } = persistInputs();
-
+    // Navigation Lobby (tout le monde, même URL)
+    function goLobby(){
+      const { name } = persist();
       if (!name){
-        toast("Choisis un pseudo (obligatoire).");
+        // pas de console: feedback simple via placeholder
+        inpName.focus();
+        inpName.placeholder = "Pseudo obligatoire";
         return;
       }
-
-      // Hook optionnel (si ton game.js le fournit)
-      if (window.LG && typeof window.LG.openLobby === "function"){
-        window.LG.openLobby({ name, room, mode });
-        closeLobbyModal();
-        return;
-      }
-
-      // 2) fallback: on reste propre (pas de promesse)
-      toast("Lobby UI prête ✅\nBranchement multi: à faire dans game.js (LG.openLobby).");
+      window.location.href = LOBBY_PAGE;
     }
 
-    btnCreateRoom.addEventListener("click", () => tryOpenLobby("auto"));
-    btnJoinRoom.addEventListener("click", () => tryOpenLobby("join"));
+    document.getElementById("btnPlayOnline").addEventListener("click", goLobby);
+    document.getElementById("btnOpenLobby").addEventListener("click", goLobby);
 
-    // Options modal (simple)
+    // Options modal
     const optBack = document.getElementById("optModalBack");
     const btnOptions = document.getElementById("btnOptions");
     const btnCloseOpt = document.getElementById("btnCloseOpt");
@@ -573,26 +454,17 @@
       closeOpt();
     });
 
-    // Déconnexion (efface la "session", pas ton avatar hub)
+    // Déconnexion = efface uniquement la session, garde pseudo/room si tu veux
     document.getElementById("btnLogout").addEventListener("click", () => {
       try{
         LS.sessionKeys.forEach(k => localStorage.removeItem(k));
-        // garder le pseudo si tu veux: commente la ligne suivante
-        // localStorage.removeItem(LS.name);
-        // localStorage.removeItem(LS.room);
       }catch(_){}
     });
 
-    // ESC ferme les modals
+    // ESC ferme les options
     window.addEventListener("keydown", (e) => {
-      if (e.key === "Escape"){
-        closeLobbyModal();
-        closeOpt();
-      }
+      if (e.key === "Escape") closeOpt();
     });
   </script>
-
-  <!-- On garde ton script existant si tu en as un (pour brancher LG.openLobby etc.) -->
-  <script src="game.js" defer></script>
 </body>
 </html>
