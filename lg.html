@@ -6,76 +6,111 @@
   <title>Loup-Garou (Multi)</title>
   <style>
     :root{
-      --bg:#0b0e12; --panel:rgba(255,255,255,.05); --bd:rgba(255,255,255,.14);
-      --txt:#eaeef7; --mut:rgba(234,238,247,.72); --acc:#7c5cff;
-      --bad:#ff4d4d; --ok:#39d98a; --r:14px;
+      --bg1:#07090d; --bg2:#0b1020;
+      --panel:rgba(255,255,255,.06);
+      --bd:rgba(255,255,255,.14);
+      --txt:#eaeef7; --mut:rgba(234,238,247,.72);
+      --acc:#7c5cff; --ok:#39d98a; --bad:#ff4d4d;
+      --r:16px;
     }
     *{box-sizing:border-box}
-    body{margin:0;background:var(--bg);color:var(--txt);font-family:system-ui,Segoe UI,Arial}
-    a{color:var(--acc);text-decoration:none}
-    .wrap{max-width:1100px;margin:0 auto;padding:18px}
+    body{
+      margin:0;color:var(--txt);font-family:system-ui,Segoe UI,Arial;
+      min-height:100vh;
+      background:
+        radial-gradient(900px 500px at 20% 10%, rgba(124,92,255,.22), transparent 60%),
+        radial-gradient(700px 500px at 80% 30%, rgba(57,217,138,.14), transparent 55%),
+        radial-gradient(900px 650px at 50% 90%, rgba(255,255,255,.06), transparent 65%),
+        linear-gradient(180deg,var(--bg1),var(--bg2));
+    }
+    .wrap{max-width:1120px;margin:0 auto;padding:18px}
     .top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
-    .h1{font-size:20px;font-weight:800;letter-spacing:.2px}
-    .row{display:flex;gap:12px;flex-wrap:wrap}
-    .card{background:var(--panel); border:1px solid var(--bd); border-radius:var(--r); padding:14px;}
-    .grow{flex:1}
-    .w520{width:520px; max-width:100%}
-    .mut{color:var(--mut)}
-    .small{font-size:12px}
+    .h1{font-size:20px;font-weight:900;letter-spacing:.2px}
     .pill{display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border:1px solid var(--bd);border-radius:999px;background:rgba(255,255,255,.04)}
-    .dot{width:10px;height:10px;border-radius:999px;background:var(--mut)}
+    .dot{width:10px;height:10px;border-radius:999px;background:rgba(234,238,247,.45)}
     .dot.ok{background:var(--ok)}
     .dot.bad{background:var(--bad)}
+    .mut{color:var(--mut)}
+    .small{font-size:12px}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}
+    @media (max-width:920px){ .grid{grid-template-columns:1fr} }
+    .card{
+      background:var(--panel);
+      border:1px solid var(--bd);
+      border-radius:var(--r);
+      padding:14px;
+      box-shadow:0 18px 60px rgba(0,0,0,.25);
+    }
+    .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
     .btn{
       border:1px solid var(--bd); background:rgba(255,255,255,.06); color:var(--txt);
-      padding:10px 12px;border-radius:12px; cursor:pointer; font-weight:650;
+      padding:10px 12px;border-radius:14px; cursor:pointer; font-weight:800;
     }
     .btn:disabled{opacity:.5;cursor:not-allowed}
-    .btn.acc{border-color:rgba(124,92,255,.55)}
+    .btn.acc{border-color:rgba(124,92,255,.55);background:rgba(124,92,255,.14)}
     .btn.bad{border-color:rgba(255,77,77,.55)}
-    .in{border:1px solid var(--bd); background:rgba(255,255,255,.06); color:var(--txt); padding:10px 12px;border-radius:12px; outline:none;}
-    .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-    @media (max-width:920px){ .grid{grid-template-columns:1fr} }
+    .in{border:1px solid var(--bd); background:rgba(255,255,255,.06); color:var(--txt); padding:10px 12px;border-radius:14px; outline:none;}
+    .tag{font-size:12px;padding:4px 10px;border:1px solid var(--bd);border-radius:999px;color:var(--mut);background:rgba(255,255,255,.04)}
+    .hr{height:1px;background:rgba(255,255,255,.12);margin:12px 0}
+
     .list{display:flex;flex-direction:column;gap:8px;margin-top:10px}
     .item{
       display:flex;align-items:center;justify-content:space-between;gap:10px;
-      padding:10px 12px;border:1px solid var(--bd);border-radius:12px;background:rgba(255,255,255,.03)
+      padding:10px 12px;border:1px solid var(--bd);border-radius:14px;background:rgba(255,255,255,.03)
     }
-    .tag{font-size:12px;padding:3px 8px;border:1px solid var(--bd);border-radius:999px;color:var(--mut)}
-    .alive{color:var(--ok);font-weight:700}
-    .dead{color:var(--bad);font-weight:700}
+    .alive{color:var(--ok);font-weight:900}
+    .dead{color:var(--bad);font-weight:900}
+    .timer{font-variant-numeric:tabular-nums;font-weight:900}
     .bigRole{
-      font-size:22px;font-weight:900;letter-spacing:.2px;
-      padding:10px 12px;border-radius:12px;border:1px solid rgba(124,92,255,.55);
+      font-size:22px;font-weight:950;letter-spacing:.2px;
+      padding:10px 12px;border-radius:14px;border:1px solid rgba(124,92,255,.55);
       background:rgba(124,92,255,.12); display:inline-block;
     }
-    .timer{font-variant-numeric:tabular-nums;font-weight:800;}
     .log{
       height:260px; overflow:auto; white-space:pre-wrap; word-break:break-word;
-      padding:10px 12px;border-radius:12px;border:1px solid var(--bd);background:rgba(0,0,0,.18);
+      padding:10px 12px;border-radius:14px;border:1px solid var(--bd);background:rgba(0,0,0,.18);
       font-size:13px;
     }
-    .hr{height:1px;background:rgba(255,255,255,.12);margin:12px 0}
-    .two{display:flex;gap:10px;flex-wrap:wrap}
+
+    .settingsBox{
+      border:1px solid rgba(124,92,255,.35);
+      background:rgba(124,92,255,.08);
+      border-radius:14px;
+      padding:12px;
+    }
+    .settingsGrid{
+      display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px
+    }
+    @media (max-width:700px){ .settingsGrid{grid-template-columns:1fr} }
+    .field label{display:block;font-size:12px;color:var(--mut);margin-bottom:6px}
+    .field input, .field select{
+      width:100%;
+      border:1px solid var(--bd);
+      background:rgba(255,255,255,.06);
+      color:var(--txt);
+      padding:10px 12px;
+      border-radius:14px;
+      outline:none;
+    }
   </style>
 </head>
 
 <body>
   <div class="wrap">
     <div class="top">
-      <div class="h1">Loup-Garou (Multi) — Lobby + Nuit/Jour + Vote</div>
+      <div class="h1">Loup-Garou — Lobby & Partie</div>
       <div class="pill">
         <span id="dot" class="dot bad"></span>
         <span id="status" class="mut">Déconnecté</span>
       </div>
     </div>
 
-    <div class="grid" style="margin-top:12px">
-      <div class="card grow">
-        <div class="row" style="align-items:center;justify-content:space-between">
+    <div class="grid">
+      <div class="card">
+        <div class="row" style="justify-content:space-between">
           <div>
             <div><b>Connexion</b></div>
-            <div class="small mut">Si “connecter” ferme au 1er essai : retente une fois (Render gratuit).</div>
+            <div class="small mut">Si “connecter” échoue au 1er essai : retente une fois.</div>
           </div>
           <div class="small mut">WS: <span id="wsUrl"></span></div>
         </div>
@@ -89,67 +124,124 @@
 
         <div class="hr"></div>
 
-        <div class="row" style="align-items:center;justify-content:space-between">
+        <div class="row" style="justify-content:space-between">
           <div>
             <div><b>Partie</b></div>
             <div class="small mut">Phase: <span id="phase">—</span> · Jour: <span id="day">—</span></div>
           </div>
           <div class="pill">
-            <span class="mut">Temps restant:</span>
+            <span class="mut">Temps:</span>
             <span id="timer" class="timer">—</span>
           </div>
         </div>
 
-        <div class="row" style="margin-top:10px;align-items:center;justify-content:space-between">
-          <div class="two">
+        <div class="row" style="margin-top:10px;justify-content:space-between">
+          <div class="row">
             <div class="tag">Ton ID: <span id="myId">—</span></div>
             <div class="tag">Hôte: <span id="hostId">—</span></div>
           </div>
-          <div class="two">
+          <div class="row">
             <button id="btnReady" class="btn" disabled>Prêt: OFF</button>
             <button id="btnStart" class="btn acc" disabled>Démarrer (hôte)</button>
             <button id="btnBackLobby" class="btn" disabled>Retour Lobby (hôte)</button>
           </div>
         </div>
 
-        <div class="row" style="margin-top:10px;align-items:center;justify-content:space-between">
-          <div class="small mut">Option (hôte) : activer le Chasseur</div>
-          <button id="btnHunter" class="btn" disabled>Chasseur: ON</button>
+        <div class="hr"></div>
+
+        <div>
+          <div><b>Paramètres de partie</b></div>
+          <div id="settingsSummary" class="small mut" style="margin-top:6px">—</div>
+
+          <div id="hostSettings" class="settingsBox" style="margin-top:10px; display:none">
+            <div style="font-weight:900">Paramètres (Hôte)</div>
+            <div class="small mut" style="margin-top:4px">
+              Visible uniquement pour l’hôte quand tout le monde est prêt (≥ 5). Appliqué au prochain démarrage.
+            </div>
+
+            <div class="settingsGrid">
+              <div class="field">
+                <label>Nombre de Loups-Garous</label>
+                <select id="setWolves">
+                  <option value="1">1</option>
+                  <option value="2">2</option>
+                  <option value="3">3</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>Chasseur (ON/OFF)</label>
+                <select id="setHunter">
+                  <option value="1">ON</option>
+                  <option value="0">OFF</option>
+                </select>
+              </div>
+
+              <div class="field">
+                <label>Révélation (secondes)</label>
+                <input id="setReveal" type="number" min="5" max="40" step="1" />
+              </div>
+              <div class="field">
+                <label>Nuit (secondes)</label>
+                <input id="setNight" type="number" min="10" max="60" step="1" />
+              </div>
+
+              <div class="field">
+                <label>Discussion (secondes)</label>
+                <input id="setTalk" type="number" min="10" max="120" step="1" />
+              </div>
+              <div class="field">
+                <label>Vote (secondes)</label>
+                <input id="setVote" type="number" min="10" max="60" step="1" />
+              </div>
+
+              <div class="field">
+                <label>Chasseur (tir) (secondes)</label>
+                <input id="setHunterTime" type="number" min="8" max="45" step="1" />
+              </div>
+              <div class="field">
+                <label>—</label>
+                <div class="row">
+                  <button id="btnApplySettings" class="btn acc">Appliquer</button>
+                  <button id="btnDefaults" class="btn">Défaut</button>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
         <div class="hr"></div>
 
         <div>
           <div><b>Ton rôle</b></div>
-          <div class="row" style="margin-top:8px;align-items:center;justify-content:space-between">
+          <div class="row" style="margin-top:8px;justify-content:space-between">
             <div id="roleBox" class="bigRole" style="display:none"></div>
-            <div class="small mut">Le rôle est envoyé en “private” au démarrage.</div>
+            <div class="small mut">Envoyé en “private” au démarrage.</div>
           </div>
         </div>
 
         <div class="hr"></div>
 
-        <div id="actionArea">
+        <div>
           <div><b>Actions</b></div>
-          <div class="small mut">Les actions apparaissent selon ta phase et ton rôle.</div>
+          <div class="small mut">Les actions varient selon ton rôle et la phase.</div>
           <div id="actions" class="list"></div>
         </div>
       </div>
 
-      <div class="card w520">
-        <div class="row" style="align-items:center;justify-content:space-between">
+      <div class="card">
+        <div class="row" style="justify-content:space-between">
           <div>
             <div><b>Joueurs</b></div>
-            <div class="small mut">Prêt requis pour démarrer (min 5).</div>
+            <div class="small mut">Min: <span id="minPlayers">5</span> · Tous prêts pour démarrer.</div>
           </div>
-          <div class="tag">Chasseur: <span id="hunterEnabled">—</span></div>
+          <div class="tag">Prêts: <span id="readyCount">0</span>/<span id="playerCount">0</span></div>
         </div>
 
         <div id="players" class="list"></div>
 
         <div class="hr"></div>
 
-        <div class="row" style="align-items:center;justify-content:space-between">
+        <div class="row" style="justify-content:space-between">
           <div><b>Journal</b></div>
           <button id="btnClearLog" class="btn">Vider</button>
         </div>
@@ -161,11 +253,12 @@
 <script>
 (() => {
   const WS_URL = "wss://loup-garou-ws.onrender.com/ws";
-
   const el = (id) => document.getElementById(id);
+
   const dot = el("dot");
   const statusEl = el("status");
   const wsUrlEl = el("wsUrl");
+
   const nameEl = el("name");
   const btnConnect = el("btnConnect");
   const btnDisconnect = el("btnDisconnect");
@@ -181,21 +274,33 @@
   const btnReady = el("btnReady");
   const btnStart = el("btnStart");
   const btnBackLobby = el("btnBackLobby");
-  const btnHunter = el("btnHunter");
 
-  const hunterEnabledEl = el("hunterEnabled");
   const roleBox = el("roleBox");
-
-  const playersEl = el("players");
   const actionsEl = el("actions");
+  const playersEl = el("players");
 
   const logEl = el("log");
   const btnClearLog = el("btnClearLog");
 
+  const settingsSummary = el("settingsSummary");
+  const hostSettings = el("hostSettings");
+  const setWolves = el("setWolves");
+  const setHunter = el("setHunter");
+  const setReveal = el("setReveal");
+  const setNight = el("setNight");
+  const setTalk = el("setTalk");
+  const setVote = el("setVote");
+  const setHunterTime = el("setHunterTime");
+  const btnApplySettings = el("btnApplySettings");
+  const btnDefaults = el("btnDefaults");
+
+  const minPlayersEl = el("minPlayers");
+  const readyCountEl = el("readyCount");
+  const playerCountEl = el("playerCount");
+
   wsUrlEl.textContent = WS_URL;
 
   let ws = null;
-
   let myId = null;
   let isHost = false;
   let myRole = null;
@@ -218,8 +323,7 @@
     const mm = String(t.getMinutes()).padStart(2,"0");
     const ss = String(t.getSeconds()).padStart(2,"0");
     const line = `[${hh}:${mm}:${ss}] ${text}`;
-    const prev = logEl.textContent;
-    logEl.textContent = (emph ? ("★ " + line) : line) + "\n" + prev;
+    logEl.textContent = (emph ? ("★ " + line) : line) + "\n" + logEl.textContent;
   }
 
   function escapeHtml(s){
@@ -236,26 +340,12 @@
     state = null;
     roleBox.style.display = "none";
     roleBox.textContent = "";
-    phaseEl.textContent = "—";
-    dayEl.textContent = "—";
-    timerEl.textContent = "—";
-    myIdEl.textContent = "—";
-    hostIdEl.textContent = "—";
-    hunterEnabledEl.textContent = "—";
-    playersEl.innerHTML = "";
     actionsEl.innerHTML = "";
+    playersEl.innerHTML = "";
+    settingsSummary.textContent = "—";
+    hostSettings.style.display = "none";
     if (timerHandle) { clearInterval(timerHandle); timerHandle = null; }
-  }
-
-  function clearActions(){ actionsEl.innerHTML = ""; }
-
-  function addAction(title, subtitle){
-    const row = document.createElement("div");
-    row.className = "item";
-    const left = document.createElement("div");
-    left.innerHTML = `<div><b>${escapeHtml(title)}</b></div><div class="small mut">${escapeHtml(subtitle || "")}</div>`;
-    row.appendChild(left);
-    actionsEl.appendChild(row);
+    timerEl.textContent = "—";
   }
 
   function isMeAlive(){
@@ -264,29 +354,176 @@
     return me ? !!me.alive : true;
   }
 
+  function setTimer(ms){
+    timerEndAt = Date.now() + Math.max(0, ms || 0);
+    if (timerHandle) clearInterval(timerHandle);
+    timerHandle = setInterval(() => {
+      const left = Math.max(0, timerEndAt - Date.now());
+      const s = Math.ceil(left / 1000);
+      timerEl.textContent = (state && state.phase !== "LOBBY" && state.phase !== "GAMEOVER") ? (s + "s") : "—";
+      if (left <= 0) timerEl.textContent = (state && state.phase !== "LOBBY" && state.phase !== "GAMEOVER") ? "0s" : "—";
+    }, 250);
+  }
+
+  function send(obj){
+    if (!ws || ws.readyState !== 1) return;
+    try { ws.send(JSON.stringify(obj)); } catch(e) {}
+  }
+
+  function renderTop(){
+    phaseEl.textContent = state?.phase || lobby?.phase || "—";
+    dayEl.textContent = state?.day ?? "—";
+
+    myIdEl.textContent = (myId == null) ? "—" : String(myId);
+    hostIdEl.textContent = lobby?.hostId ?? "—";
+
+    btnDisconnect.disabled = !(ws && ws.readyState === 1);
+    btnConnect.disabled = (ws && ws.readyState === 1);
+
+    btnReady.disabled = !(ws && ws.readyState === 1);
+    btnBackLobby.disabled = !(ws && ws.readyState === 1 && isHost);
+
+    const allReady = !!lobby?.allReady;
+    const inLobby = (lobby?.phase === "LOBBY");
+    btnStart.disabled = !(ws && ws.readyState === 1 && isHost && inLobby && allReady);
+
+    // Texte prêt
+    if (lobby && myId != null){
+      const me = lobby.players.find(x => x.id === myId);
+      btnReady.textContent = "Prêt: " + (me?.ready ? "ON" : "OFF");
+    } else {
+      btnReady.textContent = "Prêt: OFF";
+    }
+
+    // Rôle
+    if (myRole){
+      roleBox.style.display = "inline-block";
+      roleBox.textContent = myRole;
+    } else {
+      roleBox.style.display = "none";
+      roleBox.textContent = "";
+    }
+
+    // Compteurs prêt
+    if (lobby){
+      const pc = lobby.players.length;
+      const rc = lobby.players.filter(p => p.ready).length;
+      playerCountEl.textContent = String(pc);
+      readyCountEl.textContent = String(rc);
+      minPlayersEl.textContent = String(lobby.minPlayers || 5);
+    } else {
+      playerCountEl.textContent = "0";
+      readyCountEl.textContent = "0";
+      minPlayersEl.textContent = "5";
+    }
+  }
+
+  function renderSettings(){
+    if (!lobby || !lobby.settings){
+      settingsSummary.textContent = "—";
+      hostSettings.style.display = "none";
+      return;
+    }
+
+    const s = lobby.settings;
+    const revealS = Math.round((s.revealMs || 12000) / 1000);
+    const nightS = Math.round((s.nightMs || 20000) / 1000);
+    const talkS = Math.round((s.talkMs || 22000) / 1000);
+    const voteS = Math.round((s.voteMs || 20000) / 1000);
+    const hunterS = Math.round((s.hunterMs || 15000) / 1000);
+
+    settingsSummary.textContent =
+      `Loups: ${s.wolvesCount} · Chasseur: ${s.hunterEnabled ? "ON" : "OFF"} · ` +
+      `Révélation: ${revealS}s · Nuit: ${nightS}s · Discussion: ${talkS}s · Vote: ${voteS}s · Tir: ${hunterS}s`;
+
+    // Panneau host: uniquement si hôte + lobby + allReady
+    const showHost = !!(isHost && lobby.phase === "LOBBY" && lobby.allReady);
+    hostSettings.style.display = showHost ? "block" : "none";
+
+    // Remplir inputs (sans spam)
+    if (showHost){
+      setWolves.value = String(s.wolvesCount || 1);
+      setHunter.value = s.hunterEnabled ? "1" : "0";
+      setReveal.value = String(revealS);
+      setNight.value = String(nightS);
+      setTalk.value = String(talkS);
+      setVote.value = String(voteS);
+      setHunterTime.value = String(hunterS);
+    }
+  }
+
+  function renderActions(){
+    actionsEl.innerHTML = "";
+    if (!ws || ws.readyState !== 1){
+      actionsEl.innerHTML = `<div class="item"><div><b>Non connecté</b><div class="small mut">Entre ton nom puis clique Connecter.</div></div></div>`;
+      return;
+    }
+    if (lobby?.phase === "LOBBY"){
+      const txt = lobby.allReady
+        ? "Tout le monde est prêt. L’hôte peut régler les paramètres puis démarrer."
+        : "Mettez-vous prêts (min 5).";
+      actionsEl.innerHTML = `<div class="item"><div><b>Lobby</b><div class="small mut">${escapeHtml(txt)}</div></div></div>`;
+      return;
+    }
+    if (!state) return;
+
+    const aliveMe = isMeAlive();
+    const ph = state.phase;
+
+    const add = (t, sub) => {
+      const row = document.createElement("div");
+      row.className = "item";
+      row.innerHTML = `<div><b>${escapeHtml(t)}</b><div class="small mut">${escapeHtml(sub||"")}</div></div>`;
+      actionsEl.appendChild(row);
+    };
+
+    if (ph === "REVEAL"){ add("Révélation", "Mémorise ton rôle. La nuit arrive."); return; }
+
+    if (ph === "NIGHT"){
+      if (!aliveMe){ add("Nuit", "Tu es mort. Tu observes."); return; }
+      if (myRole === "Loup-Garou") add("Nuit (Loup-Garou)", "Choisis une cible dans la liste (bouton Cibler).");
+      else add("Nuit", "Tu attends. Les loups agissent.");
+      return;
+    }
+
+    if (ph === "DAY_TALK"){ add("Jour", "Discussion. Le vote arrive."); return; }
+
+    if (ph === "DAY_VOTE"){
+      if (!aliveMe){ add("Vote", "Tu es mort. Tu ne votes pas."); return; }
+      add("Vote", "Vote un joueur vivant (bouton Voter).");
+      return;
+    }
+
+    if (ph === "HUNTER_SHOT"){
+      if (myId === state.hunterShooterId) add("Chasseur", "Tire une dernière fois (bouton Tirer).");
+      else add("Chasseur", "Le chasseur décide…");
+      return;
+    }
+
+    if (ph === "GAMEOVER"){ add("Fin", "L’hôte peut faire Retour Lobby pour relancer."); return; }
+  }
+
   function renderPlayers(){
     playersEl.innerHTML = "";
     if (!lobby && !state) return;
 
     const players = (state?.players) ? state.players : (lobby?.players || []);
-
     for (const p of players){
       const row = document.createElement("div");
       row.className = "item";
 
-      const left = document.createElement("div");
       const alive = (p.alive === undefined) ? true : !!p.alive;
       const aliveTxt = alive ? `<span class="alive">Vivant</span>` : `<span class="dead">Mort</span>`;
       const readyTxt = (p.ready === undefined) ? "" : (p.ready ? "✅ Prêt" : "⏳ Pas prêt");
       const hostTxt = (lobby && p.id === lobby.hostId) ? "👑 Hôte" : "";
 
+      const left = document.createElement("div");
       left.innerHTML = `
         <div><b>${escapeHtml(p.name || ("Joueur " + p.id))}</b> <span class="tag">#${p.id}</span></div>
         <div class="small mut">${hostTxt} ${readyTxt} ${state ? ("· " + aliveTxt) : ""}</div>
       `;
 
       const right = document.createElement("div");
-
       if (ws && ws.readyState === 1 && state && state.phase){
         const phase = state.phase;
         const aliveMe = isMeAlive();
@@ -323,97 +560,12 @@
     }
   }
 
-  function renderTop(){
-    phaseEl.textContent = state?.phase || lobby?.phase || "—";
-    dayEl.textContent = state?.day ?? "—";
-
-    myIdEl.textContent = (myId == null) ? "—" : String(myId);
-    hostIdEl.textContent = lobby?.hostId ?? "—";
-    hunterEnabledEl.textContent = lobby?.hunterEnabled ? "ON" : "OFF";
-
-    btnDisconnect.disabled = !(ws && ws.readyState === 1);
-    btnConnect.disabled = (ws && ws.readyState === 1);
-
-    btnReady.disabled = !(ws && ws.readyState === 1);
-    btnStart.disabled = !(ws && ws.readyState === 1 && isHost && (lobby?.phase === "LOBBY"));
-    btnBackLobby.disabled = !(ws && ws.readyState === 1 && isHost);
-    btnHunter.disabled = !(ws && ws.readyState === 1 && isHost && (lobby?.phase === "LOBBY"));
-
-    if (lobby){
-      const me = lobby.players.find(x => x.id === myId);
-      const ready = !!me?.ready;
-      btnReady.textContent = "Prêt: " + (ready ? "ON" : "OFF");
-    } else {
-      btnReady.textContent = "Prêt: OFF";
-    }
-    btnHunter.textContent = "Chasseur: " + ((lobby?.hunterEnabled) ? "ON" : "OFF");
-
-    if (myRole){
-      roleBox.style.display = "inline-block";
-      roleBox.textContent = myRole;
-    } else {
-      roleBox.style.display = "none";
-      roleBox.textContent = "";
-    }
-  }
-
-  function setTimer(ms){
-    timerEndAt = Date.now() + Math.max(0, ms || 0);
-    if (timerHandle) clearInterval(timerHandle);
-    timerHandle = setInterval(() => {
-      const left = Math.max(0, timerEndAt - Date.now());
-      const s = Math.ceil(left / 1000);
-      timerEl.textContent = (state && state.phase !== "LOBBY" && state.phase !== "GAMEOVER") ? (s + "s") : "—";
-      if (left <= 0) timerEl.textContent = (state && state.phase !== "LOBBY" && state.phase !== "GAMEOVER") ? "0s" : "—";
-    }, 250);
-  }
-
-  function renderActions(){
-    clearActions();
-    if (!ws || ws.readyState !== 1){
-      addAction("Non connecté", "Entre ton nom et clique Connecter.");
-      return;
-    }
-    if (lobby?.phase === "LOBBY"){
-      addAction("Lobby", "Mets-toi prêt. L’hôte peut démarrer (min 5).");
-      return;
-    }
-    if (!state) return;
-
-    const aliveMe = isMeAlive();
-    const ph = state.phase;
-
-    if (ph === "REVEAL"){ addAction("Révélation", "Mémorise ton rôle. La nuit arrive."); return; }
-    if (ph === "NIGHT"){
-      if (!aliveMe){ addAction("Nuit", "Tu es mort. Tu observes."); return; }
-      if (myRole === "Loup-Garou") addAction("Nuit (Loup-Garou)", "Choisis une cible (bouton Cibler).");
-      else addAction("Nuit", "Tu attends. Le loup agit.");
-      return;
-    }
-    if (ph === "DAY_TALK"){ addAction("Jour", "Discussion. Le vote arrive."); return; }
-    if (ph === "DAY_VOTE"){
-      if (!aliveMe){ addAction("Vote", "Tu es mort. Tu ne votes pas."); return; }
-      addAction("Vote", "Vote un joueur vivant (bouton Voter).");
-      return;
-    }
-    if (ph === "HUNTER_SHOT"){
-      if (myId === state.hunterShooterId) addAction("Chasseur", "Tire une dernière fois (bouton Tirer).");
-      else addAction("Chasseur", "Le chasseur décide…");
-      return;
-    }
-    if (ph === "GAMEOVER"){ addAction("Fin", "L’hôte peut faire Retour Lobby pour relancer."); return; }
-  }
-
-  function send(obj){
-    if (!ws || ws.readyState !== 1) return;
-    try { ws.send(JSON.stringify(obj)); } catch(e) {}
-  }
-
   function connect(){
     if (ws && ws.readyState === 1) return;
 
     resetLocalState();
     renderTop();
+    renderPlayers();
     renderActions();
 
     setConn(false, "Connexion…");
@@ -421,9 +573,6 @@
 
     ws.onopen = () => {
       setConn(true, "Connecté");
-      btnDisconnect.disabled = false;
-      btnConnect.disabled = true;
-
       const nm = (nameEl.value || "Joueur").trim().slice(0, 18);
       send({ t:"join", name:nm });
     };
@@ -442,9 +591,10 @@
 
       if (msg.t === "lobby"){
         lobby = msg;
-        state = null; // en lobby, on coupe l'état de partie
+        state = null;
         setTimer(0);
         renderTop();
+        renderSettings();
         renderPlayers();
         renderActions();
       }
@@ -477,12 +627,11 @@
 
     ws.onclose = () => {
       setConn(false, "Déconnecté");
-      btnDisconnect.disabled = true;
-      btnConnect.disabled = false;
       pushLog("Déconnecté.");
       ws = null;
       resetLocalState();
       renderTop();
+      renderPlayers();
       renderActions();
     };
 
@@ -504,7 +653,6 @@
   btnDisconnect.onclick = disconnect;
 
   btnQuit.onclick = () => {
-    // Quitter proprement : on ferme la socket puis on revient à l'accueil
     if (ws && ws.readyState === 1) disconnect();
     window.location.href = "index.html";
   };
@@ -519,19 +667,36 @@
   btnStart.onclick = () => send({ t:"start" });
   btnBackLobby.onclick = () => send({ t:"backToLobby" });
 
-  btnHunter.onclick = () => {
-    if (!lobby) return;
-    send({ t:"setHunter", enabled: !lobby.hunterEnabled });
+  btnApplySettings.onclick = () => {
+    if (!lobby || !isHost || lobby.phase !== "LOBBY" || !lobby.allReady) return;
+    send({
+      t: "setSettings",
+      wolvesCount: parseInt(setWolves.value, 10),
+      hunterEnabled: (setHunter.value === "1"),
+      revealS: parseInt(setReveal.value, 10),
+      nightS: parseInt(setNight.value, 10),
+      talkS: parseInt(setTalk.value, 10),
+      voteS: parseInt(setVote.value, 10),
+      hunterS: parseInt(setHunterTime.value, 10),
+    });
+  };
+
+  btnDefaults.onclick = () => {
+    setWolves.value = "1";
+    setHunter.value = "1";
+    setReveal.value = "12";
+    setNight.value = "20";
+    setTalk.value = "22";
+    setVote.value = "20";
+    setHunterTime.value = "15";
   };
 
   btnClearLog.onclick = () => { logEl.textContent = ""; };
 
-  // Important : fermer la connexion si on ferme l'onglet
   window.addEventListener("beforeunload", () => {
     try { if (ws) ws.close(); } catch(e) {}
   });
 
-  // UI initiale
   setConn(false, "Déconnecté");
   resetLocalState();
   renderTop();
