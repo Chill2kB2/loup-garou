@@ -3,34 +3,52 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
-  <title>Salon (Hub) — Monde 3D</title>
+  <title>Salon (Hub) — 3D</title>
   <link rel="icon" href="data:," />
   <style>
     :root{
-      --panel: rgba(0,0,0,.45);
+      --bg:#07090d;
+      --panel: rgba(0,0,0,.48);
       --bd: rgba(255,255,255,.14);
       --txt:#eaeef7;
       --mut: rgba(234,238,247,.72);
       --acc:#7c5cff;
+      --good:#43d17a;
+      --bad:#ff5c5c;
+      --r:18px;
     }
     *{box-sizing:border-box; -webkit-tap-highlight-color: transparent;}
     html,body{height:100%}
-    body{margin:0; overflow:hidden; background:#07090d; color:var(--txt); font-family:system-ui,Segoe UI,Arial}
+    body{margin:0; overflow:hidden; background:var(--bg); color:var(--txt); font-family:system-ui,Segoe UI,Arial}
     canvas{display:block}
 
+    /* Top HUD */
     .hud{
       position:fixed; left:12px; top:12px;
-      width:min(360px, calc(100vw - 24px));
+      width:min(420px, calc(100vw - 24px));
       background:var(--panel);
       border:1px solid var(--bd);
-      border-radius:18px;
+      border-radius:22px;
       padding:12px;
-      backdrop-filter: blur(8px);
+      backdrop-filter: blur(10px);
       user-select:none;
+      z-index:20;
     }
-    .row{display:flex; gap:10px; flex-wrap:wrap; align-items:center; justify-content:space-between}
-    .title{font-weight:950; font-size:14px}
+    .row{display:flex; gap:10px; align-items:center; justify-content:space-between}
+    .title{font-weight:950; font-size:14px; letter-spacing:.2px}
     .mut{color:var(--mut); font-size:12px; line-height:1.35}
+    .pill{
+      display:inline-flex; align-items:center; gap:8px;
+      border:1px solid var(--bd);
+      border-radius:999px;
+      padding:6px 10px;
+      background:rgba(255,255,255,.04);
+      font-size:12px;
+      color:var(--mut);
+    }
+    .dot{width:8px;height:8px;border-radius:99px;display:inline-block}
+    .dot.good{background:var(--good)}
+    .dot.bad{background:var(--bad)}
     .btn{
       border:1px solid var(--bd);
       background:rgba(255,255,255,.06);
@@ -42,22 +60,98 @@
       user-select:none;
     }
     .btn.acc{border-color: rgba(124,92,255,.55); background: rgba(124,92,255,.14)}
+    .btn:active{transform: translateY(1px)}
     .kbd{display:inline-block; padding:2px 8px; border:1px solid rgba(255,255,255,.16); border-radius:10px; background:rgba(255,255,255,.04); color:var(--txt); font-weight:800; font-size:12px}
 
-    .joyWrap{ position:fixed; inset:0; pointer-events:none; }
+    /* Character panel */
+    .panel{
+      position:fixed; right:12px; top:12px;
+      width:min(420px, calc(100vw - 24px));
+      background:var(--panel);
+      border:1px solid var(--bd);
+      border-radius:22px;
+      padding:12px;
+      backdrop-filter: blur(10px);
+      user-select:none;
+      z-index:20;
+    }
+    .panel h3{margin:0; font-size:14px; font-weight:950}
+    .panel .sub{margin-top:6px; color:var(--mut); font-size:12px; line-height:1.35}
+    .grid{
+      margin-top:10px;
+      display:grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap:8px;
+    }
+    .swatch{
+      height:32px;
+      border-radius:12px;
+      border:1px solid rgba(255,255,255,.16);
+      cursor:pointer;
+    }
+    .swatch.sel{outline:2px solid rgba(124,92,255,.9)}
+    .line{
+      margin-top:12px; padding-top:12px;
+      border-top:1px solid rgba(255,255,255,.10);
+    }
+    .field{display:flex; gap:10px; align-items:center; justify-content:space-between; margin-top:8px}
+    input[type="range"]{width:220px}
+    .toggle{
+      display:inline-flex; gap:8px; align-items:center;
+      border:1px solid rgba(255,255,255,.14);
+      border-radius:14px;
+      padding:8px 10px;
+      background:rgba(255,255,255,.04);
+      cursor:pointer;
+      font-weight:900;
+      font-size:12px;
+    }
+
+    /* Loading overlay */
+    .loading{
+      position:fixed; inset:0;
+      display:flex; align-items:center; justify-content:center;
+      background: radial-gradient(1200px 800px at 50% 30%, rgba(124,92,255,.18), rgba(0,0,0,.85));
+      z-index:50;
+    }
+    .card{
+      width:min(520px, calc(100vw - 28px));
+      background:rgba(0,0,0,.55);
+      border:1px solid rgba(255,255,255,.14);
+      border-radius:22px;
+      padding:18px;
+      backdrop-filter: blur(10px);
+    }
+    .big{font-size:18px; font-weight:950}
+    .bar{height:10px; background:rgba(255,255,255,.10); border-radius:999px; overflow:hidden; margin-top:12px}
+    .bar > div{height:100%; width:0%; background:rgba(124,92,255,.9)}
+    .err{
+      margin-top:10px;
+      color:#ffd1d1;
+      background:rgba(255,92,92,.12);
+      border:1px solid rgba(255,92,92,.25);
+      border-radius:14px;
+      padding:10px;
+      font-size:12px;
+      display:none;
+      white-space:pre-wrap;
+    }
+
+    /* Joystick overlay */
+    .joyWrap{ position:fixed; inset:0; pointer-events:none; z-index:15; }
     .joyLeftZone{
       position:fixed; left:0; bottom:0;
-      width:50vw; height:55vh;
+      width:50vw; height:56vh;
       pointer-events:auto;
     }
     .lookRightZone{
       position:fixed; right:0; bottom:0;
-      width:50vw; height:55vh;
+      width:50vw; height:56vh;
       pointer-events:auto;
     }
     .joy{
       position:absolute; left:18px; bottom:18px;
-      width:140px; height:140px; border-radius:999px;
+      width:150px; height:150px; border-radius:999px;
       background:rgba(255,255,255,.06);
       border:1px solid rgba(255,255,255,.14);
       backdrop-filter: blur(6px);
@@ -65,7 +159,7 @@
     }
     .joy .knob{
       position:absolute; left:50%; top:50%;
-      width:54px; height:54px; border-radius:999px;
+      width:56px; height:56px; border-radius:999px;
       transform: translate(-50%,-50%);
       background:rgba(124,92,255,.35);
       border:1px solid rgba(124,92,255,.55);
@@ -78,13 +172,56 @@
   <div class="hud">
     <div class="row">
       <div>
-        <div class="title">Salon (Hub) — Monde 3D (local)</div>
-        <div class="mut">Déplacement: <span class="kbd">ZQSD</span> / <span class="kbd">←↑↓→</span> · Joysticks: <span class="kbd">J</span></div>
+        <div class="title">Salon (Hub) — 3D</div>
+        <div class="mut">ZQSD / flèches · Sprint <span class="kbd">Shift</span> · Joysticks <span class="kbd">J</span></div>
       </div>
-      <button id="btnJoy" class="btn acc">👁 Joysticks</button>
+      <div style="display:flex; gap:8px">
+        <button id="btnJoy" class="btn acc" title="Afficher/masquer les joysticks">👁</button>
+        <button id="btnPanel" class="btn" title="Ouvrir/fermer Personnage">Personnage</button>
+      </div>
     </div>
-    <div class="mut" style="margin-top:10px">
-      Caméra: glisser sur la scène (souris) · Mobile: joystick gauche = bouger, glisser à droite = tourner.
+
+    <div class="row" style="margin-top:10px">
+      <span class="pill"><span id="assetDot" class="dot bad"></span><span id="assetText">Assets: en attente…</span></span>
+      <span class="pill">Caméra: clic-glisser / zone droite</span>
+    </div>
+  </div>
+
+  <div class="panel" id="panel">
+    <div class="row">
+      <h3>Personnage</h3>
+      <button id="btnClosePanel" class="btn">Fermer</button>
+    </div>
+    <div class="sub">Choisis un skin, une taille, et des accessoires. Tout est sauvegardé automatiquement.</div>
+
+    <div class="line">
+      <div class="mut">Skins (10)</div>
+      <div class="grid" id="skinGrid"></div>
+    </div>
+
+    <div class="line">
+      <div class="field">
+        <div class="mut">Taille</div>
+        <div style="display:flex; gap:10px; align-items:center">
+          <input id="scaleRange" type="range" min="0.85" max="1.15" step="0.01" />
+          <span class="pill" id="scaleLabel">1.00</span>
+        </div>
+      </div>
+
+      <div class="field" style="margin-top:10px">
+        <div class="mut">Accessoires</div>
+        <div style="display:flex; gap:10px; align-items:center">
+          <div class="toggle" id="togHat">🎩 Chapeau: OFF</div>
+          <div class="toggle" id="togBag">🎒 Sac: OFF</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="line">
+      <div class="mut">Raccourcis</div>
+      <div class="sub" style="margin-top:6px">
+        Joysticks: <span class="kbd">J</span> · Caméra: clic-glisser (PC) · Mobile: glisse à droite.
+      </div>
     </div>
   </div>
 
@@ -95,6 +232,18 @@
       </div>
     </div>
     <div class="lookRightZone" id="lookRightZone"></div>
+  </div>
+
+  <div class="loading" id="loading">
+    <div class="card">
+      <div class="big">Chargement du Hub 3D…</div>
+      <div class="mut" id="loadLabel" style="margin-top:8px">Préparation…</div>
+      <div class="bar"><div id="loadBar"></div></div>
+      <div class="err" id="loadErr"></div>
+      <div class="mut" style="margin-top:10px">
+        Si tu vois “textures manquantes”, vérifie les chemins dans <b>assets/textures/ground/</b>.
+      </div>
+    </div>
   </div>
 
   <script src="three.min.js"></script>
