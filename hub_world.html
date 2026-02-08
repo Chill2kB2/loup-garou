@@ -3,245 +3,310 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
-  <title>Salon (Hub) — 3D</title>
+  <meta name="theme-color" content="#07090d" />
+  <title>Salon (Hub 3D)</title>
   <link rel="icon" href="data:," />
+
   <style>
-    :root{
-      --bg:#07090d;
-      --panel: rgba(0,0,0,.48);
-      --bd: rgba(255,255,255,.14);
-      --txt:#eaeef7;
-      --mut: rgba(234,238,247,.72);
-      --acc:#7c5cff;
-      --good:#43d17a;
-      --bad:#ff5c5c;
-      --r:18px;
-    }
-    *{box-sizing:border-box; -webkit-tap-highlight-color: transparent;}
-    html,body{height:100%}
-    body{margin:0; overflow:hidden; background:var(--bg); color:var(--txt); font-family:system-ui,Segoe UI,Arial}
-    canvas{display:block}
+    html,body{height:100%;margin:0;background:#07090d;font-family:system-ui,Segoe UI,Arial;overflow:hidden}
+    #app{position:fixed;inset:0}
+    canvas{display:block;position:absolute;inset:0;width:100%;height:100%}
 
-    /* Top HUD */
-    .hud{
-      position:fixed; left:12px; top:12px;
-      width:min(420px, calc(100vw - 24px));
-      background:var(--panel);
-      border:1px solid var(--bd);
-      border-radius:22px;
-      padding:12px;
-      backdrop-filter: blur(10px);
-      user-select:none;
-      z-index:20;
+    /* HUD */
+    .hud-top{
+      position:fixed;left:12px;top:12px;right:12px;
+      display:flex;align-items:center;justify-content:space-between;
+      z-index:20;pointer-events:none;
     }
-    .row{display:flex; gap:10px; align-items:center; justify-content:space-between}
-    .title{font-weight:950; font-size:14px; letter-spacing:.2px}
-    .mut{color:var(--mut); font-size:12px; line-height:1.35}
     .pill{
-      display:inline-flex; align-items:center; gap:8px;
-      border:1px solid var(--bd);
-      border-radius:999px;
-      padding:6px 10px;
-      background:rgba(255,255,255,.04);
-      font-size:12px;
-      color:var(--mut);
-    }
-    .dot{width:8px;height:8px;border-radius:99px;display:inline-block}
-    .dot.good{background:var(--good)}
-    .dot.bad{background:var(--bad)}
-    .btn{
-      border:1px solid var(--bd);
-      background:rgba(255,255,255,.06);
-      color:var(--txt);
-      padding:10px 12px;
-      border-radius:14px;
-      cursor:pointer;
-      font-weight:900;
-      user-select:none;
-    }
-    .btn.acc{border-color: rgba(124,92,255,.55); background: rgba(124,92,255,.14)}
-    .btn:active{transform: translateY(1px)}
-    .kbd{display:inline-block; padding:2px 8px; border:1px solid rgba(255,255,255,.16); border-radius:10px; background:rgba(255,255,255,.04); color:var(--txt); font-weight:800; font-size:12px}
-
-    /* Character panel */
-    .panel{
-      position:fixed; right:12px; top:12px;
-      width:min(420px, calc(100vw - 24px));
-      background:var(--panel);
-      border:1px solid var(--bd);
-      border-radius:22px;
-      padding:12px;
-      backdrop-filter: blur(10px);
-      user-select:none;
-      z-index:20;
-    }
-    .panel h3{margin:0; font-size:14px; font-weight:950}
-    .panel .sub{margin-top:6px; color:var(--mut); font-size:12px; line-height:1.35}
-    .grid{
-      margin-top:10px;
-      display:grid;
-      grid-template-columns: repeat(5, 1fr);
-      gap:8px;
-    }
-    .swatch{
-      height:32px;
-      border-radius:12px;
-      border:1px solid rgba(255,255,255,.16);
-      cursor:pointer;
-    }
-    .swatch.sel{outline:2px solid rgba(124,92,255,.9)}
-    .line{
-      margin-top:12px; padding-top:12px;
-      border-top:1px solid rgba(255,255,255,.10);
-    }
-    .field{display:flex; gap:10px; align-items:center; justify-content:space-between; margin-top:8px}
-    input[type="range"]{width:220px}
-    .toggle{
-      display:inline-flex; gap:8px; align-items:center;
+      pointer-events:none;
+      display:inline-flex;align-items:center;gap:10px;
+      padding:10px 12px;border-radius:16px;
       border:1px solid rgba(255,255,255,.14);
-      border-radius:14px;
-      padding:8px 10px;
-      background:rgba(255,255,255,.04);
-      cursor:pointer;
-      font-weight:900;
-      font-size:12px;
+      background:rgba(0,0,0,.45);
+      color:#eaeef7;backdrop-filter:blur(10px);
+      box-shadow:0 14px 40px rgba(0,0,0,.45);
+      font-weight:900;font-size:12px;
     }
+    .hint{color:rgba(234,238,247,.72);font-weight:800}
+    .hud-actions{
+      pointer-events:auto;
+      display:flex;gap:10px;align-items:center;
+    }
+    .btn{
+      pointer-events:auto;
+      cursor:pointer;
+      display:inline-flex;align-items:center;gap:8px;
+      padding:10px 12px;border-radius:16px;
+      border:1px solid rgba(255,255,255,.14);
+      background:rgba(255,255,255,.06);
+      color:#eaeef7;font-weight:950;
+      user-select:none;
+    }
+    .btn:active{transform:translateY(1px)}
+    .btn.primary{border-color:rgba(124,92,255,.55);background:rgba(124,92,255,.16)}
+    .btn.secondary{border-color:rgba(77,214,255,.35);background:rgba(77,214,255,.10)}
 
-    /* Loading overlay */
-    .loading{
-      position:fixed; inset:0;
-      display:flex; align-items:center; justify-content:center;
-      background: radial-gradient(1200px 800px at 50% 30%, rgba(124,92,255,.18), rgba(0,0,0,.85));
-      z-index:50;
+    /* Pause overlay */
+    .overlay{
+      position:fixed;inset:0;z-index:40;
+      display:none;align-items:center;justify-content:center;
+      background:rgba(0,0,0,.65);
+      backdrop-filter:blur(10px);
+      padding:16px;
+    }
+    .panel{
+      width:min(980px, calc(100vw - 28px));
+      max-height:min(760px, calc(100vh - 28px));
+      overflow:auto;
+      border-radius:22px;
+      border:1px solid rgba(255,255,255,.16);
+      background:rgba(0,0,0,.60);
+      box-shadow:0 28px 90px rgba(0,0,0,.60);
+      color:#eaeef7;
+      padding:14px;
+    }
+    .panel-top{
+      display:flex;align-items:center;justify-content:space-between;gap:10px;
+      position:sticky;top:0;background:rgba(0,0,0,.65);
+      border-bottom:1px solid rgba(255,255,255,.10);
+      padding:10px;border-radius:18px;
+      backdrop-filter:blur(10px);
+      z-index:2;
+    }
+    .tabs{display:flex;gap:8px;flex-wrap:wrap}
+    .tab{
+      cursor:pointer;
+      padding:10px 12px;border-radius:16px;
+      border:1px solid rgba(255,255,255,.12);
+      background:rgba(255,255,255,.06);
+      color:#eaeef7;font-weight:950;
+      user-select:none;
+    }
+    .tab.active{border-color:rgba(124,92,255,.55);background:rgba(124,92,255,.16)}
+    .grid{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:12px;
+      margin-top:12px;
+    }
+    @media (max-width: 860px){
+      .grid{grid-template-columns:1fr}
     }
     .card{
-      width:min(520px, calc(100vw - 28px));
-      background:rgba(0,0,0,.55);
+      border:1px solid rgba(255,255,255,.12);
+      background:rgba(255,255,255,.05);
+      border-radius:18px;
+      padding:12px;
+    }
+    .card h3{margin:0 0 8px;font-size:14px;font-weight:950}
+    .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+    label{font-size:12px;color:rgba(234,238,247,.75);font-weight:900}
+    input,select{
+      padding:10px 10px;border-radius:14px;
       border:1px solid rgba(255,255,255,.14);
-      border-radius:22px;
-      padding:18px;
-      backdrop-filter: blur(10px);
-    }
-    .big{font-size:18px; font-weight:950}
-    .bar{height:10px; background:rgba(255,255,255,.10); border-radius:999px; overflow:hidden; margin-top:12px}
-    .bar > div{height:100%; width:0%; background:rgba(124,92,255,.9)}
-    .err{
-      margin-top:10px;
-      color:#ffd1d1;
-      background:rgba(255,92,92,.12);
-      border:1px solid rgba(255,92,92,.25);
-      border-radius:14px;
-      padding:10px;
-      font-size:12px;
-      display:none;
-      white-space:pre-wrap;
-    }
-
-    /* Joystick overlay */
-    .joyWrap{ position:fixed; inset:0; pointer-events:none; z-index:15; }
-    .joyLeftZone{
-      position:fixed; left:0; bottom:0;
-      width:50vw; height:56vh;
-      pointer-events:auto;
-    }
-    .lookRightZone{
-      position:fixed; right:0; bottom:0;
-      width:50vw; height:56vh;
-      pointer-events:auto;
-    }
-    .joy{
-      position:absolute; left:18px; bottom:18px;
-      width:150px; height:150px; border-radius:999px;
       background:rgba(255,255,255,.06);
-      border:1px solid rgba(255,255,255,.14);
-      backdrop-filter: blur(6px);
+      color:#eaeef7;outline:none;
+    }
+    input[type="range"]{padding:0;height:34px}
+    .small{font-size:12px;color:rgba(234,238,247,.72);line-height:1.35}
+
+    /* Mobile controls */
+    .mobileLayer{
+      position:fixed;inset:0;z-index:25;
       pointer-events:none;
     }
-    .joy .knob{
-      position:absolute; left:50%; top:50%;
-      width:56px; height:56px; border-radius:999px;
-      transform: translate(-50%,-50%);
-      background:rgba(124,92,255,.35);
-      border:1px solid rgba(124,92,255,.55);
+    .joy{
+      pointer-events:auto;
+      position:absolute;bottom:18px;
+      width:140px;height:140px;border-radius:999px;
+      border:1px solid rgba(255,255,255,.14);
+      background:rgba(0,0,0,.35);
+      backdrop-filter:blur(10px);
+      box-shadow:0 14px 40px rgba(0,0,0,.45);
+      touch-action:none;
+      display:none;
     }
-    .hidden{display:none !important}
+    .joy.left{left:18px}
+    .joy.right{right:18px}
+    .joy .knob{
+      position:absolute;left:50%;top:50%;
+      width:56px;height:56px;border-radius:999px;
+      transform:translate(-50%,-50%);
+      border:1px solid rgba(255,255,255,.18);
+      background:rgba(255,255,255,.10);
+    }
+    .mobileBtns{
+      pointer-events:auto;
+      position:absolute;right:18px;bottom:170px;
+      display:none;flex-direction:column;gap:10px;
+    }
+    .mBtn{
+      width:56px;height:56px;border-radius:18px;
+      border:1px solid rgba(255,255,255,.14);
+      background:rgba(0,0,0,.40);
+      color:#eaeef7;font-weight:950;
+      display:flex;align-items:center;justify-content:center;
+      user-select:none;
+      touch-action:none;
+      backdrop-filter:blur(10px);
+    }
+    .mBtn:active{transform:translateY(1px)}
   </style>
 </head>
 
 <body>
-  <div class="hud">
-    <div class="row">
-      <div>
-        <div class="title">Salon (Hub) — 3D</div>
-        <div class="mut">ZQSD / flèches · Sprint <span class="kbd">Shift</span> · Joysticks <span class="kbd">J</span></div>
-      </div>
-      <div style="display:flex; gap:8px">
-        <button id="btnJoy" class="btn acc" title="Afficher/masquer les joysticks">👁</button>
-        <button id="btnPanel" class="btn" title="Ouvrir/fermer Personnage">Personnage</button>
-      </div>
+  <div id="app"></div>
+
+  <div class="hud-top">
+    <div class="pill">
+      Salon (Hub 3D)
+      <span class="hint">ZQSD/Flèches • Shift Sprint • C Accroupi • Espace Saut • Alt Dash • J Joysticks</span>
     </div>
 
-    <div class="row" style="margin-top:10px">
-      <span class="pill"><span id="assetDot" class="dot bad"></span><span id="assetText">Assets: en attente…</span></span>
-      <span class="pill">Caméra: clic-glisser / zone droite</span>
+    <div class="hud-actions">
+      <button class="btn secondary" id="btnHome" title="Retour accueil">← Accueil</button>
+      <button class="btn" id="btnToggleJoy" title="Afficher/Masquer joysticks">🎮</button>
+      <button class="btn primary" id="btnPause" title="Pause (Échap)">⏸️ Pause</button>
     </div>
   </div>
 
-  <div class="panel" id="panel">
-    <div class="row">
-      <h3>Personnage</h3>
-      <button id="btnClosePanel" class="btn">Fermer</button>
-    </div>
-    <div class="sub">Choisis un skin, une taille, et des accessoires. Tout est sauvegardé automatiquement.</div>
+  <!-- Mobile controls -->
+  <div class="mobileLayer" id="mobileLayer">
+    <div class="joy left" id="joyMove"><div class="knob" id="knobMove"></div></div>
+    <div class="joy right" id="joyLook"><div class="knob" id="knobLook"></div></div>
 
-    <div class="line">
-      <div class="mut">Skins (10)</div>
-      <div class="grid" id="skinGrid"></div>
+    <div class="mobileBtns" id="mobileBtns">
+      <div class="mBtn" id="btnJump" title="Saut">⤒</div>
+      <div class="mBtn" id="btnCrouch" title="Accroupi">⬇</div>
+      <div class="mBtn" id="btnSprint" title="Sprint">⚡</div>
+      <div class="mBtn" id="btnDash" title="Dash">➟</div>
     </div>
+  </div>
 
-    <div class="line">
-      <div class="field">
-        <div class="mut">Taille</div>
-        <div style="display:flex; gap:10px; align-items:center">
-          <input id="scaleRange" type="range" min="0.85" max="1.15" step="0.01" />
-          <span class="pill" id="scaleLabel">1.00</span>
+  <!-- Pause menu -->
+  <div class="overlay" id="pauseOverlay" aria-hidden="true">
+    <div class="panel">
+      <div class="panel-top">
+        <div style="font-weight:950">Menu pause</div>
+        <div class="row">
+          <button class="btn" id="btnResume">Reprendre</button>
         </div>
       </div>
 
-      <div class="field" style="margin-top:10px">
-        <div class="mut">Accessoires</div>
-        <div style="display:flex; gap:10px; align-items:center">
-          <div class="toggle" id="togHat">🎩 Chapeau: OFF</div>
-          <div class="toggle" id="togBag">🎒 Sac: OFF</div>
+      <div class="tabs" style="margin-top:10px">
+        <div class="tab active" data-tab="game">Jeu</div>
+        <div class="tab" data-tab="controls">Contrôles</div>
+        <div class="tab" data-tab="avatar">Avatar</div>
+      </div>
+
+      <div id="tab_game" class="grid">
+        <div class="card">
+          <h3>Jouabilité</h3>
+          <div class="small">
+            Clique dans la scène pour activer la souris (PC).<br>
+            Sur téléphone: joysticks + boutons. Tu peux cacher/afficher avec <b>🎮</b> ou la touche <b>J</b>.
+          </div>
+        </div>
+        <div class="card">
+          <h3>Caméra</h3>
+          <div class="row">
+            <label>Sensibilité</label>
+            <input id="sens" type="range" min="0.2" max="2.5" step="0.05">
+          </div>
+          <div class="row" style="margin-top:10px">
+            <label><input id="invertY" type="checkbox"> Inverser Y</label>
+          </div>
         </div>
       </div>
-    </div>
 
-    <div class="line">
-      <div class="mut">Raccourcis</div>
-      <div class="sub" style="margin-top:6px">
-        Joysticks: <span class="kbd">J</span> · Caméra: clic-glisser (PC) · Mobile: glisse à droite.
+      <div id="tab_controls" class="grid" style="display:none">
+        <div class="card">
+          <h3>Touches (simple)</h3>
+          <div class="small">Tu peux changer Sprint / Accroupi / Dash ici. (ZQSD/Flèches restent.)</div>
+
+          <div class="row" style="margin-top:10px">
+            <label>Sprint</label>
+            <select id="kbSprint">
+              <option value="ShiftLeft">Shift</option>
+              <option value="ControlLeft">Ctrl</option>
+              <option value="AltLeft">Alt</option>
+            </select>
+          </div>
+
+          <div class="row" style="margin-top:10px">
+            <label>Accroupi</label>
+            <select id="kbCrouch">
+              <option value="KeyC">C</option>
+              <option value="ControlLeft">Ctrl</option>
+              <option value="KeyX">X</option>
+            </select>
+          </div>
+
+          <div class="row" style="margin-top:10px">
+            <label>Dash</label>
+            <select id="kbDash">
+              <option value="AltLeft">Alt</option>
+              <option value="KeyE">E</option>
+              <option value="KeyF">F</option>
+            </select>
+          </div>
+
+          <div class="row" style="margin-top:12px">
+            <button class="btn primary" id="btnSaveKeys">Sauvegarder</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>Rappels</h3>
+          <div class="small">
+            Sprint doit être “vraiment significatif” : tu verras un gain net de vitesse + léger effet caméra.<br>
+            Accroupi réduit la taille et la vitesse. Dash fait une courte esquive.
+          </div>
+        </div>
       </div>
-    </div>
-  </div>
 
-  <div class="joyWrap" id="joyWrap">
-    <div class="joyLeftZone" id="joyLeftZone">
-      <div class="joy">
-        <div class="knob" id="joyLeftKnob"></div>
-      </div>
-    </div>
-    <div class="lookRightZone" id="lookRightZone"></div>
-  </div>
+      <div id="tab_avatar" class="grid" style="display:none">
+        <div class="card">
+          <h3>Personnalisation</h3>
+          <div class="row">
+            <label>Cheveux (style)</label>
+            <select id="hairStyle">
+              <option value="short">Court</option>
+              <option value="spiky">Épis</option>
+              <option value="pony">Queue</option>
+            </select>
+          </div>
 
-  <div class="loading" id="loading">
-    <div class="card">
-      <div class="big">Chargement du Hub 3D…</div>
-      <div class="mut" id="loadLabel" style="margin-top:8px">Préparation…</div>
-      <div class="bar"><div id="loadBar"></div></div>
-      <div class="err" id="loadErr"></div>
-      <div class="mut" style="margin-top:10px">
-        Si tu vois “textures manquantes”, vérifie les chemins dans <b>assets/textures/ground/</b>.
+          <div class="row" style="margin-top:10px">
+            <label>Couleur cheveux</label>
+            <input id="hairColor" type="color" value="#2a1b14">
+          </div>
+
+          <div class="row" style="margin-top:10px">
+            <label>Couleur yeux</label>
+            <input id="eyeColor" type="color" value="#4dd6ff">
+          </div>
+
+          <div class="row" style="margin-top:10px">
+            <label>Taille</label>
+            <input id="sizeScale" type="range" min="0.85" max="1.15" step="0.01">
+          </div>
+
+          <div class="row" style="margin-top:12px">
+            <button class="btn primary" id="btnSaveAvatar">Sauvegarder</button>
+          </div>
+
+          <div class="small" style="margin-top:10px">Sauvegardé localement (persistant).</div>
+        </div>
+
+        <div class="card">
+          <h3>Astuce</h3>
+          <div class="small">
+            On garde un style “jeu web” stable (performant). Plus tard, on pourra remplacer ce perso procédural par un modèle glTF,
+            mais là tu as déjà une vraie base personnalisable.
+          </div>
+        </div>
       </div>
     </div>
   </div>
