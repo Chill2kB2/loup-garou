@@ -3,195 +3,69 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Loup-Garou / Murder (Prototype)</title>
-
-  <!-- favicon inline (aucun fichier à créer) -->
-  <link rel="icon" href='data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64"%3E%3Crect width="64" height="64" rx="14" fill="%230b0e12"/%3E%3Ctext x="32" y="42" font-size="34" text-anchor="middle" fill="%23f2f2f2"%3E%F0%9F%90%BA%3C/text%3E%3C/svg%3E' />
-
-  <link rel="stylesheet" href="./style.css" />
+  <title>Accueil — Loup-Garou / RPG</title>
+  <style>
+    :root{
+      --bg:#0b0e12; --panel:rgba(255,255,255,.05); --bd:rgba(255,255,255,.14);
+      --txt:#eaeef7; --mut:rgba(234,238,247,.72); --acc:#7c5cff;
+      --r:16px;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--txt);font-family:system-ui,Segoe UI,Arial}
+    .wrap{max-width:980px;margin:0 auto;padding:22px}
+    .title{font-size:22px;font-weight:900;letter-spacing:.2px}
+    .mut{color:var(--mut)}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px}
+    @media (max-width:900px){.grid{grid-template-columns:1fr}}
+    .card{background:var(--panel);border:1px solid var(--bd);border-radius:var(--r);padding:16px}
+    .btn{
+      display:inline-flex;align-items:center;justify-content:center;
+      border:1px solid var(--bd);background:rgba(255,255,255,.06);color:var(--txt);
+      padding:12px 14px;border-radius:14px;cursor:pointer;font-weight:750;
+      text-decoration:none;
+    }
+    .btn.acc{border-color:rgba(124,92,255,.55)}
+    .row{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+    .small{font-size:12px}
+    .tag{display:inline-flex;gap:8px;align-items:center;padding:6px 10px;border-radius:999px;border:1px solid var(--bd);background:rgba(255,255,255,.04)}
+    .dot{width:10px;height:10px;border-radius:999px;background:rgba(234,238,247,.45)}
+  </style>
 </head>
 <body>
-  <div id="app">
-    <canvas id="bg"></canvas>
+  <div class="wrap">
+    <div class="title">Choix du mode</div>
+    <div class="mut">Tu peux garder ton ancien jeu (RPG) et ton multi Loup-Garou séparés.</div>
 
-    <div id="ui">
-      <div id="debug" class="debug hidden"></div>
-
-      <!-- MAIN -->
-      <div class="screen" data-screen="main">
-        <div class="card">
-          <div class="title">Loup-Garou / Murder</div>
-          <div class="subtitle">Prototype jouable (solo contre bots)</div>
-
-          <div class="btnrow">
-            <button class="btn primary" id="btnPlay">Jouer</button>
-            <button class="btn" id="btnOptionsMain">Options</button>
-            <button class="btn danger" id="btnQuit">Quitter</button>
-          </div>
-
-          <div class="hint">
-            Objectif : trouver le Loup-Garou au vote, avant qu’il élimine tout le monde.
-          </div>
+    <div class="grid">
+      <div class="card">
+        <div style="font-weight:900">Loup-Garou (Multi)</div>
+        <div class="mut" style="margin-top:6px">Lobby, rôles, nuit/jour, vote. Serveur WebSocket Render.</div>
+        <div class="row">
+          <a class="btn acc" href="lg.html">Jouer (Multi)</a>
+          <a class="btn" href="ws_test.html">Test WS</a>
+          <a class="btn" href="https://loup-garou-ws.onrender.com/health" target="_blank" rel="noreferrer">Réveiller /health</a>
+        </div>
+        <div class="small mut" style="margin-top:10px">
+          Astuce Render gratuit : ouvre <b>/health</b> 1 fois si ça met “Fermé” au premier essai.
         </div>
       </div>
 
-      <!-- SETUP -->
-      <div class="screen hidden" data-screen="setup">
-        <div class="card wide">
-          <div class="title">Nouvelle partie</div>
-
-          <div class="grid2">
-            <div>
-              <label>Ton nom</label>
-              <input class="input" id="youName" maxlength="18" placeholder="Stan" />
-
-              <label>Nombre de joueurs (toi inclus)</label>
-              <input type="range" id="playerCount" min="5" max="12" step="1" />
-              <div class="small" id="playerCountText"></div>
-
-              <label>Difficulté (bots)</label>
-              <select class="input" id="difficulty">
-                <option value="easy">Facile</option>
-                <option value="normal" selected>Normal</option>
-                <option value="hard">Difficile</option>
-              </select>
-
-              <label class="chk">
-                <input type="checkbox" id="optHunter" checked />
-                Activer le Chasseur (recommandé)
-              </label>
-            </div>
-
-            <div class="panel">
-              <div class="panelTitle">Règles rapides</div>
-              <div class="panelBody">
-                <div class="rule">• Nuit : le Loup-Garou choisit 1 victime.</div>
-                <div class="rule">• Jour : discussion (timer) puis vote pour éliminer.</div>
-                <div class="rule">• Chasseur : s’il meurt, il tire une fois.</div>
-                <div class="rule">• Victoire citoyens : le loup est éliminé.</div>
-                <div class="rule">• Victoire loup : il ne reste que 2 joueurs (loup + 1).</div>
-              </div>
-            </div>
-          </div>
-
-          <div class="btnrow">
-            <button class="btn primary" id="btnStart">Démarrer</button>
-            <button class="btn" id="btnBackMain">Retour</button>
-          </div>
+      <div class="card">
+        <div style="font-weight:900">RPG 3D (ancien)</div>
+        <div class="mut" style="margin-top:6px">Ton ancien index est copié dans <b>rpg.html</b>.</div>
+        <div class="row">
+          <a class="btn acc" href="rpg.html">Jouer (RPG)</a>
+        </div>
+        <div class="small mut" style="margin-top:10px">
+          Si tu ne veux plus le RPG, on pourra supprimer <b>rpg.html</b> plus tard.
         </div>
       </div>
+    </div>
 
-      <!-- OPTIONS -->
-      <div class="screen hidden" data-screen="options">
-        <div class="card wide">
-          <div class="title">Options</div>
-
-          <div class="grid2">
-            <div>
-              <label class="chk"><input type="checkbox" id="oShowTimer" checked /> Afficher timer</label>
-              <label class="chk"><input type="checkbox" id="oShowHints" checked /> Indices “soft” (bots)</label>
-              <label class="chk"><input type="checkbox" id="oShowFPS" /> Afficher FPS</label>
-
-              <label>Vitesse ambiance (caméra fond)</label>
-              <input type="range" id="oBgSpeed" min="0" max="2" step="0.05" />
-              <div class="small" id="oBgSpeedText"></div>
-            </div>
-
-            <div class="panel">
-              <div class="panelTitle">Notes</div>
-              <div class="panelBody">
-                <div class="rule">• Prototype solo (pas de réseau).</div>
-                <div class="rule">• Aucune dépendance, aucun bundler.</div>
-                <div class="rule">• Debug discret via <span class="mono">?debug=1</span>.</div>
-              </div>
-            </div>
-          </div>
-
-          <div class="btnrow">
-            <button class="btn primary" id="btnSaveOptions">Sauvegarder</button>
-            <button class="btn" id="btnBackFromOptions">Retour</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- REVEAL -->
-      <div class="screen hidden" data-screen="reveal">
-        <div class="card">
-          <div class="title">Ton rôle</div>
-          <div class="roleBadge" id="roleBadge">…</div>
-          <div class="small" id="roleDesc">…</div>
-          <div class="btnrow">
-            <button class="btn primary" id="btnReady">Je suis prêt</button>
-          </div>
-          <div class="hint">Ne montre pas ce rôle si tu joues “à plusieurs sur un PC”.</div>
-        </div>
-      </div>
-
-      <!-- GAME -->
-      <div class="screen hidden" data-screen="game">
-        <div class="topbar">
-          <div class="phase">
-            <div class="phaseName" id="phaseName">…</div>
-            <div class="phaseSub" id="phaseSub">…</div>
-          </div>
-
-          <div class="topstats">
-            <div class="pill"><span>Joueurs</span><b id="aliveCount">0</b></div>
-            <div class="pill"><span>Jour</span><b id="dayCount">1</b></div>
-            <div class="pill" id="timerWrap"><span>Temps</span><b id="timerText">0</b></div>
-            <div class="pill hidden" id="fpsWrap"><span>FPS</span><b id="fpsText">0</b></div>
-          </div>
-
-          <button class="btn smallbtn" id="btnPause">Échap</button>
-        </div>
-
-        <div class="gamegrid">
-          <div class="side cardish">
-            <div class="sectionTitle">Village</div>
-            <div id="playerList" class="playerList"></div>
-          </div>
-
-          <div class="mid cardish">
-            <div class="sectionTitle">Actions</div>
-            <div id="actionBox" class="actionBox"></div>
-          </div>
-
-          <div class="side cardish">
-            <div class="sectionTitle">Journal</div>
-            <div id="log" class="log"></div>
-          </div>
-        </div>
-      </div>
-
-      <!-- PAUSE -->
-      <div class="screen hidden" data-screen="pause">
-        <div class="card">
-          <div class="title">Pause</div>
-          <div class="btncol">
-            <button class="btn primary" id="btnResume">Reprendre</button>
-            <button class="btn" id="btnOptionsPause">Options</button>
-            <button class="btn danger" id="btnToMenu">Retour menu</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- GAME OVER -->
-      <div class="screen hidden" data-screen="gameover">
-        <div class="card">
-          <div class="title" id="gameOverTitle">Fin</div>
-          <div class="subtitle" id="gameOverSub">…</div>
-          <div class="btnrow">
-            <button class="btn primary" id="btnReplay">Rejouer</button>
-            <button class="btn" id="btnGoMenu">Menu</button>
-          </div>
-        </div>
-      </div>
-
+    <div class="row" style="margin-top:14px">
+      <span class="tag"><span class="dot"></span><span class="small mut">Site statique Render</span></span>
+      <span class="tag"><span class="dot"></span><span class="small mut">Serveur WS : loup-garou-ws.onrender.com</span></span>
     </div>
   </div>
-
-  <script src="./three.min.js"></script>
-  <script src="./OrbitControls.js"></script>
-  <script src="./game.js"></script>
 </body>
 </html>
