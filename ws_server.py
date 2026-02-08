@@ -9,7 +9,7 @@ from http import HTTPStatus
 import websockets
 
 HOST = "0.0.0.0"
-PORT = int(os.environ.get("PORT", "8765"))  # Render fournit PORT automatiquement
+PORT = int(os.environ.get("PORT", "8765"))
 
 ROLE_CITIZEN = "Citoyen"
 ROLE_WOLF = "Loup-Garou"
@@ -42,7 +42,7 @@ class Player:
 @dataclass
 class Room:
     lock: asyncio.Lock = field(default_factory=asyncio.Lock)
-    players: dict = field(default_factory=dict)  # id -> Player
+    players: dict[int, Player] = field(default_factory=dict)
     host_id: int = -1
 
     phase: str = PHASE_LOBBY
@@ -50,9 +50,8 @@ class Room:
     ends_at: int = 0
 
     hunter_enabled: bool = True
-
     wolf_target_id: int = -1
-    votes: dict = field(default_factory=dict)  # voter_id -> target_id
+    votes: dict[int, int] = field(default_factory=dict)
 
     hunter_shooter_id: int = -1
     pending_after_phase: str = ""
@@ -61,11 +60,11 @@ class Room:
     seed: int = 0
     rng: random.Random = field(default_factory=random.Random)
 
-    def alive_players(self):
-        return [p for p in self.players.values() if p.alive]
-
     def get_player(self, pid: int):
         return self.players.get(pid)
+
+    def alive_players(self):
+        return [p for p in self.players.values() if p.alive]
 
     def wolves_alive(self):
         return [p for p in self.players.values() if p.alive and p.role == ROLE_WOLF]
@@ -129,6 +128,7 @@ async def broadcast_state(ends_in_ms: int | None = None):
         "day": ROOM.day,
         "players": players_pub,
         "hunterShooterId": ROOM.hunter_shooter_id,
+        "endsInMs": 0
     }
 
     if ends_in_ms is None:
@@ -277,7 +277,7 @@ async def resolve_vote():
             if choices:
                 ROOM.votes[p.id] = ROOM.rng.choice(choices)
 
-    tally = {}
+    tally: dict[int, int] = {}
     for _, target in ROOM.votes.items():
         if target in alive_ids:
             tally[target] = tally.get(target, 0) + 1
@@ -345,6 +345,7 @@ async def resolve_hunter_shot(selected_target: int | None):
     nextp = ROOM.pending_after_phase or PHASE_NIGHT
     ROOM.pending_after_phase = ""
     ROOM.pending_after_day = ROOM.day
+    ROOM.hunter_shooter_id = -1
 
     if nextp == PHASE_DAY_TALK:
         ROOM.phase = PHASE_DAY_TALK
@@ -353,7 +354,6 @@ async def resolve_hunter_shot(selected_target: int | None):
         ROOM.phase = PHASE_NIGHT
         ROOM.ends_at = now_ms() + 20000
 
-    ROOM.hunter_shooter_id = -1
     await broadcast_state()
 
 
@@ -379,12 +379,19 @@ async def timer_loop():
 
 
 def process_request(path, request_headers):
-    # Pour que Render “voit” un HTTP 200 sur /
+    # Réponses HTTP normales (Render healthcheck + réveil)
     if path in ("/", "/health"):
         body = b"ok"
         headers = [("Content-Type", "text/plain"), ("Content-Length", str(len(body)))]
         return HTTPStatus.OK, headers, body
-    return None  # sinon on laisse la négociation WebSocket se faire
+
+    # WebSocket UNIQUEMENT sur /ws
+    if path != "/ws":
+        body = b"not found"
+        headers = [("Content-Type", "text/plain"), ("Content-Length", str(len(body)))]
+        return HTTPStatus.NOT_FOUND, headers, body
+
+    return None  # laisse passer la négociation WebSocket
 
 
 async def handler(ws):
@@ -478,7 +485,7 @@ async def main():
         ping_timeout=20,
         origins=None
     ):
-        print(f"WS on 0.0.0.0:{PORT}")
+        print(f"WS ready on 0.0.0.0:{PORT} (path: /ws)")
         await asyncio.Future()
 
 
