@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Loup-Garou / Murder (Prototype)</title>
+
+  <!-- favicon inline (aucun fichier à créer) -->
+  <link rel="icon" href='data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64"%3E%3Crect width="64" height="64" rx="14" fill="%230b0e12"/%3E%3Ctext x="32" y="42" font-size="34" text-anchor="middle" fill="%23f2f2f2"%3E%F0%9F%90%BA%3C/text%3E%3C/svg%3E' />
+
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <div id="app">
+    <canvas id="bg"></canvas>
+
+    <div id="ui">
+      <div id="debug" class="debug hidden"></div>
+
+      <!-- MAIN -->
+      <div class="screen" data-screen="main">
+        <div class="card">
+          <div class="title">Loup-Garou / Murder</div>
+          <div class="subtitle">Prototype jouable (solo contre bots)</div>
+
+          <div class="btnrow">
+            <button class="btn primary" id="btnPlay">Jouer</button>
+            <button class="btn" id="btnOptionsMain">Options</button>
+            <button class="btn danger" id="btnQuit">Quitter</button>
+          </div>
+
+          <div class="hint">
+            Objectif : trouver le Loup-Garou au vote, avant qu’il élimine tout le monde.
+          </div>
+        </div>
+      </div>
+
+      <!-- SETUP -->
+      <div class="screen hidden" data-screen="setup">
+        <div class="card wide">
+          <div class="title">Nouvelle partie</div>
+
+          <div class="grid2">
+            <div>
+              <label>Ton nom</label>
+              <input class="input" id="youName" maxlength="18" placeholder="Stan" />
+
+              <label>Nombre de joueurs (toi inclus)</label>
+              <input type="range" id="playerCount" min="5" max="12" step="1" />
+              <div class="small" id="playerCountText"></div>
+
+              <label>Difficulté (bots)</label>
+              <select class="input" id="difficulty">
+                <option value="easy">Facile</option>
+                <option value="normal" selected>Normal</option>
+                <option value="hard">Difficile</option>
+              </select>
+
+              <label class="chk">
+                <input type="checkbox" id="optHunter" checked />
+                Activer le Chasseur (recommandé)
+              </label>
+            </div>
+
+            <div class="panel">
+              <div class="panelTitle">Règles rapides</div>
+              <div class="panelBody">
+                <div class="rule">• Nuit : le Loup-Garou choisit 1 victime.</div>
+                <div class="rule">• Jour : discussion (timer) puis vote pour éliminer.</div>
+                <div class="rule">• Chasseur : s’il meurt, il tire une fois.</div>
+                <div class="rule">• Victoire citoyens : le loup est éliminé.</div>
+                <div class="rule">• Victoire loup : il ne reste que 2 joueurs (loup + 1).</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="btnrow">
+            <button class="btn primary" id="btnStart">Démarrer</button>
+            <button class="btn" id="btnBackMain">Retour</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- OPTIONS -->
+      <div class="screen hidden" data-screen="options">
+        <div class="card wide">
+          <div class="title">Options</div>
+
+          <div class="grid2">
+            <div>
+              <label class="chk"><input type="checkbox" id="oShowTimer" checked /> Afficher timer</label>
+              <label class="chk"><input type="checkbox" id="oShowHints" checked /> Indices “soft” (bots)</label>
+              <label class="chk"><input type="checkbox" id="oShowFPS" /> Afficher FPS</label>
+
+              <label>Vitesse ambiance (caméra fond)</label>
+              <input type="range" id="oBgSpeed" min="0" max="2" step="0.05" />
+              <div class="small" id="oBgSpeedText"></div>
+            </div>
+
+            <div class="panel">
+              <div class="panelTitle">Notes</div>
+              <div class="panelBody">
+                <div class="rule">• Prototype solo (pas de réseau).</div>
+                <div class="rule">• Aucune dépendance, aucun bundler.</div>
+                <div class="rule">• Debug discret via <span class="mono">?debug=1</span>.</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="btnrow">
+            <button class="btn primary" id="btnSaveOptions">Sauvegarder</button>
+            <button class="btn" id="btnBackFromOptions">Retour</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- REVEAL -->
+      <div class="screen hidden" data-screen="reveal">
+        <div class="card">
+          <div class="title">Ton rôle</div>
+          <div class="roleBadge" id="roleBadge">…</div>
+          <div class="small" id="roleDesc">…</div>
+          <div class="btnrow">
+            <button class="btn primary" id="btnReady">Je suis prêt</button>
+          </div>
+          <div class="hint">Ne montre pas ce rôle si tu joues “à plusieurs sur un PC”.</div>
+        </div>
+      </div>
+
+      <!-- GAME -->
+      <div class="screen hidden" data-screen="game">
+        <div class="topbar">
+          <div class="phase">
+            <div class="phaseName" id="phaseName">…</div>
+            <div class="phaseSub" id="phaseSub">…</div>
+          </div>
+
+          <div class="topstats">
+            <div class="pill"><span>Joueurs</span><b id="aliveCount">0</b></div>
+            <div class="pill"><span>Jour</span><b id="dayCount">1</b></div>
+            <div class="pill" id="timerWrap"><span>Temps</span><b id="timerText">0</b></div>
+            <div class="pill hidden" id="fpsWrap"><span>FPS</span><b id="fpsText">0</b></div>
+          </div>
+
+          <button class="btn smallbtn" id="btnPause">Échap</button>
+        </div>
+
+        <div class="gamegrid">
+          <div class="side cardish">
+            <div class="sectionTitle">Village</div>
+            <div id="playerList" class="playerList"></div>
+          </div>
+
+          <div class="mid cardish">
+            <div class="sectionTitle">Actions</div>
+            <div id="actionBox" class="actionBox"></div>
+          </div>
+
+          <div class="side cardish">
+            <div class="sectionTitle">Journal</div>
+            <div id="log" class="log"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PAUSE -->
+      <div class="screen hidden" data-screen="pause">
+        <div class="card">
+          <div class="title">Pause</div>
+          <div class="btncol">
+            <button class="btn primary" id="btnResume">Reprendre</button>
+            <button class="btn" id="btnOptionsPause">Options</button>
+            <button class="btn danger" id="btnToMenu">Retour menu</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- GAME OVER -->
+      <div class="screen hidden" data-screen="gameover">
+        <div class="card">
+          <div class="title" id="gameOverTitle">Fin</div>
+          <div class="subtitle" id="gameOverSub">…</div>
+          <div class="btnrow">
+            <button class="btn primary" id="btnReplay">Rejouer</button>
+            <button class="btn" id="btnGoMenu">Menu</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script src="./three.min.js"></script>
+  <script src="./OrbitControls.js"></script>
+  <script src="./game.js"></script>
+</body>
+</html>
