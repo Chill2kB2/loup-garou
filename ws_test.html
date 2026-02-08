@@ -36,11 +36,12 @@
   const nameEl = document.getElementById("name");
   const btn = document.getElementById("btn");
 
-  const WS_URL = "wss://loup-garou-ws.onrender.com";
+  // IMPORTANT : /ws
+  const WS_URL = "wss://loup-garou-ws.onrender.com/ws";
   document.getElementById("wsUrl").textContent = WS_URL;
 
   function line(s){
-    out.textContent = (s + "\n" + out.textContent).slice(0, 8000);
+    out.textContent = (s + "\n" + out.textContent).slice(0, 12000);
   }
 
   let ws = null;
@@ -61,12 +62,14 @@
       line(ev.data);
     };
 
-    ws.onclose = () => {
+    ws.onclose = (ev) => {
       st.textContent = "Fermé";
+      line("CLOSE: code=" + ev.code + " reason=" + (ev.reason || ""));
     };
 
     ws.onerror = () => {
       st.textContent = "Erreur";
+      line("ERROR WebSocket (voir console F12 si besoin)");
     };
   };
 })();
