@@ -1,184 +1,113 @@
-:root{
-  --bg:#0b0e12;
-  --card:rgba(12,14,18,.84);
-  --line:rgba(255,255,255,.10);
-  --txt:#eaeef7;
-  --mut:rgba(234,238,247,.70);
-  --pri:#3aa0ff;
-  --danger:#ff4d4d;
-  --ok:#50d67b;
-  --warn:#ffd24d;
-  --shadow: 0 18px 60px rgba(0,0,0,.45);
-}
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
+  <meta name="theme-color" content="#07090d" />
+  <title>Loup-Garou / Murder — Accueil</title>
 
-*{box-sizing:border-box}
-html,body{height:100%; margin:0; background:var(--bg); color:var(--txt); font-family:system-ui,Segoe UI,Arial; overflow:hidden}
-#app{height:100%}
-#bg{position:fixed; inset:0; width:100%; height:100%; display:block; background:#000}
+  <!-- Pas de favicon 404 -->
+  <link rel="icon" href="data:," />
 
-/* UI overlay */
-#ui{position:fixed; inset:0; display:flex; align-items:center; justify-content:center; pointer-events:auto}
-.screen{position:absolute; inset:0; display:flex; align-items:center; justify-content:center}
-.hidden{display:none !important}
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body class="app app-home">
+  <main class="home">
+    <header class="home__header">
+      <div class="brand">
+        <div class="brand__dot"></div>
+        <div>
+          <div class="brand__title">Loup-Garou / Murder</div>
+          <div class="brand__sub">Lobby en ligne + Salon 3D (Hub)</div>
+        </div>
+      </div>
+    </header>
 
-.card{
-  width:min(520px, 92vw);
-  background:var(--card);
-  border:1px solid var(--line);
-  border-radius:18px;
-  padding:18px 18px;
-  box-shadow:var(--shadow);
-  backdrop-filter: blur(10px);
-}
-.card.wide{width:min(980px, 94vw)}
-.cardish{
-  background:rgba(12,14,18,.74);
-  border:1px solid var(--line);
-  border-radius:18px;
-  box-shadow:0 10px 30px rgba(0,0,0,.30);
-  backdrop-filter: blur(8px);
-}
+    <section class="panel panel--hero">
+      <h1 class="h1">Bienvenue 👋</h1>
+      <p class="p">
+        Choisis un pseudo. Tu peux rejoindre le Lobby (multijoueur) ou le Salon 3D (Hub) pour te balader et tester tes skins.
+      </p>
 
-.title{font-size:28px; font-weight:900; letter-spacing:.3px}
-.subtitle{color:var(--mut); margin-top:4px}
-.hint{margin-top:12px; color:var(--mut); font-size:13px}
+      <div class="grid2">
+        <div class="field">
+          <label class="label" for="nick">Pseudo</label>
+          <input id="nick" class="input" type="text" maxlength="16" placeholder="Ex: Stan" autocomplete="nickname" />
+          <div class="hint">Ton pseudo est sauvegardé localement.</div>
+        </div>
+        <div class="field">
+          <label class="label" for="room">Code salon (optionnel)</label>
+          <input id="room" class="input" type="text" maxlength="12" placeholder="Ex: ABC123" autocomplete="off" />
+          <div class="hint">Uniquement utile pour le Lobby si tu l’utilises.</div>
+        </div>
+      </div>
 
-.btnrow{display:flex; gap:10px; margin-top:16px; flex-wrap:wrap}
-.btncol{display:flex; flex-direction:column; gap:10px; margin-top:14px}
+      <div class="row">
+        <button id="btnLobby" class="btn btn--primary">Jouer en ligne (Lobby)</button>
+        <button id="btnHub" class="btn btn--ghost">Salon (Hub 3D)</button>
+      </div>
 
-.btn{
-  appearance:none; border:1px solid var(--line); background:rgba(255,255,255,.06);
-  color:var(--txt); padding:10px 12px; border-radius:12px; cursor:pointer;
-  transition:transform .04s ease, background .12s ease, border-color .12s ease;
-}
-.btn:hover{background:rgba(255,255,255,.10)}
-.btn:active{transform:translateY(1px)}
-.btn.primary{border-color:rgba(58,160,255,.45); background:rgba(58,160,255,.18)}
-.btn.danger{border-color:rgba(255,77,77,.45); background:rgba(255,77,77,.12)}
-.btn.smallbtn{padding:8px 10px; border-radius:12px; font-weight:700}
+      <div class="sep"></div>
 
-.input{
-  width:100%; padding:10px 10px; border-radius:12px;
-  background:rgba(255,255,255,.06); border:1px solid var(--line); color:var(--txt);
-  outline:none;
-}
-label{display:block; margin:10px 0 6px; color:var(--mut); font-size:13px}
-.small{color:var(--mut); font-size:13px; margin-top:6px}
-.chk{display:flex; gap:8px; align-items:center; color:var(--txt); margin-top:10px}
+      <div class="cards">
+        <div class="card">
+          <div class="card__title">Contrôles (Hub)</div>
+          <div class="card__text">
+            ZQSD / Flèches • Sprint: Shift • Saut: Espace • Accroupi: Ctrl • Pause: Échap • Joystick: bouton “Joystick”
+          </div>
+        </div>
+        <div class="card">
+          <div class="card__title">Mobile</div>
+          <div class="card__text">
+            Deux joysticks (déplacement + caméra), bouton saut. Le menu pause est accessible via l’icône en haut à droite.
+          </div>
+        </div>
+      </div>
+    </section>
 
-.grid2{display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:10px}
-@media (max-width: 900px){ .grid2{grid-template-columns:1fr} }
+    <footer class="home__footer">
+      <div class="muted">© Prototype — Loup-Garou</div>
+      <div class="muted">Conseil : lance toujours via serveur local (pas file://).</div>
+    </footer>
+  </main>
 
-.panel{border:1px solid var(--line); border-radius:16px; background:rgba(255,255,255,.03); overflow:hidden}
-.panelTitle{padding:10px 12px; font-weight:900; border-bottom:1px solid var(--line)}
-.panelBody{padding:10px 12px; color:var(--mut); font-size:13px}
-.rule{margin:6px 0}
+  <script>
+    (function(){
+      const nick = document.getElementById("nick");
+      const room = document.getElementById("room");
+      const btnLobby = document.getElementById("btnLobby");
+      const btnHub = document.getElementById("btnHub");
 
-.mono{font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace}
+      nick.value = localStorage.getItem("lg_name") || "";
+      room.value = localStorage.getItem("lg_room") || "";
 
-/* Reveal */
-.roleBadge{
-  margin-top:12px;
-  padding:12px 12px;
-  border-radius:16px;
-  border:1px solid var(--line);
-  background:rgba(255,255,255,.04);
-  font-weight:1000;
-  letter-spacing:.4px;
-  text-transform:uppercase;
-}
+      function getName(){
+        const v = (nick.value || "").trim();
+        return v.length ? v : "Joueur";
+      }
+      function save(){
+        localStorage.setItem("lg_name", getName());
+        localStorage.setItem("lg_room", (room.value || "").trim());
+      }
 
-/* Game layout */
-.topbar{
-  position:absolute; left:12px; right:12px; top:12px;
-  display:flex; gap:12px; align-items:center; justify-content:space-between;
-  pointer-events:auto;
-}
-.phase{display:flex; flex-direction:column}
-.phaseName{font-weight:1000; font-size:16px}
-.phaseSub{color:var(--mut); font-size:13px; margin-top:2px}
+      btnHub.addEventListener("click", () => {
+        save();
+        const url = new URL("hub_world.html", location.href);
+        url.searchParams.set("name", getName());
+        location.href = url.toString();
+      });
 
-.topstats{display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end; align-items:center}
-.pill{
-  background:rgba(0,0,0,.35);
-  border:1px solid var(--line);
-  border-radius:12px;
-  padding:8px 10px;
-  display:flex; gap:8px; align-items:baseline;
-}
-.pill span{color:var(--mut); font-size:12px}
-.pill b{font-size:14px}
-
-.gamegrid{
-  position:absolute; left:12px; right:12px; top:64px; bottom:12px;
-  display:grid;
-  grid-template-columns: 320px 1fr 360px;
-  gap:12px;
-}
-@media (max-width: 1050px){
-  .gamegrid{grid-template-columns: 1fr; grid-template-rows:auto auto 1fr; top:70px}
-}
-
-.side, .mid{padding:12px 12px; overflow:hidden}
-.sectionTitle{font-weight:1000; margin-bottom:10px}
-
-.playerList{display:grid; gap:8px; overflow:auto; max-height:calc(100vh - 160px); padding-right:4px}
-.pRow{
-  display:flex; align-items:center; justify-content:space-between; gap:10px;
-  padding:10px 10px; border-radius:14px; border:1px solid var(--line);
-  background:rgba(255,255,255,.04);
-}
-.pLeft{display:flex; flex-direction:column}
-.pName{font-weight:900}
-.pMeta{color:var(--mut); font-size:12px}
-.tagYou{
-  font-size:11px; font-weight:900; padding:4px 8px;
-  border-radius:999px; border:1px solid rgba(58,160,255,.40);
-  background:rgba(58,160,255,.14);
-}
-.dead{
-  opacity:.55;
-  filter:saturate(.7);
-}
-.pBtn{
-  pointer-events:auto;
-  padding:8px 10px;
-  border-radius:12px;
-  border:1px solid var(--line);
-  background:rgba(255,255,255,.05);
-  color:var(--txt);
-  cursor:pointer;
-  font-weight:800;
-}
-.pBtn:hover{background:rgba(255,255,255,.10)}
-.pBtn:disabled{opacity:.45; cursor:not-allowed}
-
-.actionBox{color:var(--mut); font-size:14px; overflow:auto; max-height:calc(100vh - 160px); padding-right:4px}
-.actionCard{
-  border:1px solid var(--line);
-  background:rgba(255,255,255,.03);
-  border-radius:16px;
-  padding:12px 12px;
-  margin-bottom:10px;
-}
-.actionTitle{font-weight:1000; color:var(--txt)}
-.actionHint{color:var(--mut); font-size:13px; margin-top:4px}
-.actionBtns{display:flex; flex-wrap:wrap; gap:8px; margin-top:10px}
-
-.log{
-  color:var(--mut);
-  font-size:13px;
-  overflow:auto;
-  max-height:calc(100vh - 160px);
-  padding-right:4px;
-}
-.logLine{margin:6px 0}
-.logEm{color:var(--txt); font-weight:900}
-
-/* Debug overlay */
-.debug{
-  position:fixed; left:12px; top:12px; z-index:99999;
-  background:rgba(0,0,0,.78); color:#fff; padding:10px 12px;
-  border-radius:10px; font:12px/1.35 system-ui; max-width:560px;
-  box-shadow:0 10px 30px rgba(0,0,0,.35);
-}
+      btnLobby.addEventListener("click", () => {
+        save();
+        // Si ton lobby est sur lg.html (comme dans ton repo), on y va.
+        // Sinon tu peux renommer ici.
+        const url = new URL("lg.html", location.href);
+        url.searchParams.set("name", getName());
+        const code = (room.value || "").trim();
+        if (code) url.searchParams.set("room", code);
+        location.href = url.toString();
+      });
+    })();
+  </script>
+</body>
+</html>
