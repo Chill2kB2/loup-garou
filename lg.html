@@ -2,707 +2,1091 @@
 <html lang="fr">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Loup-Garou (Multi)</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
+  <title>Loup-Garou — Lobby & Partie</title>
+  <link rel="icon" href="data:," />
+
   <style>
     :root{
-      --bg1:#07090d; --bg2:#0b1020;
-      --panel:rgba(255,255,255,.06);
-      --bd:rgba(255,255,255,.14);
-      --txt:#eaeef7; --mut:rgba(234,238,247,.72);
-      --acc:#7c5cff; --ok:#39d98a; --bad:#ff4d4d;
-      --r:16px;
+      --bg1:#07090d;
+      --bg2:#0b1020;
+      --glass:rgba(255,255,255,.06);
+      --glass2:rgba(255,255,255,.10);
+      --bd:rgba(255,255,255,.12);
+      --txt:#e9eefc;
+      --mut:rgba(233,238,252,.72);
+      --acc:#7c5cff;
+      --acc2:#4dd6ff;
+      --ok:#41d37a;
+      --bad:#ff5c5c;
+      --warn:#ffb020;
+      --shadow:0 18px 60px rgba(0,0,0,.45);
+      --r:22px;
+      --r2:16px;
+      --gap:16px;
+      --mono: ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace;
+      --ui: system-ui, "Segoe UI", Arial;
     }
-    *{box-sizing:border-box}
+
+    *{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
+    html,body{height:100%}
     body{
-      margin:0;color:var(--txt);font-family:system-ui,Segoe UI,Arial;
-      min-height:100vh;
+      margin:0;
+      font-family:var(--ui);
+      color:var(--txt);
       background:
-        radial-gradient(900px 500px at 20% 10%, rgba(124,92,255,.22), transparent 60%),
-        radial-gradient(700px 500px at 80% 30%, rgba(57,217,138,.14), transparent 55%),
-        radial-gradient(900px 650px at 50% 90%, rgba(255,255,255,.06), transparent 65%),
-        linear-gradient(180deg,var(--bg1),var(--bg2));
+        radial-gradient(1000px 700px at 10% 10%, rgba(124,92,255,.18), transparent 60%),
+        radial-gradient(900px 700px at 80% 30%, rgba(77,214,255,.10), transparent 55%),
+        radial-gradient(1000px 800px at 50% 110%, rgba(65,211,122,.06), transparent 60%),
+        linear-gradient(180deg, var(--bg1), var(--bg2));
+      overflow:hidden;
     }
-    .wrap{max-width:1120px;margin:0 auto;padding:18px}
-    .top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
-    .h1{font-size:20px;font-weight:900;letter-spacing:.2px}
-    .pill{display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border:1px solid var(--bd);border-radius:999px;background:rgba(255,255,255,.04)}
-    .dot{width:10px;height:10px;border-radius:999px;background:rgba(234,238,247,.45)}
-    .dot.ok{background:var(--ok)}
-    .dot.bad{background:var(--bad)}
-    .mut{color:var(--mut)}
-    .small{font-size:12px}
-    .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}
-    @media (max-width:920px){ .grid{grid-template-columns:1fr} }
-    .card{
-      background:var(--panel);
-      border:1px solid var(--bd);
-      border-radius:var(--r);
-      padding:14px;
-      box-shadow:0 18px 60px rgba(0,0,0,.25);
+
+    /* Layout général */
+    .app{
+      height:100%;
+      display:flex;
+      flex-direction:column;
     }
-    .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+
+    /* Top bar (ultra light) */
+    .topbar{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      padding:12px 14px;
+      border-bottom:1px solid rgba(255,255,255,.08);
+      background:rgba(0,0,0,.10);
+      backdrop-filter: blur(14px);
+    }
+    .brand{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      min-width:0;
+    }
+    .logo{
+      width:34px;height:34px;border-radius:12px;
+      background:linear-gradient(135deg, var(--acc), var(--acc2));
+      box-shadow: 0 10px 30px rgba(124,92,255,.25);
+      flex:0 0 auto;
+    }
+    .brand h1{
+      font-size:14px;
+      margin:0;
+      letter-spacing:.2px;
+      font-weight:800;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .brand .sub{
+      font-size:12px;
+      color:var(--mut);
+      margin-top:2px;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .brandText{min-width:0}
+    .rightbar{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      flex:0 0 auto;
+    }
+
+    .chip{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding:8px 10px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,.10);
+      background:rgba(255,255,255,.06);
+      font-size:12px;
+      color:var(--mut);
+    }
+    .dot{
+      width:9px;height:9px;border-radius:50%;
+      background:rgba(255,255,255,.25);
+      box-shadow:none;
+    }
+    .dot.ok{background:var(--ok); box-shadow:0 0 0 4px rgba(65,211,122,.14)}
+    .dot.bad{background:var(--bad); box-shadow:0 0 0 4px rgba(255,92,92,.14)}
+
     .btn{
-      border:1px solid var(--bd); background:rgba(255,255,255,.06); color:var(--txt);
-      padding:10px 12px;border-radius:14px; cursor:pointer; font-weight:800;
-    }
-    .btn:disabled{opacity:.5;cursor:not-allowed}
-    .btn.acc{border-color:rgba(124,92,255,.55);background:rgba(124,92,255,.14)}
-    .btn.bad{border-color:rgba(255,77,77,.55)}
-    .in{border:1px solid var(--bd); background:rgba(255,255,255,.06); color:var(--txt); padding:10px 12px;border-radius:14px; outline:none;}
-    .tag{font-size:12px;padding:4px 10px;border:1px solid var(--bd);border-radius:999px;color:var(--mut);background:rgba(255,255,255,.04)}
-    .hr{height:1px;background:rgba(255,255,255,.12);margin:12px 0}
-
-    .list{display:flex;flex-direction:column;gap:8px;margin-top:10px}
-    .item{
-      display:flex;align-items:center;justify-content:space-between;gap:10px;
-      padding:10px 12px;border:1px solid var(--bd);border-radius:14px;background:rgba(255,255,255,.03)
-    }
-    .alive{color:var(--ok);font-weight:900}
-    .dead{color:var(--bad);font-weight:900}
-    .timer{font-variant-numeric:tabular-nums;font-weight:900}
-    .bigRole{
-      font-size:22px;font-weight:950;letter-spacing:.2px;
-      padding:10px 12px;border-radius:14px;border:1px solid rgba(124,92,255,.55);
-      background:rgba(124,92,255,.12); display:inline-block;
-    }
-    .log{
-      height:260px; overflow:auto; white-space:pre-wrap; word-break:break-word;
-      padding:10px 12px;border-radius:14px;border:1px solid var(--bd);background:rgba(0,0,0,.18);
-      font-size:13px;
-    }
-
-    .settingsBox{
-      border:1px solid rgba(124,92,255,.35);
-      background:rgba(124,92,255,.08);
-      border-radius:14px;
-      padding:12px;
-    }
-    .settingsGrid{
-      display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px
-    }
-    @media (max-width:700px){ .settingsGrid{grid-template-columns:1fr} }
-    .field label{display:block;font-size:12px;color:var(--mut);margin-bottom:6px}
-    .field input, .field select{
-      width:100%;
-      border:1px solid var(--bd);
+      appearance:none;
+      border:1px solid rgba(255,255,255,.12);
       background:rgba(255,255,255,.06);
       color:var(--txt);
       padding:10px 12px;
       border-radius:14px;
+      font-weight:800;
+      font-size:13px;
+      cursor:pointer;
+      transition: transform .06s ease, background .15s ease, border-color .15s ease;
+      user-select:none;
+    }
+    .btn:active{transform:scale(.98)}
+    .btn:hover{background:rgba(255,255,255,.08)}
+    .btn.primary{
+      border-color:rgba(124,92,255,.35);
+      background:rgba(124,92,255,.18);
+    }
+    .btn.danger{
+      border-color:rgba(255,92,92,.35);
+      background:rgba(255,92,92,.14);
+    }
+    .btn.ghost{
+      background:transparent;
+      border-color:rgba(255,255,255,.12);
+    }
+    .btn.icon{
+      width:42px;height:42px;
+      display:grid;place-items:center;
+      padding:0;
+      border-radius:14px;
+      font-size:18px;
+    }
+
+    /* Zone jeu */
+    .main{
+      flex:1 1 auto;
+      display:grid;
+      grid-template-columns: 1fr 1.1fr;
+      gap:var(--gap);
+      padding:14px;
+      min-height:0;
+    }
+
+    .panel{
+      border:1px solid rgba(255,255,255,.10);
+      background:rgba(255,255,255,.05);
+      border-radius:var(--r);
+      box-shadow:var(--shadow);
+      backdrop-filter: blur(16px);
+      overflow:hidden;
+      min-height:0;
+      display:flex;
+      flex-direction:column;
+    }
+    .panelHead{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      padding:12px 14px;
+      border-bottom:1px solid rgba(255,255,255,.08);
+    }
+    .panelHead h2{
+      margin:0;
+      font-size:13px;
+      letter-spacing:.2px;
+      font-weight:900;
+      color:var(--txt);
+    }
+    .panelHead .hint{
+      font-size:12px;
+      color:var(--mut);
+      white-space:nowrap;
+    }
+    .panelBody{
+      padding:12px 14px;
+      overflow:auto;
+      min-height:0;
+    }
+
+    /* Joueurs */
+    .playersTop{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+    }
+    .readyBadge{
+      font-size:12px;
+      padding:7px 10px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,.10);
+      background:rgba(255,255,255,.06);
+      color:var(--mut);
+      flex:0 0 auto;
+    }
+    .playersList{
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+      margin-top:10px;
+    }
+    .playerRow{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      padding:10px 12px;
+      border-radius:16px;
+      border:1px solid rgba(255,255,255,.10);
+      background:rgba(0,0,0,.14);
+    }
+    .pLeft{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      min-width:0;
+    }
+    .avatarDot{
+      width:12px;height:12px;border-radius:50%;
+      background:rgba(255,255,255,.22);
+      flex:0 0 auto;
+    }
+    .avatarDot.alive{background:var(--ok)}
+    .avatarDot.dead{background:rgba(255,255,255,.18)}
+    .pName{
+      font-weight:900;
+      font-size:13px;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .pMeta{
+      font-size:12px;
+      color:var(--mut);
+      white-space:nowrap;
+    }
+    .tag{
+      font-size:11px;
+      padding:6px 9px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,.10);
+      color:var(--mut);
+      background:rgba(255,255,255,.06);
+      white-space:nowrap;
+    }
+    .tag.host{border-color:rgba(255,176,32,.35); background:rgba(255,176,32,.10); color:rgba(255,232,190,.92)}
+    .tag.ready{border-color:rgba(65,211,122,.35); background:rgba(65,211,122,.10); color:rgba(205,255,228,.95)}
+    .tag.notready{border-color:rgba(255,92,92,.25); background:rgba(255,92,92,.08); color:rgba(255,220,220,.92)}
+
+    /* Journal / chat */
+    .log{
+      font-family:var(--mono);
+      font-size:12px;
+      line-height:1.35;
+      white-space:pre-wrap;
+      color:rgba(233,238,252,.86);
+    }
+    .logLine{opacity:.92}
+    .logLine.sys{color:rgba(233,238,252,.70)}
+    .logLine.err{color:rgba(255,190,190,.95)}
+    .logLine.ok{color:rgba(205,255,228,.95)}
+
+    .chatBar{
+      display:flex;
+      gap:10px;
+      padding:12px 14px;
+      border-top:1px solid rgba(255,255,255,.08);
+      background:rgba(0,0,0,.12);
+    }
+    .input{
+      width:100%;
+      padding:11px 12px;
+      border-radius:14px;
+      border:1px solid rgba(255,255,255,.12);
+      background:rgba(0,0,0,.20);
+      color:var(--txt);
       outline:none;
+      font-size:13px;
+    }
+    .input::placeholder{color:rgba(233,238,252,.45)}
+
+    /* Action bar (contextuelle) */
+    .actionbar{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      padding:12px 14px;
+      border-top:1px solid rgba(255,255,255,.08);
+      background:rgba(0,0,0,.14);
+      backdrop-filter: blur(14px);
+    }
+    .phaseBox{
+      display:flex;
+      flex-direction:column;
+      gap:3px;
+      min-width:0;
+    }
+    .phaseTitle{
+      font-weight:900;
+      font-size:12px;
+      letter-spacing:.2px;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .phaseSub{
+      font-size:12px;
+      color:var(--mut);
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .actions{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      flex:0 0 auto;
+      flex-wrap:wrap;
+      justify-content:flex-end;
+    }
+
+    /* Drawer menu */
+    .drawerOverlay{
+      position:fixed; inset:0;
+      background:rgba(0,0,0,.55);
+      opacity:0;
+      pointer-events:none;
+      transition: opacity .15s ease;
+      z-index:50;
+    }
+    .drawerOverlay.open{opacity:1; pointer-events:auto}
+    .drawer{
+      position:fixed; top:0; right:0; height:100%; width:min(420px, 92vw);
+      background:rgba(10,12,18,.86);
+      border-left:1px solid rgba(255,255,255,.10);
+      backdrop-filter: blur(18px);
+      box-shadow: -20px 0 70px rgba(0,0,0,.55);
+      transform: translateX(100%);
+      transition: transform .18s ease;
+      z-index:60;
+      display:flex;
+      flex-direction:column;
+    }
+    .drawer.open{transform: translateX(0)}
+    .drawerHead{
+      display:flex; align-items:center; justify-content:space-between; gap:10px;
+      padding:12px 14px;
+      border-bottom:1px solid rgba(255,255,255,.08);
+    }
+    .drawerHead h3{margin:0; font-size:13px; font-weight:900}
+    .drawerBody{
+      padding:12px 14px;
+      overflow:auto;
+      min-height:0;
+      display:flex;
+      flex-direction:column;
+      gap:14px;
+    }
+    .card{
+      border:1px solid rgba(255,255,255,.10);
+      background:rgba(255,255,255,.05);
+      border-radius:18px;
+      padding:12px;
+    }
+    .row{display:flex; gap:10px; align-items:center}
+    .row .input{flex:1}
+    .mut{color:var(--mut); font-size:12px}
+    .sep{height:1px; background:rgba(255,255,255,.08); margin:8px 0}
+    .grid2{display:grid; grid-template-columns:1fr 1fr; gap:10px}
+    .tiny{font-size:11px; color:rgba(233,238,252,.55)}
+    .kbd{
+      font-family:var(--mono);
+      font-size:11px;
+      padding:3px 6px;
+      border-radius:8px;
+      border:1px solid rgba(255,255,255,.12);
+      background:rgba(0,0,0,.20);
+      color:rgba(233,238,252,.80);
+      display:inline-block;
+    }
+
+    /* Responsive */
+    @media (max-width: 980px){
+      .main{grid-template-columns:1fr; }
+      .actions{justify-content:flex-start}
     }
   </style>
 </head>
 
 <body>
-  <div class="wrap">
-    <div class="top">
-      <div class="h1">Loup-Garou — Lobby & Partie</div>
-      <div class="pill">
-        <span id="dot" class="dot bad"></span>
-        <span id="status" class="mut">Déconnecté</span>
+<div class="app">
+
+  <!-- TOP BAR -->
+  <header class="topbar">
+    <div class="brand">
+      <div class="logo" aria-hidden="true"></div>
+      <div class="brandText">
+        <h1>Loup-Garou — Lobby & Partie</h1>
+        <div class="sub" id="subline">Simple, lisible, pas chargé.</div>
       </div>
     </div>
 
-    <div class="grid">
-      <div class="card">
-        <div class="row" style="justify-content:space-between">
-          <div>
-            <div><b>Connexion</b></div>
-            <div class="small mut">Si “connecter” échoue au 1er essai : retente une fois.</div>
-          </div>
-          <div class="small mut">WS: <span id="wsUrl"></span></div>
-        </div>
-
-        <div class="row" style="margin-top:10px">
-          <input id="name" class="in" maxlength="18" placeholder="Ton nom (max 18)" />
-          <button id="btnConnect" class="btn acc">Connecter</button>
-          <button id="btnDisconnect" class="btn bad" disabled>Déconnecter</button>
-          <button id="btnQuit" class="btn">Quitter (Accueil)</button>
-        </div>
-
-        <div class="hr"></div>
-
-        <div class="row" style="justify-content:space-between">
-          <div>
-            <div><b>Partie</b></div>
-            <div class="small mut">Phase: <span id="phase">—</span> · Jour: <span id="day">—</span></div>
-          </div>
-          <div class="pill">
-            <span class="mut">Temps:</span>
-            <span id="timer" class="timer">—</span>
-          </div>
-        </div>
-
-        <div class="row" style="margin-top:10px;justify-content:space-between">
-          <div class="row">
-            <div class="tag">Ton ID: <span id="myId">—</span></div>
-            <div class="tag">Hôte: <span id="hostId">—</span></div>
-          </div>
-          <div class="row">
-            <button id="btnReady" class="btn" disabled>Prêt: OFF</button>
-            <button id="btnStart" class="btn acc" disabled>Démarrer (hôte)</button>
-            <button id="btnBackLobby" class="btn" disabled>Retour Lobby (hôte)</button>
-          </div>
-        </div>
-
-        <div class="hr"></div>
-
-        <div>
-          <div><b>Paramètres de partie</b></div>
-          <div id="settingsSummary" class="small mut" style="margin-top:6px">—</div>
-
-          <div id="hostSettings" class="settingsBox" style="margin-top:10px; display:none">
-            <div style="font-weight:900">Paramètres (Hôte)</div>
-            <div class="small mut" style="margin-top:4px">
-              Visible uniquement pour l’hôte quand tout le monde est prêt (≥ 5). Appliqué au prochain démarrage.
-            </div>
-
-            <div class="settingsGrid">
-              <div class="field">
-                <label>Nombre de Loups-Garous</label>
-                <select id="setWolves">
-                  <option value="1">1</option>
-                  <option value="2">2</option>
-                  <option value="3">3</option>
-                </select>
-              </div>
-              <div class="field">
-                <label>Chasseur (ON/OFF)</label>
-                <select id="setHunter">
-                  <option value="1">ON</option>
-                  <option value="0">OFF</option>
-                </select>
-              </div>
-
-              <div class="field">
-                <label>Révélation (secondes)</label>
-                <input id="setReveal" type="number" min="5" max="40" step="1" />
-              </div>
-              <div class="field">
-                <label>Nuit (secondes)</label>
-                <input id="setNight" type="number" min="10" max="60" step="1" />
-              </div>
-
-              <div class="field">
-                <label>Discussion (secondes)</label>
-                <input id="setTalk" type="number" min="10" max="120" step="1" />
-              </div>
-              <div class="field">
-                <label>Vote (secondes)</label>
-                <input id="setVote" type="number" min="10" max="60" step="1" />
-              </div>
-
-              <div class="field">
-                <label>Chasseur (tir) (secondes)</label>
-                <input id="setHunterTime" type="number" min="8" max="45" step="1" />
-              </div>
-              <div class="field">
-                <label>—</label>
-                <div class="row">
-                  <button id="btnApplySettings" class="btn acc">Appliquer</button>
-                  <button id="btnDefaults" class="btn">Défaut</button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="hr"></div>
-
-        <div>
-          <div><b>Ton rôle</b></div>
-          <div class="row" style="margin-top:8px;justify-content:space-between">
-            <div id="roleBox" class="bigRole" style="display:none"></div>
-            <div class="small mut">Envoyé en “private” au démarrage.</div>
-          </div>
-        </div>
-
-        <div class="hr"></div>
-
-        <div>
-          <div><b>Actions</b></div>
-          <div class="small mut">Les actions varient selon ton rôle et la phase.</div>
-          <div id="actions" class="list"></div>
-        </div>
+    <div class="rightbar">
+      <div class="chip" id="statusChip">
+        <span class="dot bad" id="statusDot"></span>
+        <span id="statusTxt">Déconnecté</span>
       </div>
-
-      <div class="card">
-        <div class="row" style="justify-content:space-between">
-          <div>
-            <div><b>Joueurs</b></div>
-            <div class="small mut">Min: <span id="minPlayers">5</span> · Tous prêts pour démarrer.</div>
-          </div>
-          <div class="tag">Prêts: <span id="readyCount">0</span>/<span id="playerCount">0</span></div>
-        </div>
-
-        <div id="players" class="list"></div>
-
-        <div class="hr"></div>
-
-        <div class="row" style="justify-content:space-between">
-          <div><b>Journal</b></div>
-          <button id="btnClearLog" class="btn">Vider</button>
-        </div>
-        <div id="log" class="log" style="margin-top:10px"></div>
-      </div>
+      <button class="btn icon" id="btnMenu" title="Menu">☰</button>
     </div>
+  </header>
+
+  <!-- MAIN -->
+  <main class="main">
+
+    <!-- PLAYERS -->
+    <section class="panel" aria-label="Joueurs">
+      <div class="panelHead">
+        <div class="playersTop">
+          <h2>Joueurs</h2>
+          <div class="readyBadge" id="readyBadge">Prêts: 0/0</div>
+        </div>
+        <button class="btn ghost" id="btnCopyLink" title="Copier le lien à partager">Partager</button>
+      </div>
+      <div class="panelBody">
+        <div class="mut" id="playersHint">Min: 5. Tout le monde “Prêt”, puis l’hôte démarre.</div>
+        <div class="playersList" id="playersList"></div>
+      </div>
+    </section>
+
+    <!-- LOG / CHAT -->
+    <section class="panel" aria-label="Journal">
+      <div class="panelHead">
+        <h2>Journal</h2>
+        <div style="display:flex;gap:10px;align-items:center">
+          <div class="hint" id="phaseMini">Phase: —</div>
+          <button class="btn ghost" id="btnClearLog">Vider</button>
+        </div>
+      </div>
+      <div class="panelBody">
+        <div class="log" id="log"></div>
+      </div>
+      <div class="chatBar">
+        <input class="input" id="chatInput" placeholder="Écrire un message… (Entrée pour envoyer)" maxlength="160" />
+        <button class="btn primary" id="btnSend">Envoyer</button>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ACTION BAR -->
+  <footer class="actionbar">
+    <div class="phaseBox">
+      <div class="phaseTitle" id="phaseTitle">Phase: —</div>
+      <div class="phaseSub" id="phaseSub">Connecte-toi via le menu (☰).</div>
+    </div>
+
+    <div class="actions">
+      <button class="btn" id="btnReady" disabled>Prêt</button>
+      <button class="btn primary" id="btnStart" disabled>Démarrer (hôte)</button>
+      <button class="btn" id="btnAction" disabled>Action</button>
+      <button class="btn danger" id="btnHome">Quitter</button>
+    </div>
+  </footer>
+</div>
+
+<!-- DRAWER -->
+<div class="drawerOverlay" id="drawerOverlay"></div>
+<aside class="drawer" id="drawer" aria-label="Menu">
+  <div class="drawerHead">
+    <h3>Menu</h3>
+    <button class="btn icon" id="btnCloseMenu" title="Fermer">✕</button>
   </div>
+
+  <div class="drawerBody">
+
+    <!-- Connexion -->
+    <div class="card">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">
+        <div>
+          <div style="font-weight:900">Connexion</div>
+          <div class="tiny">WS par défaut : <span class="kbd" id="wsShown">—</span></div>
+        </div>
+        <button class="btn ghost" id="btnEditWS" title="Changer l'URL WS">WS</button>
+      </div>
+
+      <div class="sep"></div>
+
+      <div class="row">
+        <input class="input" id="nameInput" placeholder="Ton nom (max 18)" maxlength="18" />
+      </div>
+      <div style="height:10px"></div>
+      <div class="grid2">
+        <button class="btn primary" id="btnConnect">Connecter</button>
+        <button class="btn danger" id="btnDisconnect" disabled>Déconnecter</button>
+      </div>
+
+      <div style="height:10px"></div>
+      <div class="mut">
+        Astuce : sur Render gratuit, si ça ne répond pas du 1er coup, retente une fois (réveil serveur).
+      </div>
+    </div>
+
+    <!-- Partie (infos + hôte) -->
+    <div class="card">
+      <div style="font-weight:900">Partie</div>
+      <div class="sep"></div>
+
+      <div class="row" style="justify-content:space-between">
+        <div class="mut">Ton ID</div>
+        <div class="kbd" id="youId">—</div>
+      </div>
+      <div class="row" style="justify-content:space-between; margin-top:8px">
+        <div class="mut">Hôte</div>
+        <div class="kbd" id="hostId">—</div>
+      </div>
+
+      <div style="height:10px"></div>
+      <div class="grid2">
+        <button class="btn" id="btnReadyMenu" disabled>Prêt</button>
+        <button class="btn primary" id="btnStartMenu" disabled>Démarrer</button>
+      </div>
+
+      <div style="height:10px"></div>
+      <div class="mut" id="hostOnlyHint">Paramètres hôte : visibles uniquement si tu es l’hôte.</div>
+
+      <div id="hostBox" style="display:none; margin-top:10px">
+        <div class="sep"></div>
+        <div style="font-weight:900; font-size:12px; margin-bottom:8px">Paramètres (hôte)</div>
+
+        <div class="grid2">
+          <label class="mut">Loups
+            <input class="input" id="optWolves" type="number" min="1" max="4" value="1" />
+          </label>
+          <label class="mut">Chasseur
+            <select class="input" id="optHunter">
+              <option value="1">ON</option>
+              <option value="0">OFF</option>
+            </select>
+          </label>
+        </div>
+
+        <div style="height:10px"></div>
+
+        <label class="mut">Timers (secondes)
+          <input class="input" id="optTimers" placeholder="ex: reveal=12 night=20 talk=25 vote=20" />
+        </label>
+
+        <div style="height:10px"></div>
+        <button class="btn" id="btnApplySettings">Appliquer</button>
+      </div>
+    </div>
+
+    <!-- Quitter -->
+    <div class="card">
+      <div style="font-weight:900">Quitter</div>
+      <div class="sep"></div>
+      <button class="btn danger" id="btnQuitToHome">Retour accueil</button>
+      <div class="mut" style="margin-top:10px">Tu peux laisser cette page ouverte, et revenir quand tu veux.</div>
+    </div>
+
+  </div>
+</aside>
 
 <script>
 (() => {
-  const WS_URL = "wss://loup-garou-ws.onrender.com/ws";
-  const el = (id) => document.getElementById(id);
+  // ---------------------------
+  // CONFIG
+  // ---------------------------
+  const DEFAULT_WS = "wss://loup-garou-ws.onrender.com/ws";
+  const HOME_URL = "index.html";
 
-  const dot = el("dot");
-  const statusEl = el("status");
-  const wsUrlEl = el("wsUrl");
+  // Query param override: ?ws=wss://... (pratique debug)
+  const qs = new URLSearchParams(location.search);
+  let wsUrl = qs.get("ws") || localStorage.getItem("lg_ws_url") || DEFAULT_WS;
 
-  const nameEl = el("name");
-  const btnConnect = el("btnConnect");
-  const btnDisconnect = el("btnDisconnect");
-  const btnQuit = el("btnQuit");
+  // ---------------------------
+  // DOM
+  // ---------------------------
+  const $ = (id) => document.getElementById(id);
 
-  const phaseEl = el("phase");
-  const dayEl = el("day");
-  const timerEl = el("timer");
+  const statusDot = $("statusDot");
+  const statusTxt = $("statusTxt");
 
-  const myIdEl = el("myId");
-  const hostIdEl = el("hostId");
+  const btnMenu = $("btnMenu");
+  const drawer = $("drawer");
+  const overlay = $("drawerOverlay");
+  const btnCloseMenu = $("btnCloseMenu");
 
-  const btnReady = el("btnReady");
-  const btnStart = el("btnStart");
-  const btnBackLobby = el("btnBackLobby");
+  const wsShown = $("wsShown");
+  const btnEditWS = $("btnEditWS");
 
-  const roleBox = el("roleBox");
-  const actionsEl = el("actions");
-  const playersEl = el("players");
+  const nameInput = $("nameInput");
+  const btnConnect = $("btnConnect");
+  const btnDisconnect = $("btnDisconnect");
 
-  const logEl = el("log");
-  const btnClearLog = el("btnClearLog");
+  const btnReady = $("btnReady");
+  const btnStart = $("btnStart");
+  const btnAction = $("btnAction");
+  const btnHome = $("btnHome");
 
-  const settingsSummary = el("settingsSummary");
-  const hostSettings = el("hostSettings");
-  const setWolves = el("setWolves");
-  const setHunter = el("setHunter");
-  const setReveal = el("setReveal");
-  const setNight = el("setNight");
-  const setTalk = el("setTalk");
-  const setVote = el("setVote");
-  const setHunterTime = el("setHunterTime");
-  const btnApplySettings = el("btnApplySettings");
-  const btnDefaults = el("btnDefaults");
+  const btnReadyMenu = $("btnReadyMenu");
+  const btnStartMenu = $("btnStartMenu");
 
-  const minPlayersEl = el("minPlayers");
-  const readyCountEl = el("readyCount");
-  const playerCountEl = el("playerCount");
+  const btnQuitToHome = $("btnQuitToHome");
 
-  wsUrlEl.textContent = WS_URL;
+  const playersList = $("playersList");
+  const readyBadge = $("readyBadge");
+  const playersHint = $("playersHint");
 
+  const logBox = $("log");
+  const btnClearLog = $("btnClearLog");
+
+  const chatInput = $("chatInput");
+  const btnSend = $("btnSend");
+
+  const phaseTitle = $("phaseTitle");
+  const phaseSub = $("phaseSub");
+  const phaseMini = $("phaseMini");
+  const subline = $("subline");
+
+  const btnCopyLink = $("btnCopyLink");
+
+  const youIdEl = $("youId");
+  const hostIdEl = $("hostId");
+  const hostBox = $("hostBox");
+  const btnApplySettings = $("btnApplySettings");
+  const optWolves = $("optWolves");
+  const optHunter = $("optHunter");
+  const optTimers = $("optTimers");
+
+  // ---------------------------
+  // STATE
+  // ---------------------------
   let ws = null;
-  let myId = null;
+  let connected = false;
+
+  let youId = null;
+  let hostId = null;
   let isHost = false;
-  let myRole = null;
 
-  let lobby = null;
-  let state = null;
+  let phase = "—";
+  let readyCount = 0;
+  let totalCount = 0;
 
-  let timerEndAt = 0;
-  let timerHandle = null;
+  let players = []; // [{id,name,ready,alive,host}]
+  let myReady = false;
 
-  function setConn(ok, txt){
-    dot.classList.toggle("ok", ok);
-    dot.classList.toggle("bad", !ok);
-    statusEl.textContent = txt;
+  // ---------------------------
+  // UI helpers
+  // ---------------------------
+  function setStatus(ok, text){
+    statusDot.classList.toggle("ok", !!ok);
+    statusDot.classList.toggle("bad", !ok);
+    statusTxt.textContent = text;
   }
 
-  function pushLog(text, emph=false){
-    const t = new Date();
-    const hh = String(t.getHours()).padStart(2,"0");
-    const mm = String(t.getMinutes()).padStart(2,"0");
-    const ss = String(t.getSeconds()).padStart(2,"0");
-    const line = `[${hh}:${mm}:${ss}] ${text}`;
-    logEl.textContent = (emph ? ("★ " + line) : line) + "\n" + logEl.textContent;
+  function log(line, kind="sys"){
+    const div = document.createElement("div");
+    div.className = "logLine " + (kind || "sys");
+    div.textContent = line;
+    logBox.appendChild(div);
+    logBox.scrollTop = logBox.scrollHeight;
   }
 
-  function escapeHtml(s){
-    return String(s).replace(/[&<>"']/g, (m) => ({
-      "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
-    }[m]));
+  function clearLog(){ logBox.innerHTML = ""; }
+
+  function openMenu(){
+    drawer.classList.add("open");
+    overlay.classList.add("open");
+  }
+  function closeMenu(){
+    drawer.classList.remove("open");
+    overlay.classList.remove("open");
   }
 
-  function resetLocalState(){
-    myId = null;
-    isHost = false;
-    myRole = null;
-    lobby = null;
-    state = null;
-    roleBox.style.display = "none";
-    roleBox.textContent = "";
-    actionsEl.innerHTML = "";
-    playersEl.innerHTML = "";
-    settingsSummary.textContent = "—";
-    hostSettings.style.display = "none";
-    if (timerHandle) { clearInterval(timerHandle); timerHandle = null; }
-    timerEl.textContent = "—";
-  }
-
-  function isMeAlive(){
-    if (!state || !state.players || myId == null) return true;
-    const me = state.players.find(x => x.id === myId);
-    return me ? !!me.alive : true;
-  }
-
-  function setTimer(ms){
-    timerEndAt = Date.now() + Math.max(0, ms || 0);
-    if (timerHandle) clearInterval(timerHandle);
-    timerHandle = setInterval(() => {
-      const left = Math.max(0, timerEndAt - Date.now());
-      const s = Math.ceil(left / 1000);
-      timerEl.textContent = (state && state.phase !== "LOBBY" && state.phase !== "GAMEOVER") ? (s + "s") : "—";
-      if (left <= 0) timerEl.textContent = (state && state.phase !== "LOBBY" && state.phase !== "GAMEOVER") ? "0s" : "—";
-    }, 250);
-  }
-
-  function send(obj){
-    if (!ws || ws.readyState !== 1) return;
-    try { ws.send(JSON.stringify(obj)); } catch(e) {}
-  }
-
-  function renderTop(){
-    phaseEl.textContent = state?.phase || lobby?.phase || "—";
-    dayEl.textContent = state?.day ?? "—";
-
-    myIdEl.textContent = (myId == null) ? "—" : String(myId);
-    hostIdEl.textContent = lobby?.hostId ?? "—";
-
-    btnDisconnect.disabled = !(ws && ws.readyState === 1);
-    btnConnect.disabled = (ws && ws.readyState === 1);
-
-    btnReady.disabled = !(ws && ws.readyState === 1);
-    btnBackLobby.disabled = !(ws && ws.readyState === 1 && isHost);
-
-    const allReady = !!lobby?.allReady;
-    const inLobby = (lobby?.phase === "LOBBY");
-    btnStart.disabled = !(ws && ws.readyState === 1 && isHost && inLobby && allReady);
-
-    // Texte prêt
-    if (lobby && myId != null){
-      const me = lobby.players.find(x => x.id === myId);
-      btnReady.textContent = "Prêt: " + (me?.ready ? "ON" : "OFF");
-    } else {
-      btnReady.textContent = "Prêt: OFF";
-    }
-
-    // Rôle
-    if (myRole){
-      roleBox.style.display = "inline-block";
-      roleBox.textContent = myRole;
-    } else {
-      roleBox.style.display = "none";
-      roleBox.textContent = "";
-    }
-
-    // Compteurs prêt
-    if (lobby){
-      const pc = lobby.players.length;
-      const rc = lobby.players.filter(p => p.ready).length;
-      playerCountEl.textContent = String(pc);
-      readyCountEl.textContent = String(rc);
-      minPlayersEl.textContent = String(lobby.minPlayers || 5);
-    } else {
-      playerCountEl.textContent = "0";
-      readyCountEl.textContent = "0";
-      minPlayersEl.textContent = "5";
-    }
-  }
-
-  function renderSettings(){
-    if (!lobby || !lobby.settings){
-      settingsSummary.textContent = "—";
-      hostSettings.style.display = "none";
-      return;
-    }
-
-    const s = lobby.settings;
-    const revealS = Math.round((s.revealMs || 12000) / 1000);
-    const nightS = Math.round((s.nightMs || 20000) / 1000);
-    const talkS = Math.round((s.talkMs || 22000) / 1000);
-    const voteS = Math.round((s.voteMs || 20000) / 1000);
-    const hunterS = Math.round((s.hunterMs || 15000) / 1000);
-
-    settingsSummary.textContent =
-      `Loups: ${s.wolvesCount} · Chasseur: ${s.hunterEnabled ? "ON" : "OFF"} · ` +
-      `Révélation: ${revealS}s · Nuit: ${nightS}s · Discussion: ${talkS}s · Vote: ${voteS}s · Tir: ${hunterS}s`;
-
-    // Panneau host: uniquement si hôte + lobby + allReady
-    const showHost = !!(isHost && lobby.phase === "LOBBY" && lobby.allReady);
-    hostSettings.style.display = showHost ? "block" : "none";
-
-    // Remplir inputs (sans spam)
-    if (showHost){
-      setWolves.value = String(s.wolvesCount || 1);
-      setHunter.value = s.hunterEnabled ? "1" : "0";
-      setReveal.value = String(revealS);
-      setNight.value = String(nightS);
-      setTalk.value = String(talkS);
-      setVote.value = String(voteS);
-      setHunterTime.value = String(hunterS);
-    }
-  }
-
-  function renderActions(){
-    actionsEl.innerHTML = "";
-    if (!ws || ws.readyState !== 1){
-      actionsEl.innerHTML = `<div class="item"><div><b>Non connecté</b><div class="small mut">Entre ton nom puis clique Connecter.</div></div></div>`;
-      return;
-    }
-    if (lobby?.phase === "LOBBY"){
-      const txt = lobby.allReady
-        ? "Tout le monde est prêt. L’hôte peut régler les paramètres puis démarrer."
-        : "Mettez-vous prêts (min 5).";
-      actionsEl.innerHTML = `<div class="item"><div><b>Lobby</b><div class="small mut">${escapeHtml(txt)}</div></div></div>`;
-      return;
-    }
-    if (!state) return;
-
-    const aliveMe = isMeAlive();
-    const ph = state.phase;
-
-    const add = (t, sub) => {
-      const row = document.createElement("div");
-      row.className = "item";
-      row.innerHTML = `<div><b>${escapeHtml(t)}</b><div class="small mut">${escapeHtml(sub||"")}</div></div>`;
-      actionsEl.appendChild(row);
-    };
-
-    if (ph === "REVEAL"){ add("Révélation", "Mémorise ton rôle. La nuit arrive."); return; }
-
-    if (ph === "NIGHT"){
-      if (!aliveMe){ add("Nuit", "Tu es mort. Tu observes."); return; }
-      if (myRole === "Loup-Garou") add("Nuit (Loup-Garou)", "Choisis une cible dans la liste (bouton Cibler).");
-      else add("Nuit", "Tu attends. Les loups agissent.");
-      return;
-    }
-
-    if (ph === "DAY_TALK"){ add("Jour", "Discussion. Le vote arrive."); return; }
-
-    if (ph === "DAY_VOTE"){
-      if (!aliveMe){ add("Vote", "Tu es mort. Tu ne votes pas."); return; }
-      add("Vote", "Vote un joueur vivant (bouton Voter).");
-      return;
-    }
-
-    if (ph === "HUNTER_SHOT"){
-      if (myId === state.hunterShooterId) add("Chasseur", "Tire une dernière fois (bouton Tirer).");
-      else add("Chasseur", "Le chasseur décide…");
-      return;
-    }
-
-    if (ph === "GAMEOVER"){ add("Fin", "L’hôte peut faire Retour Lobby pour relancer."); return; }
+  function setPhase(p, sub=""){
+    phase = p || "—";
+    phaseTitle.textContent = "Phase: " + phase;
+    phaseMini.textContent = "Phase: " + phase;
+    phaseSub.textContent = sub || "";
   }
 
   function renderPlayers(){
-    playersEl.innerHTML = "";
-    if (!lobby && !state) return;
+    playersList.innerHTML = "";
 
-    const players = (state?.players) ? state.players : (lobby?.players || []);
-    for (const p of players){
+    // ready count
+    totalCount = players.length;
+    readyCount = players.filter(p => !!p.ready).length;
+    readyBadge.textContent = `Prêts: ${readyCount}/${totalCount}`;
+
+    if(totalCount < 5){
+      playersHint.textContent = `Min: 5. Actuels: ${totalCount}. Partage le lien pour inviter.`;
+    } else {
+      playersHint.textContent = `Min: 5. Tous “Prêt”, puis l’hôte démarre.`;
+    }
+
+    for(const p of players){
       const row = document.createElement("div");
-      row.className = "item";
-
-      const alive = (p.alive === undefined) ? true : !!p.alive;
-      const aliveTxt = alive ? `<span class="alive">Vivant</span>` : `<span class="dead">Mort</span>`;
-      const readyTxt = (p.ready === undefined) ? "" : (p.ready ? "✅ Prêt" : "⏳ Pas prêt");
-      const hostTxt = (lobby && p.id === lobby.hostId) ? "👑 Hôte" : "";
+      row.className = "playerRow";
 
       const left = document.createElement("div");
-      left.innerHTML = `
-        <div><b>${escapeHtml(p.name || ("Joueur " + p.id))}</b> <span class="tag">#${p.id}</span></div>
-        <div class="small mut">${hostTxt} ${readyTxt} ${state ? ("· " + aliveTxt) : ""}</div>
-      `;
+      left.className = "pLeft";
+
+      const dot = document.createElement("div");
+      dot.className = "avatarDot " + (p.alive === false ? "dead" : "alive");
+
+      const name = document.createElement("div");
+      name.className = "pName";
+      name.textContent = p.name || ("Joueur " + p.id);
+
+      const meta = document.createElement("div");
+      meta.className = "pMeta";
+      meta.textContent = (p.id === youId ? "toi" : ("#" + (p.id ?? "?")));
+
+      const wrap = document.createElement("div");
+      wrap.style.minWidth = "0";
+      wrap.appendChild(name);
+      wrap.appendChild(meta);
+
+      left.appendChild(dot);
+      left.appendChild(wrap);
 
       const right = document.createElement("div");
-      if (ws && ws.readyState === 1 && state && state.phase){
-        const phase = state.phase;
-        const aliveMe = isMeAlive();
-        const isSelf = (p.id === myId);
+      right.style.display = "flex";
+      right.style.gap = "8px";
+      right.style.alignItems = "center";
 
-        if (phase === "NIGHT" && myRole === "Loup-Garou" && aliveMe && !isSelf && (p.alive !== false)){
-          const b = document.createElement("button");
-          b.className = "btn";
-          b.textContent = "Cibler";
-          b.onclick = () => send({ t:"wolfKill", targetId: p.id });
-          right.appendChild(b);
-        }
-
-        if (phase === "DAY_VOTE" && aliveMe && !isSelf && (p.alive !== false)){
-          const b = document.createElement("button");
-          b.className = "btn";
-          b.textContent = "Voter";
-          b.onclick = () => send({ t:"vote", targetId: p.id });
-          right.appendChild(b);
-        }
-
-        if (phase === "HUNTER_SHOT" && myId === state.hunterShooterId && !isSelf && (p.alive !== false)){
-          const b = document.createElement("button");
-          b.className = "btn bad";
-          b.textContent = "Tirer";
-          b.onclick = () => send({ t:"hunterShot", targetId: p.id });
-          right.appendChild(b);
-        }
+      if(p.id === hostId){
+        const t = document.createElement("span");
+        t.className = "tag host";
+        t.textContent = "Hôte";
+        right.appendChild(t);
       }
+
+      const r = document.createElement("span");
+      r.className = "tag " + (p.ready ? "ready" : "notready");
+      r.textContent = p.ready ? "Prêt" : "Pas prêt";
+      right.appendChild(r);
 
       row.appendChild(left);
       row.appendChild(right);
-      playersEl.appendChild(row);
+      playersList.appendChild(row);
+    }
+
+    // buttons enabled
+    btnReady.disabled = !connected;
+    btnReadyMenu.disabled = !connected;
+    btnStart.disabled = !(connected && isHost);
+    btnStartMenu.disabled = !(connected && isHost);
+  }
+
+  function syncHostUI(){
+    isHost = (youId != null && hostId != null && youId === hostId);
+    hostBox.style.display = isHost ? "block" : "none";
+    hostIdEl.textContent = hostId ?? "—";
+    youIdEl.textContent = youId ?? "—";
+    btnStart.disabled = !(connected && isHost);
+    btnStartMenu.disabled = !(connected && isHost);
+  }
+
+  function setMyReady(v){
+    myReady = !!v;
+    btnReady.textContent = myReady ? "Prêt ✓" : "Prêt";
+    btnReadyMenu.textContent = btnReady.textContent;
+    btnReady.classList.toggle("primary", myReady);
+    btnReadyMenu.classList.toggle("primary", myReady);
+  }
+
+  // ---------------------------
+  // WS protocol (generic)
+  // ---------------------------
+  function send(obj){
+    if(!ws || ws.readyState !== 1) return;
+    try{
+      ws.send(JSON.stringify(obj));
+    }catch(e){
+      // fallback
+      ws.send(String(obj));
     }
   }
 
   function connect(){
-    if (ws && ws.readyState === 1) return;
+    const name = (nameInput.value || "").trim();
+    if(name.length < 1){
+      log("Choisis un nom avant de te connecter.", "err");
+      openMenu();
+      nameInput.focus();
+      return;
+    }
+    localStorage.setItem("lg_name", name);
 
-    resetLocalState();
-    renderTop();
-    renderPlayers();
-    renderActions();
+    log(`Connexion… (${wsUrl})`, "sys");
+    setStatus(false, "Connexion…");
 
-    setConn(false, "Connexion…");
-    ws = new WebSocket(WS_URL);
+    try{
+      ws = new WebSocket(wsUrl);
+    }catch(e){
+      log("WebSocket: URL invalide.", "err");
+      setStatus(false, "Erreur URL");
+      return;
+    }
 
     ws.onopen = () => {
-      setConn(true, "Connecté");
-      const nm = (nameEl.value || "Joueur").trim().slice(0, 18);
-      send({ t:"join", name:nm });
-    };
+      connected = true;
+      setStatus(true, "Connecté");
+      subline.textContent = "Connecté. Passe “Prêt”, puis l’hôte démarre.";
+      btnDisconnect.disabled = false;
+      btnConnect.disabled = true;
 
-    ws.onmessage = (ev) => {
-      let msg = null;
-      try { msg = JSON.parse(ev.data); } catch(e) { return; }
-      if (!msg || !msg.t) return;
+      // Message "join" (standard)
+      send({ t:"join", name });
 
-      if (msg.t === "welcome"){
-        myId = msg.id;
-        isHost = !!msg.isHost;
-        pushLog(`Bienvenue. Ton ID = ${myId}${isHost ? " (Hôte)" : ""}`);
-        renderTop();
-      }
-
-      if (msg.t === "lobby"){
-        lobby = msg;
-        state = null;
-        setTimer(0);
-        renderTop();
-        renderSettings();
-        renderPlayers();
-        renderActions();
-      }
-
-      if (msg.t === "private"){
-        if (msg.id === myId){
-          myRole = msg.role || null;
-          pushLog(`Rôle reçu (privé) : ${myRole}`, true);
-          renderTop();
-          renderActions();
-        }
-      }
-
-      if (msg.t === "state"){
-        state = msg;
-        setTimer(msg.endsInMs || 0);
-        renderTop();
-        renderPlayers();
-        renderActions();
-      }
-
-      if (msg.t === "log"){
-        pushLog(msg.text || "", !!msg.emph);
-      }
-
-      if (msg.t === "gameover"){
-        pushLog(`FIN: ${msg.title} — ${msg.sub}`, true);
-      }
+      // si ton serveur attend autre chose, on l’adaptera après ton test.
+      log(`Connecté en tant que ${name}.`, "ok");
+      closeMenu();
     };
 
     ws.onclose = () => {
-      setConn(false, "Déconnecté");
-      pushLog("Déconnecté.");
-      ws = null;
-      resetLocalState();
-      renderTop();
+      connected = false;
+      setStatus(false, "Déconnecté");
+      subline.textContent = "Déconnecté.";
+      btnDisconnect.disabled = true;
+      btnConnect.disabled = false;
+
+      youId = null; hostId = null; isHost = false;
+      players = [];
+      setMyReady(false);
+      setPhase("—", "Connecte-toi via le menu (☰).");
       renderPlayers();
-      renderActions();
+      syncHostUI();
+      log("Déconnecté.", "sys");
     };
 
     ws.onerror = () => {
-      setConn(false, "Erreur");
-      pushLog("Erreur WebSocket. Réessaie une fois.", true);
-      renderTop();
-      renderActions();
+      log("WebSocket: erreur réseau (ou serveur endormi).", "err");
+    };
+
+    ws.onmessage = (ev) => {
+      // Support: JSON ou texte brut
+      let data = ev.data;
+      let msg = null;
+
+      try{ msg = JSON.parse(data); } catch { msg = null; }
+
+      if(!msg){
+        // texte brut
+        log(String(data), "sys");
+        return;
+      }
+
+      // ---- messages standard attendus ----
+      // {t:"hello", youId, hostId}
+      // {t:"state", phase, players:[...], youId, hostId, youReady, info}
+      // {t:"chat", from, text}
+      // {t:"role", role}
+      // {t:"error", message}
+      // {t:"info", message}
+      switch(msg.t){
+        case "hello":
+          youId = msg.youId ?? youId;
+          hostId = msg.hostId ?? hostId;
+          syncHostUI();
+          renderPlayers();
+          break;
+
+        case "state":
+          if(typeof msg.phase === "string") phase = msg.phase;
+          if(Array.isArray(msg.players)) players = msg.players;
+          if(msg.youId != null) youId = msg.youId;
+          if(msg.hostId != null) hostId = msg.hostId;
+          if(msg.youReady != null) setMyReady(!!msg.youReady);
+
+          syncHostUI();
+          renderPlayers();
+
+          if(msg.info) setPhase(phase, String(msg.info));
+          else setPhase(phase, phase === "LOBBY" ? "Passe Prêt. L’hôte démarre quand tous sont prêts." : "");
+
+          // Action button context (minimal)
+          if(phase === "LOBBY"){
+            btnAction.disabled = true;
+            btnAction.textContent = "Action";
+          } else {
+            btnAction.disabled = false;
+            btnAction.textContent = (phase.includes("VOTE") ? "Voter" : "Action");
+          }
+          break;
+
+        case "chat":
+          log(`[${msg.from ?? "?"}] ${msg.text ?? ""}`, "sys");
+          break;
+
+        case "role":
+          log(`(Privé) Ton rôle : ${msg.role}`, "ok");
+          break;
+
+        case "error":
+          log(`Erreur: ${msg.message ?? "?"}`, "err");
+          break;
+
+        case "info":
+          log(String(msg.message ?? ""), "sys");
+          break;
+
+        default:
+          // inconnu -> log
+          log(`MSG ${msg.t}: ${JSON.stringify(msg)}`, "sys");
+          break;
+      }
     };
   }
 
   function disconnect(){
-    if (!ws) return;
-    try { ws.close(); } catch(e) {}
+    if(ws){
+      try{ ws.close(); } catch {}
+    }
   }
 
-  // Boutons
-  btnConnect.onclick = connect;
-  btnDisconnect.onclick = disconnect;
+  // ---------------------------
+  // Actions
+  // ---------------------------
+  function toggleReady(){
+    if(!connected) return;
+    // standard: {t:"ready", value:true/false}
+    const next = !myReady;
+    setMyReady(next);
+    send({ t:"ready", value: next });
+  }
 
-  btnQuit.onclick = () => {
-    if (ws && ws.readyState === 1) disconnect();
-    window.location.href = "index.html";
-  };
+  function startGame(){
+    if(!connected || !isHost) return;
+    send({ t:"start" });
+    log("Demande de démarrage envoyée.", "sys");
+    closeMenu();
+  }
 
-  btnReady.onclick = () => {
-    if (!lobby || myId == null) return;
-    const me = lobby.players.find(x => x.id === myId);
-    const next = !(me && me.ready);
-    send({ t:"ready", ready: next });
-  };
+  function doAction(){
+    // Ici : bouton “Action” générique.
+    // Le vrai vote/action (UI choix cible) on le fera dans le bloc suivant,
+    // après que tu confirmes le protocole exact renvoyé par ton serveur.
+    if(!connected) return;
+    send({ t:"action_click" });
+    log("Action envoyée (placeholder).", "sys");
+  }
 
-  btnStart.onclick = () => send({ t:"start" });
-  btnBackLobby.onclick = () => send({ t:"backToLobby" });
+  function applyHostSettings(){
+    if(!connected || !isHost) return;
 
-  btnApplySettings.onclick = () => {
-    if (!lobby || !isHost || lobby.phase !== "LOBBY" || !lobby.allReady) return;
-    send({
-      t: "setSettings",
-      wolvesCount: parseInt(setWolves.value, 10),
-      hunterEnabled: (setHunter.value === "1"),
-      revealS: parseInt(setReveal.value, 10),
-      nightS: parseInt(setNight.value, 10),
-      talkS: parseInt(setTalk.value, 10),
-      voteS: parseInt(setVote.value, 10),
-      hunterS: parseInt(setHunterTime.value, 10),
+    const wolves = clampInt(optWolves.value, 1, 4, 1);
+    const hunter = optHunter.value === "1";
+
+    // timers: format "reveal=12 night=20 talk=25 vote=20"
+    const timers = parseKeyVals(optTimers.value);
+
+    send({ t:"settings", wolves, hunter, timers });
+    log("Paramètres (hôte) envoyés.", "sys");
+  }
+
+  function clampInt(v, min, max, def){
+    const n = parseInt(v, 10);
+    if(Number.isNaN(n)) return def;
+    return Math.max(min, Math.min(max, n));
+  }
+
+  function parseKeyVals(s){
+    const out = {};
+    const parts = String(s||"").trim().split(/\s+/).filter(Boolean);
+    for(const p of parts){
+      const [k,v] = p.split("=");
+      if(!k || v == null) continue;
+      const n = parseInt(v, 10);
+      out[k] = Number.isNaN(n) ? v : n;
+    }
+    return out;
+  }
+
+  // ---------------------------
+  // Misc
+  // ---------------------------
+  function copyInviteLink(){
+    // même page = plus simple
+    const url = location.href;
+    navigator.clipboard?.writeText(url).then(()=>{
+      log("Lien copié. Envoie-le à tes amis.", "ok");
+    }).catch(()=>{
+      log("Copie manuelle: " + url, "sys");
     });
-  };
+  }
 
-  btnDefaults.onclick = () => {
-    setWolves.value = "1";
-    setHunter.value = "1";
-    setReveal.value = "12";
-    setNight.value = "20";
-    setTalk.value = "22";
-    setVote.value = "20";
-    setHunterTime.value = "15";
-  };
+  function goHome(){
+    // Option: si connecté, on déconnecte proprement.
+    if(connected){
+      try{ send({t:"leave"}) } catch {}
+      try{ ws.close() } catch {}
+    }
+    location.href = HOME_URL;
+  }
 
-  btnClearLog.onclick = () => { logEl.textContent = ""; };
+  function editWS(){
+    const next = prompt("URL WebSocket (wss://...)", wsUrl);
+    if(!next) return;
+    wsUrl = next.trim();
+    localStorage.setItem("lg_ws_url", wsUrl);
+    wsShown.textContent = wsUrl;
+    log("WS changé. Reconnecte-toi.", "sys");
+  }
 
-  window.addEventListener("beforeunload", () => {
-    try { if (ws) ws.close(); } catch(e) {}
+  // ---------------------------
+  // Wire events
+  // ---------------------------
+  btnMenu.addEventListener("click", openMenu);
+  btnCloseMenu.addEventListener("click", closeMenu);
+  overlay.addEventListener("click", closeMenu);
+
+  btnEditWS.addEventListener("click", editWS);
+
+  btnConnect.addEventListener("click", connect);
+  btnDisconnect.addEventListener("click", disconnect);
+
+  btnReady.addEventListener("click", toggleReady);
+  btnReadyMenu.addEventListener("click", toggleReady);
+
+  btnStart.addEventListener("click", startGame);
+  btnStartMenu.addEventListener("click", startGame);
+
+  btnAction.addEventListener("click", doAction);
+
+  btnHome.addEventListener("click", goHome);
+  btnQuitToHome.addEventListener("click", goHome);
+
+  btnClearLog.addEventListener("click", clearLog);
+  btnSend.addEventListener("click", () => {
+    const t = (chatInput.value||"").trim();
+    if(!t) return;
+    chatInput.value = "";
+    send({ t:"chat", text: t });
+  });
+  chatInput.addEventListener("keydown", (e) => {
+    if(e.key === "Enter"){
+      e.preventDefault();
+      btnSend.click();
+    }
   });
 
-  setConn(false, "Déconnecté");
-  resetLocalState();
-  renderTop();
+  btnCopyLink.addEventListener("click", copyInviteLink);
+  btnApplySettings.addEventListener("click", applyHostSettings);
+
+  // Esc ferme le menu
+  window.addEventListener("keydown", (e) => {
+    if(e.key === "Escape"){
+      if(drawer.classList.contains("open")) closeMenu();
+      else openMenu();
+    }
+  });
+
+  // Init
+  wsShown.textContent = wsUrl;
+  setStatus(false, "Déconnecté");
+  setPhase("—", "Connecte-toi via le menu (☰).");
   renderPlayers();
-  renderActions();
+  syncHostUI();
+
+  const savedName = localStorage.getItem("lg_name");
+  if(savedName) nameInput.value = savedName;
+
 })();
 </script>
+
 </body>
 </html>
