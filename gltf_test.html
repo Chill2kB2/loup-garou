@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Test GLB (Fox)</title>
+  <title>Test GLB (Debug)</title>
   <link rel="icon" href="data:," />
   <style>
     html,body{margin:0;height:100%;overflow:hidden;background:#07090d;font-family:system-ui,Segoe UI,Arial}
@@ -14,21 +14,25 @@
       background:rgba(0,0,0,.45);
       color:#eaeef7;font-weight:850;font-size:12px;
       backdrop-filter:blur(10px);
+      min-width:280px;
     }
-    #hud .mut{color:rgba(234,238,247,.72);display:block;margin-top:6px;white-space:pre-wrap}
+    #hud .mut{color:rgba(234,238,247,.72);display:block;margin-top:6px;white-space:pre-wrap;line-height:1.3}
   </style>
 </head>
 <body>
   <div id="hud">
-    Test GLB
-    <span id="t" class="mut">Chargement…</span>
+    Test GLB (debug)
+    <span id="t" class="mut">Démarrage…</span>
   </div>
 
   <script src="three.min.js"></script>
   <script src="GLTFLoader.js"></script>
-
   <script>
     const t = document.getElementById("t");
+    const lines = [];
+    function setLine(i, s){ lines[i] = s; t.textContent = lines.filter(Boolean).join("\n"); }
+
+    setLine(0, "Three: " + (window.THREE ? ("OK r" + THREE.REVISION) : "ABSENT"));
 
     const renderer = new THREE.WebGLRenderer({antialias:true});
     renderer.setSize(innerWidth, innerHeight);
@@ -37,7 +41,6 @@
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     document.body.appendChild(renderer.domElement);
 
-    // r146: sRGB output
     if ("outputEncoding" in renderer && THREE.sRGBEncoding) renderer.outputEncoding = THREE.sRGBEncoding;
 
     const scene = new THREE.Scene();
@@ -47,16 +50,13 @@
     camera.position.set(0, 2.0, 6.0);
     camera.lookAt(0, 1.0, 0);
 
-    // Lights
-    scene.add(new THREE.HemisphereLight(0xbfd7ff, 0x0b0d12, 0.9));
-
+    scene.add(new THREE.HemisphereLight(0xbfd7ff, 0x0b0d12, 0.95));
     const sun = new THREE.DirectionalLight(0xffffff, 1.2);
     sun.position.set(10, 18, 10);
     sun.castShadow = true;
     sun.shadow.mapSize.set(2048,2048);
     scene.add(sun);
 
-    // Ground
     const ground = new THREE.Mesh(
       new THREE.PlaneGeometry(80,80),
       new THREE.MeshStandardMaterial({color:0x3a4452, roughness:0.95})
@@ -65,73 +65,87 @@
     ground.receiveShadow = true;
     scene.add(ground);
 
+    // Aides visuelles (tu dois voir ça quoi qu'il arrive)
+    scene.add(new THREE.AxesHelper(2));
+    const cube = new THREE.Mesh(
+      new THREE.BoxGeometry(0.4,0.4,0.4),
+      new THREE.MeshStandardMaterial({color:0x7c5cff, roughness:0.4})
+    );
+    cube.position.set(0,0.2,0);
+    cube.castShadow = true;
+    scene.add(cube);
+
     function applyShadows(root){
+      let meshes = 0;
       root.traverse(o=>{
         if(o && o.isMesh){
+          meshes++;
           o.castShadow = true;
           o.receiveShadow = true;
         }
       });
+      return meshes;
     }
 
     let mixer = null;
-    let modelRoot = null;
-
     const loader = new THREE.GLTFLoader();
+    setLine(1, "Chargement: assets/models/test/Fox.glb …");
+
     loader.load(
       "assets/models/test/Fox.glb",
       (gltf) => {
-        modelRoot = gltf.scene;
-        applyShadows(modelRoot);
-        scene.add(modelRoot);
+        const model = gltf.scene;
+        const meshCount = applyShadows(model);
+        scene.add(model);
 
-        // FRAME CAMERA AUTOMATIQUE
-        const box = new THREE.Box3().setFromObject(modelRoot);
+        // bbox
+        const box = new THREE.Box3().setFromObject(model);
         const size = new THREE.Vector3();
         const center = new THREE.Vector3();
         box.getSize(size);
         box.getCenter(center);
 
-        // recentrer modèle
-        modelRoot.position.sub(center);
-
-        // rescale pour ~1.6m de haut
+        // recentrer + scale
+        model.position.sub(center);
         const h = size.y || 1;
         const s = 1.6 / h;
-        modelRoot.scale.setScalar(s);
+        model.scale.setScalar(s);
 
-        // remettre au sol (y >= 0)
-        const box2 = new THREE.Box3().setFromObject(modelRoot);
-        const minY = box2.min.y;
-        modelRoot.position.y -= minY;
+        // poser au sol
+        const box2 = new THREE.Box3().setFromObject(model);
+        model.position.y -= box2.min.y;
 
-        // recalcul après scale/position
-        const box3 = new THREE.Box3().setFromObject(modelRoot);
+        // sphere
+        const box3 = new THREE.Box3().setFromObject(model);
         const sphere = new THREE.Sphere();
         box3.getBoundingSphere(sphere);
 
         const r = sphere.radius || 1;
         const dist = r * 2.2;
-
         camera.position.set(sphere.center.x + dist, sphere.center.y + r*0.9, sphere.center.z + dist);
         camera.lookAt(sphere.center);
 
-        // Anim si dispo
-        if (gltf.animations && gltf.animations.length){
-          mixer = new THREE.AnimationMixer(modelRoot);
-          mixer.clipAction(gltf.animations[0]).play();
-        }
+        setLine(1, "GLB: OK ✅");
+        setLine(2, "Meshes: " + meshCount);
+        setLine(3, "BBox size: " + size.x.toFixed(2) + ", " + size.y.toFixed(2) + ", " + size.z.toFixed(2));
+        setLine(4, "Sphere r: " + r.toFixed(2));
 
-        t.textContent = "OK: Fox chargé ✅";
+        if (gltf.animations && gltf.animations.length){
+          mixer = new THREE.AnimationMixer(model);
+          mixer.clipAction(gltf.animations[0]).play();
+          setLine(5, "Anim: OUI (" + gltf.animations.length + ")");
+        } else {
+          setLine(5, "Anim: non");
+        }
       },
       (xhr) => {
         if (xhr && xhr.total) {
           const p = Math.round((xhr.loaded/xhr.total)*100);
-          t.textContent = "Téléchargement Fox.glb… " + p + "%";
+          setLine(1, "Chargement: " + p + "%");
         }
       },
       (err) => {
-        t.textContent = "ERREUR chargement Fox.glb ❌";
+        setLine(1, "GLB: ERREUR ❌ (voir Network/404)");
       }
     );
 
@@ -139,6 +153,8 @@
     function loop(now){
       const dt = Math.min(0.033, (now-last)/1000);
       last = now;
+
+      cube.rotation.y += dt*1.2;
 
       if (mixer) mixer.update(dt);
 
