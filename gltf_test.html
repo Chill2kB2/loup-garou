@@ -1,1 +1,118 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Test GLB</title>
+  <link rel="icon" href="data:," />
+  <style>
+    html,body{margin:0;height:100%;overflow:hidden;background:#07090d;font-family:system-ui,Segoe UI,Arial}
+    #overlay{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;color:#eaeef7;background:rgba(0,0,0,.7)}
+    .card{width:min(560px,92vw);border:1px solid rgba(255,255,255,.14);background:rgba(0,0,0,.55);border-radius:18px;padding:16px}
+    .mut{color:rgba(234,238,247,.72);font-size:13px;line-height:1.35;margin-top:8px;white-space:pre-wrap}
+  </style>
+</head>
+<body>
+  <div id="overlay"><div class="card">
+    <div style="font-weight:900;font-size:16px">Chargement du modèle…</div>
+    <div id="msg" class="mut">Si ça échoue: chemin ou fichier manquant.</div>
+  </div></div>
 
+  <script src="three.min.js"></script>
+  <script src="GLTFLoader.js"></script>
+  <script>
+    const overlay = document.getElementById("overlay");
+    const msg = document.getElementById("msg");
+
+    const renderer = new THREE.WebGLRenderer({antialias:true});
+    renderer.setSize(innerWidth, innerHeight);
+    renderer.setPixelRatio(Math.min(devicePixelRatio||1,2));
+    renderer.shadowMap.enabled = true;
+    document.body.appendChild(renderer.domElement);
+
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x07090d);
+
+    const camera = new THREE.PerspectiveCamera(60, innerWidth/innerHeight, 0.05, 500);
+    camera.position.set(0, 1.6, 3.2);
+
+    scene.add(new THREE.HemisphereLight(0xbfd7ff, 0x0b0d12, 0.8));
+
+    const sun = new THREE.DirectionalLight(0xffffff, 1.0);
+    sun.position.set(6, 10, 4);
+    sun.castShadow = true;
+    sun.shadow.mapSize.set(1024,1024);
+    scene.add(sun);
+
+    const ground = new THREE.Mesh(
+      new THREE.PlaneGeometry(40,40),
+      new THREE.MeshStandardMaterial({color:0x3a4452, roughness:0.95})
+    );
+    ground.rotation.x = -Math.PI/2;
+    ground.receiveShadow = true;
+    scene.add(ground);
+
+    function shadows(root){
+      root.traverse(o=>{
+        if(o && o.isMesh){
+          o.castShadow = true;
+          o.receiveShadow = true;
+        }
+      });
+    }
+
+    const loader = new THREE.GLTFLoader();
+    loader.load(
+      "assets/models/test/Fox.glb",
+      (gltf) => {
+        const model = gltf.scene;
+        shadows(model);
+        scene.add(model);
+
+        const box = new THREE.Box3().setFromObject(model);
+        const size = new THREE.Vector3();
+        const center = new THREE.Vector3();
+        box.getSize(size);
+        box.getCenter(center);
+
+        model.position.sub(center);
+        const maxSize = Math.max(size.x, size.y, size.z) || 1;
+        model.scale.setScalar(1.6 / maxSize);
+
+        overlay.style.display = "none";
+
+        if (gltf.animations && gltf.animations.length){
+          const mixer = new THREE.AnimationMixer(model);
+          mixer.clipAction(gltf.animations[0]).play();
+          model.userData.mixer = mixer;
+        }
+      },
+      undefined,
+      () => {
+        msg.textContent =
+          "Erreur: impossible de charger Fox.glb.\n" +
+          "Vérifie:\n" +
+          "1) assets/models/test/Fox.glb existe\n" +
+          "2) tu es sur http://localhost:8000 (pas file://)\n" +
+          "3) GLTFLoader.js est bien à la racine";
+      }
+    );
+
+    let last = performance.now();
+    function loop(now){
+      const dt = Math.min(0.033, (now-last)/1000);
+      last = now;
+      scene.traverse(o=>{ if(o.userData && o.userData.mixer) o.userData.mixer.update(dt); });
+      renderer.render(scene,camera);
+      requestAnimationFrame(loop);
+    }
+    requestAnimationFrame(loop);
+
+    addEventListener("resize", ()=>{
+      renderer.setSize(innerWidth, innerHeight);
+      camera.aspect = innerWidth/innerHeight;
+      camera.updateProjectionMatrix();
+    });
+  </script>
+</body>
+</html>
