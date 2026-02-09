@@ -269,11 +269,59 @@
       background: linear-gradient(180deg, rgba(255,255,255,.22), rgba(255,255,255,.06));
       border:1px solid rgba(255,255,255,.22);
     }
-  </style>
+  
+    /* Mouse capture (PC) */
+    body.mouse-locked{ cursor:none; }
+    body.mouse-locked *{ cursor:none !important; }
+
+    #crosshair{
+      position:absolute; left:50%; top:50%;
+      width:18px; height:18px; margin-left:-9px; margin-top:-9px;
+      pointer-events:none;
+      opacity:.85;
+      display:none;
+    }
+    body.mouse-locked #crosshair{ display:block; }
+    #crosshair:before, #crosshair:after{
+      content:""; position:absolute; left:50%; top:50%;
+      background:rgba(235,242,255,.85);
+      border-radius:2px;
+      transform:translate(-50%,-50%);
+    }
+    #crosshair:before{ width:16px; height:2px; }
+    #crosshair:after{ width:2px; height:16px; }
+
+    #captureHint{
+      position:absolute; left:50%; bottom:18px; transform:translateX(-50%);
+      padding:10px 14px;
+      border-radius:999px;
+      background:rgba(10,14,22,.55);
+      border:1px solid rgba(255,255,255,.14);
+      color:rgba(235,242,255,.88);
+      font-size:12.5px;
+      letter-spacing:.2px;
+      box-shadow: 0 10px 40px rgba(0,0,0,.45);
+      pointer-events:none;
+      opacity:0;
+      transition: opacity .18s ease, transform .18s ease;
+      white-space:nowrap;
+    }
+    #captureHint.show{
+      opacity:1;
+      transform:translateX(-50%) translateY(0);
+    }
+    @media (pointer:coarse){
+      #captureHint{ display:none !important; }
+    }
+
+</style>
 </head>
 
 <body>
   <div id="hud" class="hud">
+    <div id="crosshair" aria-hidden="true"></div>
+    <div id="captureHint">Clique ou appuie sur ZQSD pour capturer la souris — Échap pour libérer</div>
+
     <div class="topbar">
       <span class="dot"></span>
       <span class="pill">Hub 3D</span>
@@ -417,6 +465,14 @@
                   <select id="ctlInvertY">
                     <option value="off">OFF</option>
                     <option value="on">ON</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label>Mode souris (PC)</label>
+                  <select id="ctlMouseMode">
+                    <option value="lock">Classique (curseur verrouillé)</option>
+                    <option value="free">Libre (curseur visible)</option>
                   </select>
                 </div>
               </div>
@@ -572,7 +628,7 @@
     const DEFAULTS = {
       name: "Joueur",
       gfx: { quality:"auto", shadows:"on", fov: 66, scale: 1.0 },
-      controls: { sens: 1.0, invertY:"off" },
+      controls: { sens: 1.0, invertY:"off", mouseMode:"lock" },
       audio: { master: 0.9, amb: 0.6, sfx: 0.8, voice: 0.8 },
       gameplay: { camDist: 3.6, camHeight: 1.65, sprintMode:"hold", joyVisible:"on" },
       keys: {
@@ -781,6 +837,17 @@
       if(e.code === (SET.keys.toggleJoy?.[0] || "KeyJ") || e.code === (SET.keys.toggleJoy?.[1] || "")){
         toggleJoysticks();
       }
+      // Auto-capture souris (PC) en mode classique: un appui sur ZQSD lance la capture sans clic
+      if(!isPaused() && isPC() && (SET.controls.mouseMode === "lock") && !camState.pointerLocked){
+        const typing = (e.target && (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA" || e.target.isContentEditable));
+        if(!typing){
+          const autoKeys = new Set(["KeyZ","KeyQ","KeyS","KeyD","ArrowUp","ArrowDown","ArrowLeft","ArrowRight"]);
+          if(autoKeys.has(e.code)){
+            setPointerLock(true);
+          }
+        }
+      }
+
     });
 
     window.addEventListener("keyup", (e)=>{
@@ -1327,7 +1394,11 @@
       camState.pitch = clamp(camState.pitch, -1.15, 0.10);
     }
 
-    // PC: pas besoin de cliquer. La caméra suit la souris tant qu’elle est sur le canvas
+    // PC: Mode 'lock' (classique) = curseur capturé via PointerLock.
+    // Le navigateur impose une interaction utilisateur (clic/touche) pour activer la capture.
+    // Ici: un clic sur le canvas OU un appui sur ZQSD capturent la souris.
+    // Mode 'free' = rotation sans capture, curseur visible.
+    
     // (si tu passes sur un bouton UI, le canvas “perd” le focus => pas de rotation)
     renderer.domElement.addEventListener("mouseenter", ()=>{
       mouseOnCanvas = true;
@@ -1336,6 +1407,15 @@
     renderer.domElement.addEventListener("mouseleave", ()=>{
       mouseOnCanvas = false;
       lastX = null; lastY = null;
+    });
+
+    // Capture souris (mode classique) sur clic canvas
+    renderer.domElement.addEventListener("pointerdown", (e)=>{
+      if(e.button !== 0) return;
+      if(isPaused()) return;
+      if(SET.controls.mouseMode !== "lock") return;
+      if(camState.pointerLocked) return;
+      setPointerLock(true);
     });
 
     window.addEventListener("mousemove", (e)=>{
@@ -1347,7 +1427,8 @@
         return;
       }
 
-      // Sans pointerlock: rotation libre sans clic, uniquement au-dessus du canvas
+      // Sans pointerlock: rotation libre (si mode "free"), uniquement au-dessus du canvas
+      if(SET.controls.mouseMode !== "free") return;
       if(!mouseOnCanvas) return;
 
       if(lastX === null){
@@ -1369,7 +1450,15 @@ function setPointerLock(on){
     }
     document.addEventListener("pointerlockchange", ()=>{
       camState.pointerLocked = (document.pointerLockElement === renderer.domElement);
-      toast(camState.pointerLocked ? "Mode souris: ON" : "Mode souris: OFF");
+      document.body.classList.toggle("mouse-locked", camState.pointerLocked);
+      refreshCaptureHint();
+      toast(camState.pointerLocked ? "Souris verrouillée" : "Souris libre");
+    });
+    document.addEventListener("pointerlockerror", ()=>{
+      camState.pointerLocked = false;
+      document.body.classList.remove("mouse-locked");
+      refreshCaptureHint();
+      toast("Capture souris refusée (navigateur). Clique dans le jeu puis réessaie.");
     });
 
     /***********************
@@ -1479,12 +1568,22 @@ function setPointerLock(on){
       }else{
         // rien
       }
+      refreshCaptureHint();
+    }
+
+    function resumeGame(){
+      togglePause(false);
+      // Re-capture souris si mode classique
+      if(SET.controls.mouseMode === "lock"){
+        // requestPointerLock doit rester dans le handler de clic => ici c’est OK
+        setPointerLock(true);
+      }
     }
 
     $("#btnPause").addEventListener("click", ()=>togglePause(true));
-    $("#btnResume").addEventListener("click", ()=>togglePause(false));
-    $("#btnResumeSide").addEventListener("click", ()=>togglePause(false));
-    $("#btnStay").addEventListener("click", ()=>togglePause(false));
+    $("#btnResume").addEventListener("click", resumeGame);
+    $("#btnResumeSide").addEventListener("click", resumeGame);
+    $("#btnStay").addEventListener("click", resumeGame);
     overlay.addEventListener("click", (e)=>{
       // click en dehors du panel = rien (évite fermeture accidentelle sur mobile)
       if(e.target === overlay) { /* no-op */ }
@@ -1530,8 +1629,13 @@ function setPointerLock(on){
 
     // pointer lock toggle button
     $("#btnTogglePointer").addEventListener("click", ()=>{
-      if(isPaused()) return;
-      setPointerLock(!camState.pointerLocked);
+      if(camState.pointerLocked){
+        setPointerLock(false);
+        return;
+      }
+      // fermer le menu puis capturer (gesture du clic conservée)
+      togglePause(false);
+      setPointerLock(true);
     });
 
     /***********************
@@ -1581,12 +1685,27 @@ function setPointerLock(on){
       }
     }
     applyGfx();
+    refreshCaptureHint();
 
     // Controls
     $("#ctlSense").value = SET.controls.sens;
     $("#ctlInvertY").value = SET.controls.invertY;
+    if($("#ctlMouseMode")) $("#ctlMouseMode").value = SET.controls.mouseMode || "lock";
+
     $("#ctlSense").addEventListener("input", (e)=>{ SET.controls.sens = +e.target.value; saveSettings(); });
     $("#ctlInvertY").addEventListener("change", (e)=>{ SET.controls.invertY = e.target.value; saveSettings(); });
+
+    if($("#ctlMouseMode")){
+      $("#ctlMouseMode").addEventListener("change", (e)=>{
+        SET.controls.mouseMode = e.target.value;
+        saveSettings();
+        // En mode libre: on libère la souris et on autorise la rotation sans capture
+        if(SET.controls.mouseMode === "free"){
+          document.exitPointerLock?.();
+        }
+        refreshCaptureHint();
+      });
+    }
 
     // Audio
     $("#audMaster").value = SET.audio.master;
