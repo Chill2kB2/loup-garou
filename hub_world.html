@@ -3,315 +3,173 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
-  <meta name="theme-color" content="#07090d" />
-  <title>Salon (Hub 3D)</title>
+  <title>Hub 3D — Loup-Garou</title>
   <link rel="icon" href="data:," />
-
   <style>
-    html,body{height:100%;margin:0;background:#07090d;font-family:system-ui,Segoe UI,Arial;overflow:hidden}
-    #app{position:fixed;inset:0}
-    canvas{display:block;position:absolute;inset:0;width:100%;height:100%}
+    html,body{margin:0;height:100%;overflow:hidden;background:#07090d;font-family:system-ui,Segoe UI,Arial}
+    canvas{display:block}
 
-    /* HUD */
-    .hud-top{
-      position:fixed;left:12px;top:12px;right:12px;
-      display:flex;align-items:center;justify-content:space-between;
-      z-index:20;pointer-events:none;
+    /* HUD minimal */
+    #topbar{
+      position:fixed;left:12px;right:12px;top:12px;z-index:20;
+      display:flex;align-items:center;justify-content:space-between;gap:10px;
+      pointer-events:none;
     }
     .pill{
-      pointer-events:none;
+      pointer-events:auto;
       display:inline-flex;align-items:center;gap:10px;
-      padding:10px 12px;border-radius:16px;
+      padding:10px 12px;border-radius:14px;
       border:1px solid rgba(255,255,255,.14);
       background:rgba(0,0,0,.45);
-      color:#eaeef7;backdrop-filter:blur(10px);
-      box-shadow:0 14px 40px rgba(0,0,0,.45);
-      font-weight:900;font-size:12px;
+      color:#eaeef7;font-weight:850;font-size:12px;
+      backdrop-filter:blur(10px);
+      box-shadow:0 18px 60px rgba(0,0,0,.45);
     }
-    .hint{color:rgba(234,238,247,.72);font-weight:800}
-    .hud-actions{
-      pointer-events:auto;
-      display:flex;gap:10px;align-items:center;
-    }
+    .pill .mut{color:rgba(234,238,247,.72);font-weight:700}
     .btn{
       pointer-events:auto;
-      cursor:pointer;
-      display:inline-flex;align-items:center;gap:8px;
-      padding:10px 12px;border-radius:16px;
       border:1px solid rgba(255,255,255,.14);
       background:rgba(255,255,255,.06);
-      color:#eaeef7;font-weight:950;
-      user-select:none;
+      color:#eaeef7;
+      padding:10px 12px;border-radius:14px;
+      font-weight:900;
+      cursor:pointer;
     }
     .btn:active{transform:translateY(1px)}
-    .btn.primary{border-color:rgba(124,92,255,.55);background:rgba(124,92,255,.16)}
-    .btn.secondary{border-color:rgba(77,214,255,.35);background:rgba(77,214,255,.10)}
+    .btn.primary{
+      background:linear-gradient(135deg, rgba(124,92,255,.35), rgba(0,212,255,.12));
+      border-color:rgba(124,92,255,.45);
+    }
 
-    /* Pause overlay */
-    .overlay{
-      position:fixed;inset:0;z-index:40;
-      display:none;align-items:center;justify-content:center;
-      background:rgba(0,0,0,.65);
-      backdrop-filter:blur(10px);
-      padding:16px;
+    /* Pause menu */
+    #pauseOverlay{
+      position:fixed;inset:0;z-index:50;
+      display:none;
+      align-items:center;justify-content:center;
+      background:rgba(0,0,0,.55);
+      backdrop-filter:blur(8px);
     }
-    .panel{
-      width:min(980px, calc(100vw - 28px));
-      max-height:min(760px, calc(100vh - 28px));
-      overflow:auto;
+    #pauseCard{
+      width:min(640px,92vw);
       border-radius:22px;
-      border:1px solid rgba(255,255,255,.16);
-      background:rgba(0,0,0,.60);
-      box-shadow:0 28px 90px rgba(0,0,0,.60);
+      border:1px solid rgba(255,255,255,.14);
+      background:rgba(8,10,14,.82);
+      box-shadow:0 30px 120px rgba(0,0,0,.6);
+      padding:16px;
       color:#eaeef7;
-      padding:14px;
     }
-    .panel-top{
-      display:flex;align-items:center;justify-content:space-between;gap:10px;
-      position:sticky;top:0;background:rgba(0,0,0,.65);
-      border-bottom:1px solid rgba(255,255,255,.10);
-      padding:10px;border-radius:18px;
-      backdrop-filter:blur(10px);
-      z-index:2;
-    }
-    .tabs{display:flex;gap:8px;flex-wrap:wrap}
-    .tab{
-      cursor:pointer;
-      padding:10px 12px;border-radius:16px;
-      border:1px solid rgba(255,255,255,.12);
-      background:rgba(255,255,255,.06);
-      color:#eaeef7;font-weight:950;
-      user-select:none;
-    }
-    .tab.active{border-color:rgba(124,92,255,.55);background:rgba(124,92,255,.16)}
-    .grid{
-      display:grid;
-      grid-template-columns: 1fr 1fr;
-      gap:12px;
-      margin-top:12px;
-    }
-    @media (max-width: 860px){
-      .grid{grid-template-columns:1fr}
-    }
-    .card{
-      border:1px solid rgba(255,255,255,.12);
-      background:rgba(255,255,255,.05);
-      border-radius:18px;
-      padding:12px;
-    }
-    .card h3{margin:0 0 8px;font-size:14px;font-weight:950}
-    .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-    label{font-size:12px;color:rgba(234,238,247,.75);font-weight:900}
-    input,select{
-      padding:10px 10px;border-radius:14px;
+    #pauseCard h2{margin:0 0 8px 0;font-size:18px}
+    #pauseCard p{margin:0 0 14px 0;color:rgba(234,238,247,.72);line-height:1.35}
+    .row{display:flex;flex-wrap:wrap;gap:10px}
+    .spacer{height:10px}
+    .k{
+      display:inline-flex;align-items:center;gap:6px;
+      padding:6px 10px;border-radius:12px;
       border:1px solid rgba(255,255,255,.14);
       background:rgba(255,255,255,.06);
-      color:#eaeef7;outline:none;
+      font-weight:850;font-size:12px;
     }
-    input[type="range"]{padding:0;height:34px}
-    .small{font-size:12px;color:rgba(234,238,247,.72);line-height:1.35}
 
-    /* Mobile controls */
-    .mobileLayer{
-      position:fixed;inset:0;z-index:25;
-      pointer-events:none;
+    /* Mobile joystick */
+    #joyWrap{
+      position:fixed;left:14px;bottom:14px;z-index:30;
+      width:150px;height:150px;
+      display:none;
+      touch-action:none;
+      user-select:none;
     }
-    .joy{
-      pointer-events:auto;
-      position:absolute;bottom:18px;
-      width:140px;height:140px;border-radius:999px;
+    #joyBase{
+      position:absolute;inset:0;
+      border-radius:999px;
       border:1px solid rgba(255,255,255,.14);
       background:rgba(0,0,0,.35);
       backdrop-filter:blur(10px);
-      box-shadow:0 14px 40px rgba(0,0,0,.45);
-      touch-action:none;
-      display:none;
     }
-    .joy.left{left:18px}
-    .joy.right{right:18px}
-    .joy .knob{
+    #joyKnob{
       position:absolute;left:50%;top:50%;
-      width:56px;height:56px;border-radius:999px;
-      transform:translate(-50%,-50%);
+      width:64px;height:64px;margin-left:-32px;margin-top:-32px;
+      border-radius:999px;
       border:1px solid rgba(255,255,255,.18);
       background:rgba(255,255,255,.10);
+      box-shadow:0 18px 50px rgba(0,0,0,.45);
+      transform:translate(0,0);
     }
-    .mobileBtns{
-      pointer-events:auto;
-      position:absolute;right:18px;bottom:170px;
-      display:none;flex-direction:column;gap:10px;
+
+    /* Right side action buttons (mobile) */
+    #actWrap{
+      position:fixed;right:14px;bottom:14px;z-index:30;
+      display:none;
+      flex-direction:column;
+      gap:10px;
+      touch-action:none;
     }
-    .mBtn{
-      width:56px;height:56px;border-radius:18px;
+    .actBtn{
+      width:64px;height:64px;border-radius:18px;
       border:1px solid rgba(255,255,255,.14);
-      background:rgba(0,0,0,.40);
+      background:rgba(0,0,0,.35);
       color:#eaeef7;font-weight:950;
+      backdrop-filter:blur(10px);
       display:flex;align-items:center;justify-content:center;
       user-select:none;
-      touch-action:none;
-      backdrop-filter:blur(10px);
     }
-    .mBtn:active{transform:translateY(1px)}
+    .actBtn:active{transform:translateY(1px)}
+
+    /* Small helper */
+    #hint{
+      position:fixed;left:12px;bottom:12px;z-index:20;
+      pointer-events:none;
+      color:rgba(234,238,247,.62);
+      font-weight:750;font-size:12px;
+      text-shadow:0 2px 18px rgba(0,0,0,.6);
+    }
   </style>
 </head>
-
 <body>
-  <div id="app"></div>
 
-  <div class="hud-top">
+  <div id="topbar">
     <div class="pill">
-      Salon (Hub 3D)
-      <span class="hint">ZQSD/Flèches • Shift Sprint • C Accroupi • Espace Saut • Alt Dash • J Joysticks</span>
+      Hub 3D <span class="mut">— avatar + déplacements</span>
     </div>
-
-    <div class="hud-actions">
-      <button class="btn secondary" id="btnHome" title="Retour accueil">← Accueil</button>
-      <button class="btn" id="btnToggleJoy" title="Afficher/Masquer joysticks">🎮</button>
-      <button class="btn primary" id="btnPause" title="Pause (Échap)">⏸️ Pause</button>
+    <div style="display:flex;gap:10px;pointer-events:none">
+      <button id="btnJoy" class="btn" style="pointer-events:auto">Joystick</button>
+      <button id="btnPause" class="btn primary" style="pointer-events:auto">☰</button>
     </div>
   </div>
 
-  <!-- Mobile controls -->
-  <div class="mobileLayer" id="mobileLayer">
-    <div class="joy left" id="joyMove"><div class="knob" id="knobMove"></div></div>
-    <div class="joy right" id="joyLook"><div class="knob" id="knobLook"></div></div>
-
-    <div class="mobileBtns" id="mobileBtns">
-      <div class="mBtn" id="btnJump" title="Saut">⤒</div>
-      <div class="mBtn" id="btnCrouch" title="Accroupi">⬇</div>
-      <div class="mBtn" id="btnSprint" title="Sprint">⚡</div>
-      <div class="mBtn" id="btnDash" title="Dash">➟</div>
-    </div>
-  </div>
-
-  <!-- Pause menu -->
-  <div class="overlay" id="pauseOverlay" aria-hidden="true">
-    <div class="panel">
-      <div class="panel-top">
-        <div style="font-weight:950">Menu pause</div>
-        <div class="row">
-          <button class="btn" id="btnResume">Reprendre</button>
-        </div>
+  <div id="pauseOverlay">
+    <div id="pauseCard">
+      <h2>Pause</h2>
+      <p>Déplacements PC + mobile. Tu peux masquer/afficher le joystick, et reprendre la partie.</p>
+      <div class="row">
+        <span class="k">ZQSD / Flèches</span>
+        <span class="k">Sprint: Shift</span>
+        <span class="k">Saut: Espace</span>
+        <span class="k">Accroupi: Ctrl</span>
+        <span class="k">Pause: Échap</span>
       </div>
-
-      <div class="tabs" style="margin-top:10px">
-        <div class="tab active" data-tab="game">Jeu</div>
-        <div class="tab" data-tab="controls">Contrôles</div>
-        <div class="tab" data-tab="avatar">Avatar</div>
-      </div>
-
-      <div id="tab_game" class="grid">
-        <div class="card">
-          <h3>Jouabilité</h3>
-          <div class="small">
-            Clique dans la scène pour activer la souris (PC).<br>
-            Sur téléphone: joysticks + boutons. Tu peux cacher/afficher avec <b>🎮</b> ou la touche <b>J</b>.
-          </div>
-        </div>
-        <div class="card">
-          <h3>Caméra</h3>
-          <div class="row">
-            <label>Sensibilité</label>
-            <input id="sens" type="range" min="0.2" max="2.5" step="0.05">
-          </div>
-          <div class="row" style="margin-top:10px">
-            <label><input id="invertY" type="checkbox"> Inverser Y</label>
-          </div>
-        </div>
-      </div>
-
-      <div id="tab_controls" class="grid" style="display:none">
-        <div class="card">
-          <h3>Touches (simple)</h3>
-          <div class="small">Tu peux changer Sprint / Accroupi / Dash ici. (ZQSD/Flèches restent.)</div>
-
-          <div class="row" style="margin-top:10px">
-            <label>Sprint</label>
-            <select id="kbSprint">
-              <option value="ShiftLeft">Shift</option>
-              <option value="ControlLeft">Ctrl</option>
-              <option value="AltLeft">Alt</option>
-            </select>
-          </div>
-
-          <div class="row" style="margin-top:10px">
-            <label>Accroupi</label>
-            <select id="kbCrouch">
-              <option value="KeyC">C</option>
-              <option value="ControlLeft">Ctrl</option>
-              <option value="KeyX">X</option>
-            </select>
-          </div>
-
-          <div class="row" style="margin-top:10px">
-            <label>Dash</label>
-            <select id="kbDash">
-              <option value="AltLeft">Alt</option>
-              <option value="KeyE">E</option>
-              <option value="KeyF">F</option>
-            </select>
-          </div>
-
-          <div class="row" style="margin-top:12px">
-            <button class="btn primary" id="btnSaveKeys">Sauvegarder</button>
-          </div>
-        </div>
-
-        <div class="card">
-          <h3>Rappels</h3>
-          <div class="small">
-            Sprint doit être “vraiment significatif” : tu verras un gain net de vitesse + léger effet caméra.<br>
-            Accroupi réduit la taille et la vitesse. Dash fait une courte esquive.
-          </div>
-        </div>
-      </div>
-
-      <div id="tab_avatar" class="grid" style="display:none">
-        <div class="card">
-          <h3>Personnalisation</h3>
-          <div class="row">
-            <label>Cheveux (style)</label>
-            <select id="hairStyle">
-              <option value="short">Court</option>
-              <option value="spiky">Épis</option>
-              <option value="pony">Queue</option>
-            </select>
-          </div>
-
-          <div class="row" style="margin-top:10px">
-            <label>Couleur cheveux</label>
-            <input id="hairColor" type="color" value="#2a1b14">
-          </div>
-
-          <div class="row" style="margin-top:10px">
-            <label>Couleur yeux</label>
-            <input id="eyeColor" type="color" value="#4dd6ff">
-          </div>
-
-          <div class="row" style="margin-top:10px">
-            <label>Taille</label>
-            <input id="sizeScale" type="range" min="0.85" max="1.15" step="0.01">
-          </div>
-
-          <div class="row" style="margin-top:12px">
-            <button class="btn primary" id="btnSaveAvatar">Sauvegarder</button>
-          </div>
-
-          <div class="small" style="margin-top:10px">Sauvegardé localement (persistant).</div>
-        </div>
-
-        <div class="card">
-          <h3>Astuce</h3>
-          <div class="small">
-            On garde un style “jeu web” stable (performant). Plus tard, on pourra remplacer ce perso procédural par un modèle glTF,
-            mais là tu as déjà une vraie base personnalisable.
-          </div>
-        </div>
+      <div class="spacer"></div>
+      <div class="row">
+        <button id="btnResume" class="btn primary">Reprendre</button>
+        <button id="btnToHome" class="btn">Retour accueil</button>
       </div>
     </div>
   </div>
+
+  <div id="joyWrap">
+    <div id="joyBase"></div>
+    <div id="joyKnob"></div>
+  </div>
+
+  <div id="actWrap">
+    <div id="btnJump" class="actBtn">⤴</div>
+    <div id="btnSprint" class="actBtn">🏃</div>
+    <div id="btnCrouch" class="actBtn">⬇</div>
+  </div>
+
+  <div id="hint">Astuce: Échap = pause • Bouton ☰ = pause (mobile)</div>
 
   <script src="three.min.js"></script>
+  <script src="GLTFLoader.js"></script>
   <script src="hub_world.js"></script>
 </body>
 </html>
