@@ -3,174 +3,266 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
+  <meta name="theme-color" content="#07090d" />
   <title>Hub 3D — Loup-Garou</title>
   <link rel="icon" href="data:," />
-  <style>
-    html,body{margin:0;height:100%;overflow:hidden;background:#07090d;font-family:system-ui,Segoe UI,Arial}
-    canvas{display:block}
-
-    #topbar{
-      position:fixed;left:12px;right:12px;top:12px;z-index:20;
-      display:flex;align-items:center;justify-content:space-between;gap:10px;
-      pointer-events:none;
-    }
-    .pill{
-      pointer-events:auto;
-      display:inline-flex;align-items:center;gap:10px;
-      padding:10px 12px;border-radius:14px;
-      border:1px solid rgba(255,255,255,.14);
-      background:rgba(0,0,0,.45);
-      color:#eaeef7;font-weight:850;font-size:12px;
-      backdrop-filter:blur(10px);
-      box-shadow:0 18px 60px rgba(0,0,0,.45);
-    }
-    .mut{color:rgba(234,238,247,.72);font-weight:700}
-    .btn{
-      pointer-events:auto;
-      border:1px solid rgba(255,255,255,.14);
-      background:rgba(255,255,255,.06);
-      color:#eaeef7;
-      padding:10px 12px;border-radius:14px;
-      font-weight:900;
-      cursor:pointer;
-    }
-    .btn:active{transform:translateY(1px)}
-    .btn.primary{
-      background:linear-gradient(135deg, rgba(124,92,255,.35), rgba(0,212,255,.12));
-      border-color:rgba(124,92,255,.45);
-    }
-    select{
-      pointer-events:auto;
-      border:1px solid rgba(255,255,255,.14);
-      background:rgba(0,0,0,.35);
-      color:#eaeef7;
-      padding:10px 12px;border-radius:14px;
-      font-weight:900;
-      outline:none;
-    }
-
-    #pauseOverlay{
-      position:fixed;inset:0;z-index:50;
-      display:none;
-      align-items:center;justify-content:center;
-      background:rgba(0,0,0,.55);
-      backdrop-filter:blur(8px);
-    }
-    #pauseCard{
-      width:min(720px,92vw);
-      border-radius:22px;
-      border:1px solid rgba(255,255,255,.14);
-      background:rgba(8,10,14,.82);
-      box-shadow:0 30px 120px rgba(0,0,0,.6);
-      padding:16px;
-      color:#eaeef7;
-    }
-    #pauseCard h2{margin:0 0 8px 0;font-size:18px}
-    #pauseCard p{margin:0 0 14px 0;color:rgba(234,238,247,.72);line-height:1.35}
-    .row{display:flex;flex-wrap:wrap;gap:10px}
-    .k{
-      display:inline-flex;align-items:center;gap:6px;
-      padding:6px 10px;border-radius:12px;
-      border:1px solid rgba(255,255,255,.14);
-      background:rgba(255,255,255,.06);
-      font-weight:850;font-size:12px;
-    }
-
-    #joyWrap{
-      position:fixed;left:14px;bottom:14px;z-index:30;
-      width:150px;height:150px;
-      display:none;
-      touch-action:none;
-      user-select:none;
-    }
-    #joyBase{
-      position:absolute;inset:0;
-      border-radius:999px;
-      border:1px solid rgba(255,255,255,.14);
-      background:rgba(0,0,0,.35);
-      backdrop-filter:blur(10px);
-    }
-    #joyKnob{
-      position:absolute;left:50%;top:50%;
-      width:64px;height:64px;margin-left:-32px;margin-top:-32px;
-      border-radius:999px;
-      border:1px solid rgba(255,255,255,.18);
-      background:rgba(255,255,255,.10);
-      box-shadow:0 18px 50px rgba(0,0,0,.45);
-      transform:translate(0,0);
-    }
-
-    #actWrap{
-      position:fixed;right:14px;bottom:14px;z-index:30;
-      display:none;
-      flex-direction:column;
-      gap:10px;
-      touch-action:none;
-    }
-    .actBtn{
-      width:64px;height:64px;border-radius:18px;
-      border:1px solid rgba(255,255,255,.14);
-      background:rgba(0,0,0,.35);
-      color:#eaeef7;font-weight:950;
-      backdrop-filter:blur(10px);
-      display:flex;align-items:center;justify-content:center;
-      user-select:none;
-    }
-    .actBtn:active{transform:translateY(1px)}
-  </style>
+  <link rel="stylesheet" href="style.css" />
 </head>
-<body>
+<body class="app app-hub" style="padding:0;">
 
-  <div id="topbar">
+  <!-- HUD -->
+  <div id="hudTop">
     <div class="pill">
-      Hub 3D <span class="mut">— caméra libre + déplacements</span>
+      <div>
+        <div class="title">Hub 3D</div>
+        <div id="hudHint" class="small">Clique / touche l’écran pour contrôler la caméra</div>
+      </div>
     </div>
 
-    <div style="display:flex;gap:10px;align-items:center;pointer-events:none">
-      <select id="skinSelect" title="Choisir un skin" style="pointer-events:auto">
-        <option value="fox">Fox (GLB)</option>
-        <option value="humanoid">Humanoïde (placeholder)</option>
-      </select>
-      <button id="btnJoy" class="btn" style="pointer-events:auto">Joystick</button>
-      <button id="btnPause" class="btn primary" style="pointer-events:auto">☰</button>
+    <div class="hudBtns">
+      <button id="btnJoystick" class="iconBtn" title="Afficher/Masquer joysticks">Joystick</button>
+      <button id="btnPause" class="iconBtn" title="Menu pause">≡</button>
     </div>
   </div>
 
+  <!-- Toast (messages propres, pas console) -->
+  <div id="toast"></div>
+
+  <!-- Touch UI -->
+  <div id="touchUI" class="hidden">
+    <div id="stickMove" class="stick"><div class="knob"></div></div>
+    <div id="stickLook" class="stick"><div class="knob"></div></div>
+    <button id="btnJump">⤴</button>
+  </div>
+
+  <!-- Pause Menu -->
   <div id="pauseOverlay">
-    <div id="pauseCard">
-      <h2>Pause</h2>
-      <p>
-        Caméra: souris/tactile = tourner • molette/pinch = zoom.
-        Déplacements: ZQSD (ou flèches). Sprint = Shift, Saut = Espace, Accroupi = Ctrl.
-      </p>
-      <div class="row">
-        <span class="k">ZQSD / Flèches</span>
-        <span class="k">Caméra: drag</span>
-        <span class="k">Zoom: molette / pinch</span>
-        <span class="k">Sprint: Shift</span>
-        <span class="k">Saut: Espace</span>
-        <span class="k">Accroupi: Ctrl</span>
-        <span class="k">Pause: Échap</span>
+    <div class="pauseModal panel">
+      <div class="pauseHeader">
+        <div>
+          <div class="pauseTitle">Pause</div>
+          <div class="smallNote">Échap / bouton ≡ pour ouvrir/fermer • Le jeu est figé en pause.</div>
+        </div>
+        <button id="btnClosePause" class="closeBtn">Reprendre</button>
       </div>
-      <div style="height:10px"></div>
-      <div class="row">
-        <button id="btnResume" class="btn primary">Reprendre</button>
-        <button id="btnToHome" class="btn">Retour accueil</button>
+
+      <div class="tabBar">
+        <button class="tabBtn active" data-tab="resume">Reprendre</button>
+        <button class="tabBtn" data-tab="options">Options</button>
+        <button class="tabBtn" data-tab="skins">Skins</button>
+        <button class="tabBtn" data-tab="home">Retour accueil</button>
+      </div>
+
+      <div id="tab_resume" class="tabPage">
+        <div class="section">
+          <h3>Reprendre</h3>
+          <div class="row">
+            <button id="btnResume" class="btn btn--primary">Reprendre</button>
+            <button id="btnResetPos" class="btn">Téléporter au spawn</button>
+          </div>
+          <div class="smallNote" style="margin-top:10px;">
+            Astuce : sur PC, la caméra suit ton personnage. Sur mobile, utilise les joysticks (bouton “Joystick”).
+          </div>
+        </div>
+      </div>
+
+      <div id="tab_options" class="tabPage hidden">
+        <div class="section">
+          <h3>Options</h3>
+          <div class="tabBar" style="margin-top:0">
+            <button class="tabBtn active" data-subtab="graphics">Graphiques</button>
+            <button class="tabBtn" data-subtab="controls">Commandes</button>
+            <button class="tabBtn" data-subtab="audio">Audio</button>
+            <button class="tabBtn" data-subtab="gameplay">Jouabilité</button>
+          </div>
+
+          <div id="sub_graphics" class="subPage">
+            <div class="row2">
+              <div class="kv">
+                <div class="k">Qualité</div>
+                <div class="v">
+                  <select id="optQuality" class="select">
+                    <option value="low">Basse</option>
+                    <option value="med">Moyenne</option>
+                    <option value="high" selected>Haute</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="kv">
+                <div class="k">Ombres</div>
+                <div class="v">
+                  <button id="optShadows" class="toggle">ON</button>
+                </div>
+              </div>
+
+              <div class="kv">
+                <div class="k">FOV</div>
+                <div class="v">
+                  <input id="optFov" class="select" type="number" min="45" max="85" step="1" value="60" style="width:92px" />
+                </div>
+              </div>
+
+              <div class="kv">
+                <div class="k">Densité (render)</div>
+                <div class="v">
+                  <select id="optPixelRatio" class="select">
+                    <option value="auto" selected>Auto</option>
+                    <option value="1">1.0</option>
+                    <option value="1.25">1.25</option>
+                    <option value="1.5">1.5</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <div class="smallNote" style="margin-top:10px;">
+              “Auto” adapte la densité selon l’appareil. Si ça lag, passe Qualité = Basse et Ombres = OFF.
+            </div>
+          </div>
+
+          <div id="sub_controls" class="subPage hidden">
+            <div class="row2">
+              <div class="kv">
+                <div class="k">Sensibilité caméra</div>
+                <div class="v">
+                  <input id="optSens" class="select" type="number" min="0.3" max="3" step="0.1" value="1.2" style="width:92px" />
+                </div>
+              </div>
+
+              <div class="kv">
+                <div class="k">Inverser Y</div>
+                <div class="v">
+                  <button id="optInvertY" class="toggle">OFF</button>
+                </div>
+              </div>
+
+              <div class="kv">
+                <div class="k">Remap touches</div>
+                <div class="v">
+                  <button id="btnRebind" class="btn">Configurer</button>
+                </div>
+              </div>
+
+              <div class="kv">
+                <div class="k">Mode souris</div>
+                <div class="v">
+                  <select id="optMouseMode" class="select">
+                    <option value="drag" selected>Cliquer + glisser</option>
+                    <option value="lock">Pointer Lock (clic)</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <div id="rebindPanel" class="section hidden" style="margin-top:12px;">
+              <h3>Remap</h3>
+              <div class="smallNote">Clique sur une action puis appuie sur la touche.</div>
+              <div id="rebindList" class="row2" style="margin-top:10px;"></div>
+              <div class="row" style="margin-top:10px;">
+                <button id="btnResetBinds" class="btn">Réinitialiser</button>
+                <button id="btnCloseRebind" class="btn btn--primary">Terminer</button>
+              </div>
+            </div>
+          </div>
+
+          <div id="sub_audio" class="subPage hidden">
+            <div class="row2">
+              <div class="kv">
+                <div class="k">Volume global</div>
+                <div class="v"><input id="optVolMaster" class="select" type="number" min="0" max="100" step="1" value="70" style="width:92px" /></div>
+              </div>
+              <div class="kv">
+                <div class="k">Ambiance</div>
+                <div class="v"><input id="optVolAmb" class="select" type="number" min="0" max="100" step="1" value="60" style="width:92px" /></div>
+              </div>
+              <div class="kv">
+                <div class="k">Effets</div>
+                <div class="v"><input id="optVolSfx" class="select" type="number" min="0" max="100" step="1" value="80" style="width:92px" /></div>
+              </div>
+              <div class="kv">
+                <div class="k">Voix (plus tard)</div>
+                <div class="v"><button class="toggle" disabled style="opacity:.55">Bientôt</button></div>
+              </div>
+            </div>
+            <div class="smallNote" style="margin-top:10px;">
+              Audio “réel” (sons 3D + voix) on le branchera après. Là on stocke juste tes réglages.
+            </div>
+          </div>
+
+          <div id="sub_gameplay" class="subPage hidden">
+            <div class="row2">
+              <div class="kv">
+                <div class="k">Déplacement relatif caméra</div>
+                <div class="v"><button id="optMoveRel" class="toggle">ON</button></div>
+              </div>
+              <div class="kv">
+                <div class="k">Sprint</div>
+                <div class="v">
+                  <select id="optSprintMode" class="select">
+                    <option value="hold" selected>Maintenir</option>
+                    <option value="toggle">Toggle</option>
+                  </select>
+                </div>
+              </div>
+              <div class="kv">
+                <div class="k">Dash (esquive)</div>
+                <div class="v"><button id="optDash" class="toggle">ON</button></div>
+              </div>
+              <div class="kv">
+                <div class="k">Afficher joysticks sur mobile</div>
+                <div class="v"><button id="optAutoJoy" class="toggle">ON</button></div>
+              </div>
+            </div>
+
+            <div class="smallNote" style="margin-top:10px;">
+              Dash = petit boost bref (cooldown). Sprint est vraiment plus rapide.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="tab_skins" class="tabPage hidden">
+        <div class="section">
+          <h3>Skins</h3>
+          <div class="smallNote">Choisis ton avatar. (Pour l’instant : Humanoïde + Fox.)</div>
+          <div id="skinsGrid" class="row2" style="margin-top:10px;"></div>
+
+          <div class="row2" style="margin-top:12px;">
+            <div class="kv">
+              <div class="k">Taille (raisonnable)</div>
+              <div class="v"><input id="optScale" class="select" type="number" min="0.8" max="1.2" step="0.05" value="1.0" style="width:92px" /></div>
+            </div>
+            <div class="kv">
+              <div class="k">Couleur tenue (placeholder)</div>
+              <div class="v">
+                <select id="optColor" class="select">
+                  <option value="#7c5cff" selected>Violet</option>
+                  <option value="#46ddff">Cyan</option>
+                  <option value="#43d17a">Vert</option>
+                  <option value="#ffb020">Orange</option>
+                  <option value="#ff5c5c">Rouge</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="tab_home" class="tabPage hidden">
+        <div class="section">
+          <h3>Retour accueil</h3>
+          <div class="smallNote">Tu quittes le Hub et reviens à l’accueil.</div>
+          <div class="row" style="margin-top:10px;">
+            <button id="btnGoHome" class="btn btn--primary">Retour accueil</button>
+            <button id="btnStay" class="btn">Rester</button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
 
-  <div id="joyWrap">
-    <div id="joyBase"></div>
-    <div id="joyKnob"></div>
-  </div>
-
-  <div id="actWrap">
-    <div id="btnJump" class="actBtn">⤴</div>
-    <div id="btnSprint" class="actBtn">🏃</div>
-    <div id="btnCrouch" class="actBtn">⬇</div>
-  </div>
-
+  <!-- Scripts -->
   <script src="three.min.js"></script>
   <script src="GLTFLoader.js"></script>
   <script src="hub_world.js"></script>
