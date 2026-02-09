@@ -338,7 +338,7 @@
                 <div>
                   <label>Astuce</label>
                   <div class="tiny">
-                    Déplacement relatif caméra (ZQSD). Caméra: souris (glisser) / joystick droit.
+                    Déplacement relatif caméra (ZQSD). Caméra: souris (libre) / joystick droit.
                     Sprint = Shift (rapide), Accroupi = Ctrl, Saut = Espace, Dash = Alt.
                   </div>
                 </div>
@@ -1232,8 +1232,9 @@
 
       // direction relative camera yaw (projection sol)
       const yaw = camState.yaw;
-      const forward = new THREE.Vector3(Math.sin(yaw), 0, Math.cos(yaw));
-      const right   = new THREE.Vector3(Math.sin(yaw + Math.PI/2), 0, Math.cos(yaw + Math.PI/2));
+      // vecteurs basés sur la direction de la caméra (caméra regarde vers -offset)
+      const forward = new THREE.Vector3(-Math.sin(yaw), 0, -Math.cos(yaw));
+      const right   = new THREE.Vector3( Math.cos(yaw), 0, -Math.sin(yaw));
       const wishDir = new THREE.Vector3()
         .addScaledVector(right, x)
         .addScaledVector(forward, z);
@@ -1313,39 +1314,53 @@
     /***********************
      * Mouse + Touch camera
      ************************/
-    let dragging = false;
-    let lastX=0, lastY=0;
+    let lastX = null, lastY = null;
+    let mouseOnCanvas = false;
 
     function lookDelta(dx, dy){
       const sens = SET.controls.sens;
       const inv = (SET.controls.invertY === "on") ? -1 : 1;
 
-      camState.yaw   -= dx * 0.0023 * sens;
+      // souris droite = caméra vers la droite (sens “naturel”)
+      camState.yaw   += dx * 0.0023 * sens;
       camState.pitch -= dy * 0.0020 * sens * inv;
       camState.pitch = clamp(camState.pitch, -1.15, 0.10);
     }
 
-    renderer.domElement.addEventListener("mousedown", (e)=>{
-      if(isPaused()) return;
-      dragging = true;
-      lastX = e.clientX; lastY = e.clientY;
+    // PC: pas besoin de cliquer. La caméra suit la souris tant qu’elle est sur le canvas
+    // (si tu passes sur un bouton UI, le canvas “perd” le focus => pas de rotation)
+    renderer.domElement.addEventListener("mouseenter", ()=>{
+      mouseOnCanvas = true;
+      lastX = null; lastY = null;
     });
-    window.addEventListener("mouseup", ()=>dragging=false);
+    renderer.domElement.addEventListener("mouseleave", ()=>{
+      mouseOnCanvas = false;
+      lastX = null; lastY = null;
+    });
+
     window.addEventListener("mousemove", (e)=>{
       if(isPaused()) return;
 
+      // Mode souris (PointerLock) = rotation illimitée
       if(camState.pointerLocked){
         lookDelta(e.movementX, e.movementY);
         return;
       }
-      if(!dragging) return;
+
+      // Sans pointerlock: rotation libre sans clic, uniquement au-dessus du canvas
+      if(!mouseOnCanvas) return;
+
+      if(lastX === null){
+        lastX = e.clientX; lastY = e.clientY;
+        return;
+      }
       const dx = e.clientX - lastX;
       const dy = e.clientY - lastY;
       lastX = e.clientX; lastY = e.clientY;
       lookDelta(dx, dy);
     });
 
-    function setPointerLock(on){
+function setPointerLock(on){
       if(on){
         renderer.domElement.requestPointerLock?.();
       }else{
@@ -1457,7 +1472,7 @@
       overlay.setAttribute("aria-hidden", open ? "false" : "true");
 
       if(open){
-        dragging = false;
+        lastX = null; lastY = null; mouseOnCanvas = false;
         document.exitPointerLock?.();
         // reset actions “one-shot”
         input.dash = false;
