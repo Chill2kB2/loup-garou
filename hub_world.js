@@ -1,10 +1,11 @@
-// Hub 3D minimal : avatar (Fox.glb) + déplacements PC + joystick mobile + pause menu
 (() => {
   // ---------- DOM ----------
   const pauseOverlay = document.getElementById("pauseOverlay");
   const btnPause = document.getElementById("btnPause");
   const btnResume = document.getElementById("btnResume");
   const btnToHome = document.getElementById("btnToHome");
+
+  const skinSelect = document.getElementById("skinSelect");
 
   const btnJoy = document.getElementById("btnJoy");
   const joyWrap = document.getElementById("joyWrap");
@@ -28,46 +29,54 @@
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   document.body.appendChild(renderer.domElement);
 
-  if ("outputEncoding" in renderer && THREE.sRGBEncoding) renderer.outputEncoding = THREE.sRGBEncoding;
-
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x07090d);
-  scene.fog = new THREE.Fog(0x07090d, 20, 120);
+  scene.fog = new THREE.Fog(0x07090d, 25, 160);
 
-  const camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 0.05, 600);
-  camera.position.set(0, 2.2, 6.5);
+  const camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 0.05, 800);
+  camera.position.set(0, 3.2, 8.5);
 
-  // lights
+  // OrbitControls (caméra utilisable souris/tactile)
+  const controls = new THREE.OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.08;
+  controls.enablePan = false;
+  controls.minDistance = 3.0;
+  controls.maxDistance = 18.0;
+  controls.maxPolarAngle = Math.PI * 0.49; // pas trop en dessous du sol
+  controls.target.set(0, 1.2, 0);
+
+  // Lights
   scene.add(new THREE.HemisphereLight(0xbfd7ff, 0x0b0d12, 0.95));
-  const sun = new THREE.DirectionalLight(0xffffff, 1.25);
+  const sun = new THREE.DirectionalLight(0xffffff, 1.2);
   sun.position.set(18, 22, 12);
   sun.castShadow = true;
   sun.shadow.mapSize.set(2048, 2048);
   scene.add(sun);
 
-  // ground
+  // Ground
   const ground = new THREE.Mesh(
-    new THREE.PlaneGeometry(220, 220),
-    new THREE.MeshStandardMaterial({ color: 0x3a4452, roughness: 0.95, metalness: 0.0 })
+    new THREE.PlaneGeometry(260, 260),
+    new THREE.MeshStandardMaterial({ color: 0x3a4452, roughness: 0.95 })
   );
   ground.rotation.x = -Math.PI / 2;
   ground.receiveShadow = true;
   scene.add(ground);
 
-  // simple landmarks
+  // Repères (loin, pour éviter de “cacher” le joueur)
   const mkBox = (x, z, h, c) => {
     const m = new THREE.Mesh(
       new THREE.BoxGeometry(2, h, 2),
-      new THREE.MeshStandardMaterial({ color: c, roughness: 0.8 })
+      new THREE.MeshStandardMaterial({ color: c, roughness: 0.85 })
     );
     m.position.set(x, h / 2, z);
     m.castShadow = true;
     m.receiveShadow = true;
     scene.add(m);
   };
-  mkBox(6, 2, 2.5, 0x2b3240);
-  mkBox(-7, -4, 3.5, 0x252b36);
-  mkBox(10, -10, 5.0, 0x1f2430);
+  mkBox(18, 10, 3.2, 0x2b3240);
+  mkBox(-22, -12, 4.6, 0x252b36);
+  mkBox(10, -24, 5.5, 0x1f2430);
 
   // ---------- Player ----------
   const player = {
@@ -75,89 +84,161 @@
     velY: 0,
     onGround: true,
     yaw: 0,
-    speedWalk: 3.6,
-    speedSprint: 6.8,   // sprint SIGNIFICATIF
-    speedCrouch: 2.2,
-    height: 1.6,
-    crouchHeight: 1.1,
+    speedWalk: 3.8,
+    speedSprint: 7.2,   // sprint nettement plus rapide
+    speedCrouch: 2.3,
     isSprinting: false,
     isCrouching: false
   };
   scene.add(player.root);
 
-  // Placeholder capsule (au cas où le GLB rate)
-  const placeholder = new THREE.Mesh(
-    new THREE.CapsuleGeometry(0.25, 1.0, 6, 12),
-    new THREE.MeshStandardMaterial({ color: 0x7c5cff, roughness: 0.6 })
-  );
-  placeholder.castShadow = true;
-  placeholder.receiveShadow = true;
-  placeholder.position.y = 0.9;
-  player.root.add(placeholder);
+  // Humanoïde placeholder (tête / bras / jambes)
+  const humanoid = new THREE.Group();
+  {
+    const mat = new THREE.MeshStandardMaterial({ color: 0x7c5cff, roughness: 0.6 });
 
-  // Load Fox.glb
+    const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.28, 0.85, 6, 12), mat);
+    body.castShadow = true; body.receiveShadow = true;
+    body.position.y = 1.05;
+
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.22, 16, 16), mat);
+    head.castShadow = true; head.receiveShadow = true;
+    head.position.y = 1.62;
+
+    const armL = new THREE.Mesh(new THREE.CapsuleGeometry(0.10, 0.55, 5, 10), mat);
+    armL.castShadow = true; armL.receiveShadow = true;
+    armL.position.set(-0.42, 1.15, 0);
+    armL.rotation.z = 0.25;
+
+    const armR = armL.clone();
+    armR.position.x = +0.42;
+    armR.rotation.z = -0.25;
+
+    const legL = new THREE.Mesh(new THREE.CapsuleGeometry(0.11, 0.55, 5, 10), mat);
+    legL.castShadow = true; legL.receiveShadow = true;
+    legL.position.set(-0.18, 0.45, 0);
+
+    const legR = legL.clone();
+    legR.position.x = +0.18;
+
+    humanoid.add(body, head, armL, armR, legL, legR);
+  }
+
+  // Fox GLB container
+  const foxContainer = new THREE.Group();
+
+  // Default skin = fox
+  let currentSkin = "fox";
+  player.root.add(foxContainer);
+  player.root.add(humanoid);
+  humanoid.visible = false;
+
+  // GLB loader
   let mixer = null;
   const loader = new THREE.GLTFLoader();
-  loader.load(
-    "assets/models/test/Fox.glb",
-    (gltf) => {
-      // remove placeholder
-      player.root.remove(placeholder);
 
-      const model = gltf.scene;
-      model.traverse((o) => {
-        if (o && o.isMesh) {
-          o.castShadow = true;
-          o.receiveShadow = true;
+  function clearFox() {
+    while (foxContainer.children.length) foxContainer.remove(foxContainer.children[0]);
+    mixer = null;
+  }
+
+  function loadFox() {
+    clearFox();
+
+    loader.load(
+      "assets/models/test/Fox.glb",
+      (gltf) => {
+        const model = gltf.scene;
+
+        model.traverse((o) => {
+          if (o && o.isMesh) {
+            o.castShadow = true;
+            o.receiveShadow = true;
+          }
+        });
+
+        // Center + scale
+        const box = new THREE.Box3().setFromObject(model);
+        const size = new THREE.Vector3();
+        const center = new THREE.Vector3();
+        box.getSize(size);
+        box.getCenter(center);
+
+        model.position.sub(center);
+
+        const target = 1.0; // taille “hub” standard
+        const base = Math.max(size.x, size.y, size.z) || 1;
+        const s = target / base;
+        model.scale.setScalar(s);
+
+        // Put on ground
+        const box2 = new THREE.Box3().setFromObject(model);
+        model.position.y -= box2.min.y;
+
+        // Face forward-ish
+        model.rotation.y = Math.PI;
+
+        foxContainer.add(model);
+
+        if (gltf.animations && gltf.animations.length) {
+          mixer = new THREE.AnimationMixer(model);
+          mixer.clipAction(gltf.animations[0]).play();
         }
-      });
 
-      // auto-scale to ~1.0m long (fox is small)
-      const box = new THREE.Box3().setFromObject(model);
-      const size = new THREE.Vector3();
-      const center = new THREE.Vector3();
-      box.getSize(size);
-      box.getCenter(center);
-
-      model.position.sub(center);
-
-      // scale based on bbox height/length
-      const target = 1.0; // meters-ish
-      const base = Math.max(size.x, size.y, size.z) || 1;
-      const s = target / base;
-      model.scale.setScalar(s);
-
-      // place on ground
-      const box2 = new THREE.Box3().setFromObject(model);
-      model.position.y -= box2.min.y;
-
-      // rotate to face forward (-Z)
-      model.rotation.y = Math.PI;
-
-      player.root.add(model);
-
-      if (gltf.animations && gltf.animations.length) {
-        mixer = new THREE.AnimationMixer(model);
-        mixer.clipAction(gltf.animations[0]).play();
+        // si on est sur fox => afficher fox
+        if (currentSkin === "fox") {
+          humanoid.visible = false;
+          foxContainer.visible = true;
+        }
+      },
+      undefined,
+      () => {
+        // si Fox ne charge pas: on force humanoïde
+        if (currentSkin === "fox") {
+          currentSkin = "humanoid";
+          skinSelect.value = "humanoid";
+          foxContainer.visible = false;
+          humanoid.visible = true;
+        }
       }
-    },
-    undefined,
-    () => {
-      // keep placeholder silently
-    }
-  );
+    );
+  }
 
-  // ---------- Input ----------
+  // initial load
+  loadFox();
+
+  // Skin select
+  skinSelect.addEventListener("change", () => {
+    currentSkin = skinSelect.value;
+    if (currentSkin === "fox") {
+      foxContainer.visible = true;
+      humanoid.visible = false;
+      if (foxContainer.children.length === 0) loadFox();
+    } else {
+      foxContainer.visible = false;
+      humanoid.visible = true;
+    }
+  });
+
+  // ---------- Input (AZERTY + QWERTY) ----------
   const keys = {
-    up: false, down: false, left: false, right: false,
+    forward: false, back: false, left: false, right: false,
     sprint: false, crouch: false, jump: false
   };
 
   function setKey(e, isDown) {
     const k = e.key.toLowerCase();
-    if (k === "z" || e.key === "ArrowUp") keys.up = isDown;
-    if (k === "s" || e.key === "ArrowDown") keys.down = isDown;
-    if (k === "q" || e.key === "ArrowLeft") keys.left = isDown;
+
+    // Forward: Z (AZERTY) ou W (QWERTY) ou ArrowUp
+    if (k === "z" || k === "w" || e.key === "ArrowUp") keys.forward = isDown;
+
+    // Back: S ou ArrowDown
+    if (k === "s" || e.key === "ArrowDown") keys.back = isDown;
+
+    // Left: Q (AZERTY) ou A (QWERTY) ou ArrowLeft
+    if (k === "q" || k === "a" || e.key === "ArrowLeft") keys.left = isDown;
+
+    // Right: D ou ArrowRight
     if (k === "d" || e.key === "ArrowRight") keys.right = isDown;
 
     if (k === "shift") keys.sprint = isDown;
@@ -186,25 +267,21 @@
   let joyVisible = false;
   let joyActiveId = null;
   let joyCenter = { x: 0, y: 0 };
-  let joyVec = { x: 0, y: 0 }; // -1..1
+  let joyVec = { x: 0, y: 0 }; // -1..1 (x droite, y bas)
   const joyRadius = 55;
 
   function setJoyVisible(v) {
     joyVisible = v;
     joyWrap.style.display = joyVisible ? "block" : "none";
-    actWrap.style.display = joyVisible ? "flex" : (isMobile ? "flex" : "none");
+    actWrap.style.display = isMobile ? "flex" : "none";
     btnJoy.textContent = joyVisible ? "Joystick: ON" : "Joystick";
   }
-
-  // default on mobile
   if (isMobile) setJoyVisible(true);
 
   btnJoy.addEventListener("click", () => setJoyVisible(!joyVisible));
 
   function updateJoyKnob() {
-    const dx = joyVec.x * joyRadius;
-    const dy = joyVec.y * joyRadius;
-    joyKnob.style.transform = `translate(${dx}px, ${dy}px)`;
+    joyKnob.style.transform = `translate(${joyVec.x * joyRadius}px, ${joyVec.y * joyRadius}px)`;
   }
 
   function joyStart(ev) {
@@ -232,19 +309,15 @@
     const len = Math.hypot(dx, dy);
     const nx = len > 0 ? dx / len : 0;
     const ny = len > 0 ? dy / len : 0;
-
     const mag = clamp(len / joyRadius, 0, 1);
 
-    // joyVec : x = droite/gauche, y = haut/bas (on inversera pour avancer)
     joyVec.x = nx * mag;
     joyVec.y = ny * mag;
-
     updateJoyKnob();
   }
 
   function joyEnd(ev) {
     if (joyActiveId === null) return;
-
     let ended = false;
     for (const t of ev.changedTouches) if (t.identifier === joyActiveId) ended = true;
     if (!ended) return;
@@ -259,7 +332,7 @@
   joyWrap.addEventListener("touchend", (ev) => { ev.preventDefault(); joyEnd(ev); }, { passive: false });
   joyWrap.addEventListener("touchcancel", (ev) => { ev.preventDefault(); joyEnd(ev); }, { passive: false });
 
-  // action buttons (mobile)
+  // action buttons
   const touchHold = { sprint: false, crouch: false, jump: false };
   const bindHoldBtn = (el, key) => {
     el.addEventListener("touchstart", (e) => { e.preventDefault(); touchHold[key] = true; }, { passive:false });
@@ -271,78 +344,86 @@
   };
   bindHoldBtn(btnSprint, "sprint");
   bindHoldBtn(btnCrouch, "crouch");
-  // jump as tap
+
   btnJump.addEventListener("touchstart", (e) => { e.preventDefault(); touchHold.jump = true; }, { passive:false });
   btnJump.addEventListener("touchend", (e) => { e.preventDefault(); touchHold.jump = false; }, { passive:false });
   btnJump.addEventListener("mousedown", () => { touchHold.jump = true; });
   btnJump.addEventListener("mouseup", () => { touchHold.jump = false; });
 
-  // show action buttons on mobile
   if (isMobile) actWrap.style.display = "flex";
 
-  // ---------- Update loop ----------
-  const tmpVec = new THREE.Vector3();
-  let last = performance.now();
+  // ---------- Movement relative to camera (fix inversions + feel better) ----------
+  const tmpForward = new THREE.Vector3();
+  const tmpRight = new THREE.Vector3();
+  const tmpMove = new THREE.Vector3();
+  const up = new THREE.Vector3(0, 1, 0);
 
-  function getMoveInput() {
-    // keyboard
-    let x = 0, z = 0;
+  function getMoveAxes() {
+    let x = 0, y = 0;
     if (keys.left) x -= 1;
     if (keys.right) x += 1;
-    if (keys.up) z -= 1;
-    if (keys.down) z += 1;
+    if (keys.forward) y += 1;
+    if (keys.back) y -= 1;
 
-    // joystick adds (mobile)
     if (joyVisible) {
       x += joyVec.x;
-      z += joyVec.y; // note: joy y positive is down
+      y += (-joyVec.y); // IMPORTANT: joystick down = reculer, donc on inverse
     }
 
-    // normalize
-    const len = Math.hypot(x, z);
-    if (len > 1e-6) { x /= len; z /= len; }
-    return { x, z };
+    const len = Math.hypot(x, y);
+    if (len > 1e-6) { x /= len; y /= len; }
+    return { x, y };
   }
 
   function updatePlayer(dt) {
-    // state
-    player.isSprinting = (keys.sprint || touchHold.sprint) && !player.isCrouching;
     player.isCrouching = (keys.crouch || touchHold.crouch);
+    player.isSprinting = (keys.sprint || touchHold.sprint) && !player.isCrouching;
 
-    const { x, z } = getMoveInput();
+    const { x, y } = getMoveAxes();
 
-    // movement speed
     let speed = player.speedWalk;
     if (player.isCrouching) speed = player.speedCrouch;
     else if (player.isSprinting) speed = player.speedSprint;
 
-    // move on XZ
-    player.root.position.x += x * speed * dt;
-    player.root.position.z += z * speed * dt;
+    // forward vector from camera (flatten Y)
+    camera.getWorldDirection(tmpForward);
+    tmpForward.y = 0;
+    tmpForward.normalize();
 
-    // face movement direction
-    if (Math.abs(x) + Math.abs(z) > 0.001) {
-      const targetYaw = Math.atan2(x, z); // forward -Z is z negative, but we use z as input; feels ok
+    // right vector
+    tmpRight.crossVectors(tmpForward, up).normalize();
+
+    // movement in world space
+    tmpMove.set(0, 0, 0);
+    tmpMove.addScaledVector(tmpForward, y);
+    tmpMove.addScaledVector(tmpRight, x);
+
+    if (tmpMove.lengthSq() > 1e-6) {
+      tmpMove.normalize();
+
+      player.root.position.addScaledVector(tmpMove, speed * dt);
+
+      // face movement direction
+      const targetYaw = Math.atan2(tmpMove.x, tmpMove.z);
       player.yaw = lerp(player.yaw, targetYaw, 1 - Math.pow(0.001, dt));
       player.root.rotation.y = player.yaw;
     }
 
-    // crouch "height" by scaling Y a bit (simple)
+    // crouch effect (simple)
     const targetScaleY = player.isCrouching ? 0.78 : 1.0;
     player.root.scale.y = lerp(player.root.scale.y, targetScaleY, 1 - Math.pow(0.001, dt));
 
-    // gravity + jump
+    // jump + gravity
     const wantJump = keys.jump || touchHold.jump;
     if (wantJump && player.onGround) {
-      player.velY = 6.2;
+      player.velY = 6.4;
       player.onGround = false;
     }
-    touchHold.jump = false; // consume tap
+    touchHold.jump = false;
 
     player.velY += -18.0 * dt;
     player.root.position.y += player.velY * dt;
 
-    // ground collision at y=0
     if (player.root.position.y <= 0) {
       player.root.position.y = 0;
       player.velY = 0;
@@ -350,19 +431,8 @@
     }
   }
 
-  function updateCamera(dt) {
-    // third-person follow
-    const target = player.root.position.clone();
-    target.y += 1.2;
-
-    // camera behind player
-    const behind = new THREE.Vector3(0, 0, 1).applyAxisAngle(new THREE.Vector3(0,1,0), player.root.rotation.y);
-    const camPos = target.clone().add(behind.multiplyScalar(6.5));
-    camPos.y += 2.2;
-
-    camera.position.lerp(camPos, 1 - Math.pow(0.0005, dt));
-    camera.lookAt(target);
-  }
+  // ---------- Loop ----------
+  let last = performance.now();
 
   function loop(now) {
     const dt = Math.min(0.033, (now - last) / 1000);
@@ -370,8 +440,12 @@
 
     if (!paused) {
       if (mixer) mixer.update(dt);
+
       updatePlayer(dt);
-      updateCamera(dt);
+
+      // follow target for orbit controls
+      controls.target.set(player.root.position.x, player.root.position.y + 1.2, player.root.position.z);
+      controls.update();
     }
 
     renderer.render(scene, camera);
