@@ -5,109 +5,717 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
   <meta name="theme-color" content="#07090d" />
   <title>Loup-Garou / Murder — Accueil</title>
-
-  <!-- Pas de favicon 404 -->
   <link rel="icon" href="data:," />
 
-  <link rel="stylesheet" href="style.css" />
+  <style>
+    :root{
+      --bg:#07090d;
+      --panel:rgba(10,14,22,.58);
+      --panel2:rgba(255,255,255,.06);
+      --bd:rgba(255,255,255,.14);
+      --txt:#eaeef7;
+      --mut:rgba(234,238,247,.72);
+      --acc:#7c5cff;
+      --acc2:#4dd6ff;
+      --good:#3ad17a;
+      --warn:#ffb020;
+      --bad:#ff5c5c;
+      --r:22px;
+      --shadow:0 18px 60px rgba(0,0,0,.55);
+    }
+
+    *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+    html,body{height:100%}
+    body{
+      margin:0;
+      font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif;
+      color:var(--txt);
+      background: radial-gradient(1200px 700px at 20% 10%, rgba(124,92,255,.18), transparent 55%),
+                  radial-gradient(900px 600px at 80% 20%, rgba(77,214,255,.14), transparent 60%),
+                  radial-gradient(1200px 900px at 55% 110%, rgba(58,209,122,.10), transparent 55%),
+                  var(--bg);
+      overflow-x:hidden;
+    }
+
+    .bg3d{
+      position:fixed; inset:0;
+      background:
+        radial-gradient(1000px 520px at 50% 30%, rgba(255,255,255,.06), transparent 65%),
+        linear-gradient(to bottom, rgba(0,0,0,.0), rgba(0,0,0,.25) 55%, rgba(0,0,0,.55));
+      pointer-events:none;
+    }
+    .grain{
+      position:fixed; inset:-40%;
+      background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='240' height='240' filter='url(%23n)' opacity='.25'/%3E%3C/svg%3E");
+      opacity:.08;
+      transform:rotate(8deg);
+      pointer-events:none;
+      mix-blend-mode:overlay;
+    }
+
+    .wrap{max-width:1100px;margin:0 auto;padding:28px 18px 26px}
+    header{
+      display:flex;align-items:center;justify-content:space-between;gap:12px;
+      margin-bottom:18px;
+    }
+    .brand{
+      display:flex; align-items:center; gap:12px; min-width:0;
+    }
+    .logo{
+      width:44px;height:44px;border-radius:14px;
+      background: radial-gradient(18px 18px at 30% 30%, rgba(255,255,255,.22), transparent 60%),
+                  linear-gradient(135deg, var(--acc), var(--acc2));
+      box-shadow:0 12px 35px rgba(124,92,255,.25);
+      flex:0 0 auto;
+    }
+    .brand h1{
+      margin:0;
+      font-size:20px;
+      line-height:1.1;
+      letter-spacing:.2px;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .brand .sub{color:var(--mut);font-size:12.5px;margin-top:4px}
+    .status{
+      display:flex;align-items:center;gap:10px;flex:0 0 auto;
+      padding:10px 12px;border:1px solid var(--bd);border-radius:999px;
+      background:rgba(0,0,0,.18);
+      box-shadow:0 10px 35px rgba(0,0,0,.25);
+    }
+    .dot{width:10px;height:10px;border-radius:50%;background:var(--warn);box-shadow:0 0 0 4px rgba(255,176,32,.15)}
+    .status b{font-size:12.5px}
+    .status small{display:block;color:var(--mut);font-size:11px;margin-top:2px}
+    .status .col{display:flex;flex-direction:column;line-height:1.1}
+
+    main{
+      display:grid;
+      grid-template-columns: 1.2fr .8fr;
+      gap:18px;
+      align-items:start;
+    }
+
+    .card{
+      background:var(--panel);
+      border:1px solid var(--bd);
+      border-radius:var(--r);
+      box-shadow:var(--shadow);
+      padding:18px;
+      backdrop-filter: blur(10px);
+    }
+    .card h2{margin:0 0 10px;font-size:20px}
+    .mut{color:var(--mut);font-size:13px;line-height:1.45}
+    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}
+    .row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+
+    label{display:block;color:var(--mut);font-size:12px;margin-bottom:6px}
+    input{
+      width:100%;
+      padding:12px 12px;
+      border-radius:14px;
+      border:1px solid rgba(255,255,255,.14);
+      background:rgba(0,0,0,.25);
+      color:var(--txt);
+      outline:none;
+    }
+    input:focus{border-color:rgba(124,92,255,.65);box-shadow:0 0 0 4px rgba(124,92,255,.18)}
+
+    .btn{
+      appearance:none; border:1px solid rgba(255,255,255,.16);
+      background:rgba(255,255,255,.06);
+      color:var(--txt);
+      padding:12px 14px;
+      border-radius:16px;
+      font-weight:700;
+      cursor:pointer;
+      display:inline-flex;align-items:center;justify-content:center;gap:10px;
+      user-select:none;
+      text-decoration:none;
+      box-shadow:0 14px 40px rgba(0,0,0,.22);
+    }
+    .btn:hover{filter:brightness(1.06)}
+    .btn:active{transform:translateY(1px)}
+    .btn.primary{
+      background:linear-gradient(135deg, rgba(124,92,255,.95), rgba(77,214,255,.75));
+      border-color:rgba(255,255,255,.10);
+    }
+    .btn.secondary{
+      background:linear-gradient(135deg, rgba(58,209,122,.85), rgba(77,214,255,.55));
+      border-color:rgba(255,255,255,.10);
+    }
+    .btn.ghost{
+      background:transparent;
+    }
+    .btn.danger{
+      background:rgba(255,92,92,.12);
+      border-color:rgba(255,92,92,.25);
+    }
+    .btn.small{padding:10px 12px;border-radius:14px;font-size:13px}
+
+    .pill{
+      display:inline-flex;align-items:center;gap:8px;
+      padding:8px 10px;border-radius:999px;
+      background:rgba(0,0,0,.18);
+      border:1px solid rgba(255,255,255,.12);
+      color:var(--mut);
+      font-size:12px;
+      margin-top:10px;
+    }
+
+    .list{
+      margin:14px 0 0;
+      padding:0;
+      list-style:none;
+      display:grid;
+      gap:10px;
+    }
+    .li{
+      border:1px solid rgba(255,255,255,.12);
+      border-radius:16px;
+      background:rgba(255,255,255,.04);
+      padding:12px;
+    }
+    .li b{display:block;font-size:13.5px;margin-bottom:4px}
+    .li span{display:block;color:var(--mut);font-size:12.5px;line-height:1.35}
+
+    footer{
+      margin-top:14px;
+      display:flex;justify-content:space-between;align-items:center;gap:12px;
+      color:var(--mut);
+      font-size:12px;
+      opacity:.95;
+    }
+
+    /* Modal */
+    .modal{
+      position:fixed; inset:0;
+      display:none;
+      align-items:center; justify-content:center;
+      padding:18px;
+      background:rgba(0,0,0,.55);
+      backdrop-filter: blur(8px);
+      z-index:50;
+    }
+    .modal.show{display:flex}
+    .modal .box{
+      width:min(760px, 100%);
+      background:rgba(10,14,22,.78);
+      border:1px solid rgba(255,255,255,.16);
+      border-radius:24px;
+      box-shadow:0 24px 80px rgba(0,0,0,.65);
+      padding:16px;
+    }
+    .tabs{
+      display:flex;gap:8px;flex-wrap:wrap;
+      margin:10px 0 12px;
+    }
+    .tab{
+      padding:10px 12px;border-radius:999px;
+      border:1px solid rgba(255,255,255,.12);
+      background:rgba(255,255,255,.06);
+      color:var(--txt);
+      font-weight:800;
+      font-size:12.5px;
+      cursor:pointer;
+    }
+    .tab.active{
+      background:linear-gradient(135deg, rgba(124,92,255,.85), rgba(77,214,255,.55));
+      border-color:rgba(255,255,255,.10);
+    }
+    .pane{display:none}
+    .pane.active{display:block}
+    .line{
+      display:flex;align-items:center;justify-content:space-between;gap:12px;
+      padding:12px;border-radius:16px;
+      background:rgba(255,255,255,.04);
+      border:1px solid rgba(255,255,255,.10);
+      margin-bottom:10px;
+    }
+    .line b{font-size:13px}
+    .line small{display:block;color:var(--mut);font-size:12px;margin-top:3px}
+    select, input[type="range"]{
+      width:220px; max-width:45vw;
+    }
+    .kbd{
+      font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size:12px;
+      padding:6px 8px;
+      border-radius:10px;
+      border:1px solid rgba(255,255,255,.18);
+      background:rgba(0,0,0,.25);
+      color:var(--txt);
+      white-space:nowrap;
+    }
+    .closeRow{display:flex;justify-content:space-between;align-items:center;gap:10px}
+    .closeRow h3{margin:0;font-size:16px}
+    .closeRow .x{
+      width:40px;height:40px;border-radius:14px;
+      border:1px solid rgba(255,255,255,.14);
+      background:rgba(255,255,255,.06);
+      color:var(--txt);
+      cursor:pointer;
+      font-weight:900;
+    }
+
+    /* Responsive */
+    @media (max-width: 920px){
+      main{grid-template-columns:1fr}
+      .status{display:none}
+    }
+  </style>
 </head>
-<body class="app app-home">
-  <main class="home">
-    <header class="home__header">
+
+<body>
+  <div class="bg3d"></div>
+  <div class="grain"></div>
+
+  <div class="wrap">
+    <header>
       <div class="brand">
-        <div class="brand__dot"></div>
-        <div>
-          <div class="brand__title">Loup-Garou / Murder</div>
-          <div class="brand__sub">Lobby en ligne + Salon 3D (Hub)</div>
+        <div class="logo" aria-hidden="true"></div>
+        <div style="min-width:0">
+          <h1>Loup-Garou / Murder</h1>
+          <div class="sub">Lobby en ligne + Salon 3D (Hub) — simple à partager</div>
+        </div>
+      </div>
+
+      <div class="status" title="Le lobby utilise un serveur WebSocket. Sur hébergement gratuit, il peut “s’endormir”.">
+        <div class="dot" id="dot"></div>
+        <div class="col">
+          <b id="srvTxt">Serveur : inconnu</b>
+          <small id="srvSub">Clique “Tester” dans Options si besoin</small>
         </div>
       </div>
     </header>
 
-    <section class="panel panel--hero">
-      <h1 class="h1">Bienvenue 👋</h1>
-      <p class="p">
-        Choisis un pseudo. Tu peux rejoindre le Lobby (multijoueur) ou le Salon 3D (Hub) pour te balader et tester tes skins.
-      </p>
-
-      <div class="grid2">
-        <div class="field">
-          <label class="label" for="nick">Pseudo</label>
-          <input id="nick" class="input" type="text" maxlength="16" placeholder="Ex: Stan" autocomplete="nickname" />
-          <div class="hint">Ton pseudo est sauvegardé localement.</div>
+    <main>
+      <section class="card">
+        <h2>Bienvenue 👋</h2>
+        <div class="mut">
+          Choisis un pseudo. Ensuite tu peux lancer une partie <b>Loup-Garou</b> (multijoueur) ou rejoindre le <b>Hub 3D</b> pour te balader et tester tes skins.
         </div>
-        <div class="field">
-          <label class="label" for="room">Code salon (optionnel)</label>
-          <input id="room" class="input" type="text" maxlength="12" placeholder="Ex: ABC123" autocomplete="off" />
-          <div class="hint">Uniquement utile pour le Lobby si tu l’utilises.</div>
-        </div>
-      </div>
 
-      <div class="row">
-        <button id="btnLobby" class="btn btn--primary">Jouer en ligne (Lobby)</button>
-        <button id="btnHub" class="btn btn--ghost">Salon (Hub 3D)</button>
-      </div>
-
-      <div class="sep"></div>
-
-      <div class="cards">
-        <div class="card">
-          <div class="card__title">Contrôles (Hub)</div>
-          <div class="card__text">
-            ZQSD / Flèches • Sprint: Shift • Saut: Espace • Accroupi: Ctrl • Pause: Échap • Joystick: bouton “Joystick”
+        <div class="grid2">
+          <div>
+            <label for="name">Pseudo</label>
+            <input id="name" maxlength="20" placeholder="Ex : Stan" autocomplete="nickname" />
+          </div>
+          <div>
+            <label for="room">Code salon (optionnel)</label>
+            <input id="room" maxlength="10" placeholder="Ex : ABC123" autocomplete="off" />
           </div>
         </div>
-        <div class="card">
-          <div class="card__title">Mobile</div>
-          <div class="card__text">
-            Deux joysticks (déplacement + caméra), bouton saut. Le menu pause est accessible via l’icône en haut à droite.
+
+        <div class="pill" id="hint">
+          Astuce : si ton lobby “ne répond pas”, retente une fois (hébergement gratuit = parfois réveil).
+        </div>
+
+        <div class="row" style="margin-top:14px">
+          <button class="btn primary" id="btnLobby">🎮 Loup-Garou (Lobby)</button>
+          <button class="btn secondary" id="btnHub">🌍 Hub 3D (Salon)</button>
+        </div>
+
+        <ul class="list">
+          <li class="li">
+            <b>Comment ça marche</b>
+            <span>Tu partages l’URL. Tes amis rejoignent avec le même code salon (si tu en mets un).</span>
+          </li>
+          <li class="li">
+            <b>Mobile friendly</b>
+            <span>Le Hub supporte joystick + caméra tactile. Les menus sont pensés téléphone.</span>
+          </li>
+          <li class="li">
+            <b>Propre</b>
+            <span>Pas de pages de test sur l’accueil. Juste le jeu, le hub, options, quitter.</span>
+          </li>
+        </ul>
+      </section>
+
+      <aside class="card">
+        <h2>Menu</h2>
+        <div class="mut">Accès directs. Les réglages sont sauvegardés dans ton navigateur.</div>
+
+        <div class="row" style="margin-top:14px">
+          <button class="btn small" id="btnOptions">⚙️ Paramètres</button>
+          <button class="btn small danger" id="btnQuit">⏻ Quitter</button>
+        </div>
+
+        <ul class="list" style="margin-top:14px">
+          <li class="li">
+            <b>Raccourcis Hub</b>
+            <span>ZQSD / flèches · Sprint <span class="kbd">Shift</span> · Saut <span class="kbd">Espace</span> · Pause <span class="kbd">Échap</span> · Joysticks <span class="kbd">J</span></span>
+          </li>
+          <li class="li">
+            <b>Conseil</b>
+            <span>Ouvre toujours via un serveur local (pas <span class="kbd">file:///</span>), sinon les modèles/WS peuvent casser.</span>
+          </li>
+        </ul>
+
+        <footer>
+          <span>© Prototype — Loup-Garou</span>
+          <span id="ver">v0</span>
+        </footer>
+      </aside>
+    </main>
+  </div>
+
+  <!-- MODAL OPTIONS -->
+  <div class="modal" id="modal" role="dialog" aria-modal="true" aria-label="Paramètres">
+    <div class="box">
+      <div class="closeRow">
+        <h3>Paramètres</h3>
+        <button class="x" id="btnClose" aria-label="Fermer">✕</button>
+      </div>
+
+      <div class="tabs" id="tabs">
+        <button class="tab active" data-tab="t-connexion">Connexion</button>
+        <button class="tab" data-tab="t-controles">Commandes</button>
+        <button class="tab" data-tab="t-audio">Audio</button>
+        <button class="tab" data-tab="t-jouabilite">Jouabilité</button>
+      </div>
+
+      <div class="pane active" id="t-connexion">
+        <div class="line">
+          <div>
+            <b>URL WebSocket (Lobby)</b>
+            <small>Utilisée pour le mode Loup-Garou en ligne. Laisse par défaut si Render.</small>
           </div>
+          <input id="wsUrl" style="width:min(360px,60vw)" placeholder="wss://ton-serveur.onrender.com" />
+        </div>
+
+        <div class="line">
+          <div>
+            <b>Tester la connexion</b>
+            <small>Vérifie rapidement si le serveur répond (utile si “endormi”).</small>
+          </div>
+          <button class="btn small" id="btnTest">Tester</button>
+        </div>
+
+        <div class="mut" id="testResult" style="margin-top:8px"></div>
+      </div>
+
+      <div class="pane" id="t-controles">
+        <div class="line">
+          <div>
+            <b>Disposition clavier</b>
+            <small>AZERTY (ZQSD) recommandé en France.</small>
+          </div>
+          <select id="layout">
+            <option value="azerty">AZERTY (ZQSD)</option>
+            <option value="qwerty">QWERTY (WASD)</option>
+          </select>
+        </div>
+
+        <div class="line">
+          <div>
+            <b>Afficher joysticks sur mobile</b>
+            <small>Dans le Hub : bouton “Joystick” + raccourci J.</small>
+          </div>
+          <select id="mobileJoy">
+            <option value="on">ON</option>
+            <option value="off">OFF</option>
+          </select>
+        </div>
+
+        <div class="line">
+          <div>
+            <b>Sensibilité caméra (Hub)</b>
+            <small>Drag souris / joystick droit.</small>
+          </div>
+          <input id="camSens" type="range" min="0.2" max="2.5" step="0.05" />
         </div>
       </div>
-    </section>
 
-    <footer class="home__footer">
-      <div class="muted">© Prototype — Loup-Garou</div>
-      <div class="muted">Conseil : lance toujours via serveur local (pas file://).</div>
-    </footer>
-  </main>
+      <div class="pane" id="t-audio">
+        <div class="line">
+          <div>
+            <b>Volume global</b>
+            <small>Appliqué au Hub et au Lobby.</small>
+          </div>
+          <input id="volMaster" type="range" min="0" max="1" step="0.01" />
+        </div>
+        <div class="line">
+          <div>
+            <b>Ambiance</b>
+            <small>Musique / ambiance (si activée plus tard).</small>
+          </div>
+          <input id="volAmb" type="range" min="0" max="1" step="0.01" />
+        </div>
+        <div class="line">
+          <div>
+            <b>Effets</b>
+            <small>Pas / actions / UI.</small>
+          </div>
+          <input id="volSfx" type="range" min="0" max="1" step="0.01" />
+        </div>
+      </div>
+
+      <div class="pane" id="t-jouabilite">
+        <div class="line">
+          <div>
+            <b>Confirmer avant de quitter</b>
+            <small>Évite les fermetures accidentelles sur mobile.</small>
+          </div>
+          <select id="confirmQuit">
+            <option value="on">ON</option>
+            <option value="off">OFF</option>
+          </select>
+        </div>
+
+        <div class="line">
+          <div>
+            <b>Auto-sauvegarde pseudo</b>
+            <small>Remplit ton pseudo automatiquement au prochain lancement.</small>
+          </div>
+          <select id="saveName">
+            <option value="on">ON</option>
+            <option value="off">OFF</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="row" style="justify-content:flex-end;margin-top:8px">
+        <button class="btn ghost" id="btnReset">Réinitialiser</button>
+        <button class="btn primary" id="btnSave">Enregistrer</button>
+      </div>
+    </div>
+  </div>
 
   <script>
-    (function(){
-      const nick = document.getElementById("nick");
-      const room = document.getElementById("room");
-      const btnLobby = document.getElementById("btnLobby");
-      const btnHub = document.getElementById("btnHub");
+    // ====== CONFIG / ROUTES ======
+    // Mets ici tes pages (dans le même dossier que index.html)
+    const ROUTE_LOBBY = "lg.html";          // <- ta page lobby (à adapter si différent)
+    const ROUTE_HUB   = "hub_world.html";   // <- ton hub 3D
 
-      nick.value = localStorage.getItem("lg_name") || "";
-      room.value = localStorage.getItem("lg_room") || "";
+    // Valeurs par défaut
+    const DEFAULTS = {
+      name: "",
+      room: "",
+      wsUrl: "wss://loup-garou-ws.onrender.com",
+      layout: "azerty",
+      mobileJoy: "on",
+      camSens: 1.0,
+      volMaster: 0.8,
+      volAmb: 0.5,
+      volSfx: 0.8,
+      confirmQuit: "on",
+      saveName: "on",
+      ver: "v0.1"
+    };
 
-      function getName(){
-        const v = (nick.value || "").trim();
-        return v.length ? v : "Joueur";
+    const $ = (id)=>document.getElementById(id);
+
+    // ====== STATE (localStorage) ======
+    const KEY = "lg_settings_v1";
+    function loadSettings(){
+      try{
+        const raw = localStorage.getItem(KEY);
+        if(!raw) return structuredClone(DEFAULTS);
+        const o = JSON.parse(raw);
+        return { ...structuredClone(DEFAULTS), ...o };
+      }catch(e){
+        return structuredClone(DEFAULTS);
       }
-      function save(){
-        localStorage.setItem("lg_name", getName());
-        localStorage.setItem("lg_room", (room.value || "").trim());
+    }
+    function saveSettings(s){
+      localStorage.setItem(KEY, JSON.stringify(s));
+    }
+
+    let S = loadSettings();
+
+    // ====== UI INIT ======
+    $("ver").textContent = S.ver;
+
+    // Fill inputs
+    $("wsUrl").value = S.wsUrl;
+    $("layout").value = S.layout;
+    $("mobileJoy").value = S.mobileJoy;
+    $("camSens").value = String(S.camSens);
+    $("volMaster").value = String(S.volMaster);
+    $("volAmb").value = String(S.volAmb);
+    $("volSfx").value = String(S.volSfx);
+    $("confirmQuit").value = S.confirmQuit;
+    $("saveName").value = S.saveName;
+
+    // Name/room
+    const savedName = localStorage.getItem("lg_player_name") || "";
+    if(S.saveName === "on" && savedName){
+      $("name").value = savedName;
+    }else if(S.name){
+      $("name").value = S.name;
+    }
+    if(S.room) $("room").value = S.room;
+
+    // Status dot (optimistic)
+    setServerStatus("inconnu", "Clique “Tester” dans Options si besoin", "warn");
+
+    // ====== Helpers ======
+    function cleanName(x){
+      return (x||"").trim().slice(0,20);
+    }
+    function cleanRoom(x){
+      return (x||"").trim().toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,10);
+    }
+    function setServerStatus(main, sub, level){
+      $("srvTxt").textContent = "Serveur : " + main;
+      $("srvSub").textContent = sub || "";
+      const dot = $("dot");
+      dot.style.background = (level==="good") ? "var(--good)" : (level==="bad") ? "var(--bad)" : "var(--warn)";
+      dot.style.boxShadow = (level==="good") ? "0 0 0 4px rgba(58,209,122,.15)"
+                        : (level==="bad") ? "0 0 0 4px rgba(255,92,92,.15)"
+                        : "0 0 0 4px rgba(255,176,32,.15)";
+    }
+    function buildQuery(){
+      const name = cleanName($("name").value);
+      const room = cleanRoom($("room").value);
+      const qs = new URLSearchParams();
+      if(name) qs.set("name", name);
+      if(room) qs.set("room", room);
+      // on passe aussi quelques settings utiles (optionnel)
+      qs.set("layout", S.layout);
+      qs.set("camSens", String(S.camSens));
+      qs.set("mobileJoy", S.mobileJoy);
+      return qs.toString();
+    }
+    function persistBasics(){
+      const name = cleanName($("name").value);
+      const room = cleanRoom($("room").value);
+      S.name = name;
+      S.room = room;
+      saveSettings(S);
+      if(S.saveName === "on" && name){
+        localStorage.setItem("lg_player_name", name);
       }
+    }
+    function go(url){
+      // évite les erreurs du style "index.htmlhttp://..."
+      window.location.href = url;
+    }
 
-      btnHub.addEventListener("click", () => {
-        save();
-        const url = new URL("hub_world.html", location.href);
-        url.searchParams.set("name", getName());
-        location.href = url.toString();
-      });
+    // ====== Buttons ======
+    $("btnLobby").addEventListener("click", ()=>{
+      persistBasics();
+      const q = buildQuery();
+      go(ROUTE_LOBBY + (q ? ("?"+q) : ""));
+    });
 
-      btnLobby.addEventListener("click", () => {
-        save();
-        // Si ton lobby est sur lg.html (comme dans ton repo), on y va.
-        // Sinon tu peux renommer ici.
-        const url = new URL("lg.html", location.href);
-        url.searchParams.set("name", getName());
-        const code = (room.value || "").trim();
-        if (code) url.searchParams.set("room", code);
-        location.href = url.toString();
+    $("btnHub").addEventListener("click", ()=>{
+      persistBasics();
+      const q = buildQuery();
+      go(ROUTE_HUB + (q ? ("?"+q) : ""));
+    });
+
+    $("btnOptions").addEventListener("click", ()=> openModal());
+    $("btnClose").addEventListener("click", ()=> closeModal());
+    $("btnSave").addEventListener("click", ()=> {
+      S.wsUrl = ($("wsUrl").value || "").trim();
+      S.layout = $("layout").value;
+      S.mobileJoy = $("mobileJoy").value;
+      S.camSens = Number($("camSens").value);
+      S.volMaster = Number($("volMaster").value);
+      S.volAmb = Number($("volAmb").value);
+      S.volSfx = Number($("volSfx").value);
+      S.confirmQuit = $("confirmQuit").value;
+      S.saveName = $("saveName").value;
+
+      persistBasics();
+      saveSettings(S);
+      closeModal();
+    });
+
+    $("btnReset").addEventListener("click", ()=>{
+      if(!confirm("Réinitialiser les paramètres ?")) return;
+      localStorage.removeItem(KEY);
+      S = loadSettings();
+      location.reload();
+    });
+
+    $("btnQuit").addEventListener("click", ()=>{
+      const ask = (S.confirmQuit === "on");
+      if(ask && !confirm("Quitter le jeu ?")) return;
+      // Impossible de fermer un onglet sans interaction navigateur.
+      // On redirige vers une page neutre.
+      go("about:blank");
+    });
+
+    // Tabs
+    document.querySelectorAll(".tab").forEach(t=>{
+      t.addEventListener("click", ()=>{
+        document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));
+        document.querySelectorAll(".pane").forEach(x=>x.classList.remove("active"));
+        t.classList.add("active");
+        const id = t.dataset.tab;
+        $(id).classList.add("active");
       });
-    })();
+    });
+
+    // ESC to close modal
+    window.addEventListener("keydown", (e)=>{
+      if(e.key === "Escape"){
+        const m = $("modal");
+        if(m.classList.contains("show")) closeModal();
+      }
+    });
+
+    function openModal(){
+      $("modal").classList.add("show");
+      $("testResult").textContent = "";
+    }
+    function closeModal(){
+      $("modal").classList.remove("show");
+    }
+    $("modal").addEventListener("click",(e)=>{
+      if(e.target === $("modal")) closeModal();
+    });
+
+    // ====== WebSocket test ======
+    let testSock = null;
+    $("btnTest").addEventListener("click", ()=>{
+      const url = ($("wsUrl").value || "").trim();
+      $("testResult").textContent = "Test en cours...";
+      $("testResult").style.color = "var(--mut)";
+
+      try{
+        if(testSock){ try{testSock.close()}catch(_){} }
+        testSock = new WebSocket(url);
+        const t0 = performance.now();
+
+        const done = (ok, msg)=>{
+          const dt = Math.round(performance.now()-t0);
+          $("testResult").textContent = (ok ? "OK" : "Échec") + " — " + msg + " ("+dt+"ms)";
+          $("testResult").style.color = ok ? "var(--good)" : "var(--bad)";
+          setServerStatus(ok ? "en ligne" : "hors ligne", ok ? "Connexion OK" : "Impossible de se connecter", ok ? "good" : "bad");
+          try{testSock.close()}catch(_){}
+          testSock = null;
+        };
+
+        const timer = setTimeout(()=>{
+          done(false, "timeout");
+        }, 5000);
+
+        testSock.onopen = ()=>{
+          clearTimeout(timer);
+          done(true, "connexion ouverte");
+        };
+        testSock.onerror = ()=>{
+          clearTimeout(timer);
+          done(false, "erreur réseau / URL");
+        };
+      }catch(err){
+        $("testResult").textContent = "Échec — URL invalide";
+        $("testResult").style.color = "var(--bad)";
+        setServerStatus("hors ligne", "URL invalide", "bad");
+      }
+    });
+
+    // ====== Input sanitation ======
+    $("name").addEventListener("input", ()=> {
+      $("name").value = cleanName($("name").value);
+    });
+    $("room").addEventListener("input", ()=> {
+      $("room").value = cleanRoom($("room").value);
+    });
   </script>
 </body>
 </html>
