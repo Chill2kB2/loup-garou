@@ -9,7 +9,6 @@
     html,body{margin:0;height:100%;overflow:hidden;background:#07090d;font-family:system-ui,Segoe UI,Arial}
     canvas{display:block}
 
-    /* HUD minimal */
     #topbar{
       position:fixed;left:12px;right:12px;top:12px;z-index:20;
       display:flex;align-items:center;justify-content:space-between;gap:10px;
@@ -25,7 +24,7 @@
       backdrop-filter:blur(10px);
       box-shadow:0 18px 60px rgba(0,0,0,.45);
     }
-    .pill .mut{color:rgba(234,238,247,.72);font-weight:700}
+    .mut{color:rgba(234,238,247,.72);font-weight:700}
     .btn{
       pointer-events:auto;
       border:1px solid rgba(255,255,255,.14);
@@ -40,8 +39,16 @@
       background:linear-gradient(135deg, rgba(124,92,255,.35), rgba(0,212,255,.12));
       border-color:rgba(124,92,255,.45);
     }
+    select{
+      pointer-events:auto;
+      border:1px solid rgba(255,255,255,.14);
+      background:rgba(0,0,0,.35);
+      color:#eaeef7;
+      padding:10px 12px;border-radius:14px;
+      font-weight:900;
+      outline:none;
+    }
 
-    /* Pause menu */
     #pauseOverlay{
       position:fixed;inset:0;z-index:50;
       display:none;
@@ -50,7 +57,7 @@
       backdrop-filter:blur(8px);
     }
     #pauseCard{
-      width:min(640px,92vw);
+      width:min(720px,92vw);
       border-radius:22px;
       border:1px solid rgba(255,255,255,.14);
       background:rgba(8,10,14,.82);
@@ -61,7 +68,6 @@
     #pauseCard h2{margin:0 0 8px 0;font-size:18px}
     #pauseCard p{margin:0 0 14px 0;color:rgba(234,238,247,.72);line-height:1.35}
     .row{display:flex;flex-wrap:wrap;gap:10px}
-    .spacer{height:10px}
     .k{
       display:inline-flex;align-items:center;gap:6px;
       padding:6px 10px;border-radius:12px;
@@ -70,7 +76,6 @@
       font-weight:850;font-size:12px;
     }
 
-    /* Mobile joystick */
     #joyWrap{
       position:fixed;left:14px;bottom:14px;z-index:30;
       width:150px;height:150px;
@@ -95,7 +100,6 @@
       transform:translate(0,0);
     }
 
-    /* Right side action buttons (mobile) */
     #actWrap{
       position:fixed;right:14px;bottom:14px;z-index:30;
       display:none;
@@ -113,24 +117,20 @@
       user-select:none;
     }
     .actBtn:active{transform:translateY(1px)}
-
-    /* Small helper */
-    #hint{
-      position:fixed;left:12px;bottom:12px;z-index:20;
-      pointer-events:none;
-      color:rgba(234,238,247,.62);
-      font-weight:750;font-size:12px;
-      text-shadow:0 2px 18px rgba(0,0,0,.6);
-    }
   </style>
 </head>
 <body>
 
   <div id="topbar">
     <div class="pill">
-      Hub 3D <span class="mut">— avatar + déplacements</span>
+      Hub 3D <span class="mut">— caméra libre + déplacements</span>
     </div>
-    <div style="display:flex;gap:10px;pointer-events:none">
+
+    <div style="display:flex;gap:10px;align-items:center;pointer-events:none">
+      <select id="skinSelect" title="Choisir un skin" style="pointer-events:auto">
+        <option value="fox">Fox (GLB)</option>
+        <option value="humanoid">Humanoïde (placeholder)</option>
+      </select>
       <button id="btnJoy" class="btn" style="pointer-events:auto">Joystick</button>
       <button id="btnPause" class="btn primary" style="pointer-events:auto">☰</button>
     </div>
@@ -139,15 +139,20 @@
   <div id="pauseOverlay">
     <div id="pauseCard">
       <h2>Pause</h2>
-      <p>Déplacements PC + mobile. Tu peux masquer/afficher le joystick, et reprendre la partie.</p>
+      <p>
+        Caméra: souris/tactile = tourner • molette/pinch = zoom.
+        Déplacements: ZQSD (ou flèches). Sprint = Shift, Saut = Espace, Accroupi = Ctrl.
+      </p>
       <div class="row">
         <span class="k">ZQSD / Flèches</span>
+        <span class="k">Caméra: drag</span>
+        <span class="k">Zoom: molette / pinch</span>
         <span class="k">Sprint: Shift</span>
         <span class="k">Saut: Espace</span>
         <span class="k">Accroupi: Ctrl</span>
         <span class="k">Pause: Échap</span>
       </div>
-      <div class="spacer"></div>
+      <div style="height:10px"></div>
       <div class="row">
         <button id="btnResume" class="btn primary">Reprendre</button>
         <button id="btnToHome" class="btn">Retour accueil</button>
@@ -166,10 +171,9 @@
     <div id="btnCrouch" class="actBtn">⬇</div>
   </div>
 
-  <div id="hint">Astuce: Échap = pause • Bouton ☰ = pause (mobile)</div>
-
   <script src="three.min.js"></script>
   <script src="GLTFLoader.js"></script>
+  <script src="OrbitControls.js"></script>
   <script src="hub_world.js"></script>
 </body>
 </html>
