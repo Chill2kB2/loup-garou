@@ -22,7 +22,6 @@
       --warn:#ffb020;
       --shadow:0 18px 60px rgba(0,0,0,.45);
       --r:22px;
-      --r2:16px;
       --gap:16px;
       --mono: ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace;
       --ui: system-ui, "Segoe UI", Arial;
@@ -42,77 +41,41 @@
       overflow:hidden;
     }
 
-    /* Layout général */
-    .app{
-      height:100%;
-      display:flex;
-      flex-direction:column;
-    }
+    .app{height:100%; display:flex; flex-direction:column;}
 
-    /* Top bar (ultra light) */
     .topbar{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:12px;
+      display:flex; align-items:center; justify-content:space-between; gap:12px;
       padding:12px 14px;
       border-bottom:1px solid rgba(255,255,255,.08);
       background:rgba(0,0,0,.10);
       backdrop-filter: blur(14px);
     }
-    .brand{
-      display:flex;
-      align-items:center;
-      gap:10px;
-      min-width:0;
-    }
+    .brand{display:flex; align-items:center; gap:10px; min-width:0;}
     .logo{
       width:34px;height:34px;border-radius:12px;
       background:linear-gradient(135deg, var(--acc), var(--acc2));
       box-shadow: 0 10px 30px rgba(124,92,255,.25);
       flex:0 0 auto;
     }
+    .brandText{min-width:0}
     .brand h1{
-      font-size:14px;
-      margin:0;
-      letter-spacing:.2px;
-      font-weight:800;
-      white-space:nowrap;
-      overflow:hidden;
-      text-overflow:ellipsis;
+      font-size:14px; margin:0; letter-spacing:.2px; font-weight:800;
+      white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
     }
     .brand .sub{
-      font-size:12px;
-      color:var(--mut);
-      margin-top:2px;
-      white-space:nowrap;
-      overflow:hidden;
-      text-overflow:ellipsis;
+      font-size:12px; color:var(--mut); margin-top:2px;
+      white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
     }
-    .brandText{min-width:0}
-    .rightbar{
-      display:flex;
-      align-items:center;
-      gap:10px;
-      flex:0 0 auto;
-    }
+    .rightbar{display:flex; align-items:center; gap:10px; flex:0 0 auto;}
 
     .chip{
-      display:inline-flex;
-      align-items:center;
-      gap:8px;
-      padding:8px 10px;
-      border-radius:999px;
+      display:inline-flex; align-items:center; gap:8px;
+      padding:8px 10px; border-radius:999px;
       border:1px solid rgba(255,255,255,.10);
       background:rgba(255,255,255,.06);
-      font-size:12px;
-      color:var(--mut);
+      font-size:12px; color:var(--mut);
     }
-    .dot{
-      width:9px;height:9px;border-radius:50%;
-      background:rgba(255,255,255,.25);
-      box-shadow:none;
-    }
+    .dot{width:9px;height:9px;border-radius:50%; background:rgba(255,255,255,.25);}
     .dot.ok{background:var(--ok); box-shadow:0 0 0 4px rgba(65,211,122,.14)}
     .dot.bad{background:var(--bad); box-shadow:0 0 0 4px rgba(255,92,92,.14)}
 
@@ -126,32 +89,20 @@
       font-weight:800;
       font-size:13px;
       cursor:pointer;
-      transition: transform .06s ease, background .15s ease, border-color .15s ease;
+      transition: transform .06s ease, background .15s ease, border-color .15s ease, opacity .15s ease;
       user-select:none;
     }
     .btn:active{transform:scale(.98)}
     .btn:hover{background:rgba(255,255,255,.08)}
-    .btn.primary{
-      border-color:rgba(124,92,255,.35);
-      background:rgba(124,92,255,.18);
-    }
-    .btn.danger{
-      border-color:rgba(255,92,92,.35);
-      background:rgba(255,92,92,.14);
-    }
-    .btn.ghost{
-      background:transparent;
-      border-color:rgba(255,255,255,.12);
-    }
+    .btn.primary{border-color:rgba(124,92,255,.35); background:rgba(124,92,255,.18);}
+    .btn.danger{border-color:rgba(255,92,92,.35); background:rgba(255,92,92,.14);}
+    .btn.ghost{background:transparent;}
     .btn.icon{
-      width:42px;height:42px;
-      display:grid;place-items:center;
-      padding:0;
-      border-radius:14px;
-      font-size:18px;
+      width:42px;height:42px; display:grid;place-items:center;
+      padding:0; border-radius:14px; font-size:18px;
     }
+    .btn:disabled{opacity:.55; cursor:not-allowed}
 
-    /* Zone jeu */
     .main{
       flex:1 1 auto;
       display:grid;
@@ -173,102 +124,43 @@
       flex-direction:column;
     }
     .panelHead{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:10px;
+      display:flex; align-items:center; justify-content:space-between; gap:10px;
       padding:12px 14px;
       border-bottom:1px solid rgba(255,255,255,.08);
     }
-    .panelHead h2{
-      margin:0;
-      font-size:13px;
-      letter-spacing:.2px;
-      font-weight:900;
-      color:var(--txt);
-    }
-    .panelHead .hint{
-      font-size:12px;
-      color:var(--mut);
-      white-space:nowrap;
-    }
-    .panelBody{
-      padding:12px 14px;
-      overflow:auto;
-      min-height:0;
-    }
+    .panelHead h2{margin:0; font-size:13px; letter-spacing:.2px; font-weight:900;}
+    .panelHead .hint{font-size:12px; color:var(--mut); white-space:nowrap;}
+    .panelBody{padding:12px 14px; overflow:auto; min-height:0;}
 
-    /* Joueurs */
-    .playersTop{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:10px;
-    }
+    .playersTop{display:flex; align-items:center; justify-content:space-between; gap:10px;}
     .readyBadge{
-      font-size:12px;
-      padding:7px 10px;
-      border-radius:999px;
+      font-size:12px; padding:7px 10px; border-radius:999px;
       border:1px solid rgba(255,255,255,.10);
       background:rgba(255,255,255,.06);
       color:var(--mut);
-      flex:0 0 auto;
     }
-    .playersList{
-      display:flex;
-      flex-direction:column;
-      gap:10px;
-      margin-top:10px;
-    }
+    .playersList{display:flex; flex-direction:column; gap:10px; margin-top:10px;}
     .playerRow{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:10px;
-      padding:10px 12px;
-      border-radius:16px;
+      display:flex; align-items:center; justify-content:space-between; gap:10px;
+      padding:10px 12px; border-radius:16px;
       border:1px solid rgba(255,255,255,.10);
       background:rgba(0,0,0,.14);
     }
-    .pLeft{
-      display:flex;
-      align-items:center;
-      gap:10px;
-      min-width:0;
-    }
-    .avatarDot{
-      width:12px;height:12px;border-radius:50%;
-      background:rgba(255,255,255,.22);
-      flex:0 0 auto;
-    }
+    .pLeft{display:flex; align-items:center; gap:10px; min-width:0;}
+    .avatarDot{width:12px;height:12px;border-radius:50%; background:rgba(255,255,255,.22);}
     .avatarDot.alive{background:var(--ok)}
-    .avatarDot.dead{background:rgba(255,255,255,.18)}
-    .pName{
-      font-weight:900;
-      font-size:13px;
-      white-space:nowrap;
-      overflow:hidden;
-      text-overflow:ellipsis;
-    }
-    .pMeta{
-      font-size:12px;
-      color:var(--mut);
-      white-space:nowrap;
-    }
+    .pName{font-weight:900; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+    .pMeta{font-size:12px; color:var(--mut); white-space:nowrap;}
     .tag{
-      font-size:11px;
-      padding:6px 9px;
-      border-radius:999px;
+      font-size:11px; padding:6px 9px; border-radius:999px;
       border:1px solid rgba(255,255,255,.10);
-      color:var(--mut);
-      background:rgba(255,255,255,.06);
+      color:var(--mut); background:rgba(255,255,255,.06);
       white-space:nowrap;
     }
     .tag.host{border-color:rgba(255,176,32,.35); background:rgba(255,176,32,.10); color:rgba(255,232,190,.92)}
     .tag.ready{border-color:rgba(65,211,122,.35); background:rgba(65,211,122,.10); color:rgba(205,255,228,.95)}
     .tag.notready{border-color:rgba(255,92,92,.25); background:rgba(255,92,92,.08); color:rgba(255,220,220,.92)}
 
-    /* Journal / chat */
     .log{
       font-family:var(--mono);
       font-size:12px;
@@ -280,10 +172,10 @@
     .logLine.sys{color:rgba(233,238,252,.70)}
     .logLine.err{color:rgba(255,190,190,.95)}
     .logLine.ok{color:rgba(205,255,228,.95)}
+    .logLine.emph{color:rgba(255,232,190,.95)}
 
     .chatBar{
-      display:flex;
-      gap:10px;
+      display:flex; gap:10px;
       padding:12px 14px;
       border-top:1px solid rgba(255,255,255,.08);
       background:rgba(0,0,0,.12);
@@ -300,53 +192,22 @@
     }
     .input::placeholder{color:rgba(233,238,252,.45)}
 
-    /* Action bar (contextuelle) */
     .actionbar{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:12px;
+      display:flex; align-items:center; justify-content:space-between; gap:12px;
       padding:12px 14px;
       border-top:1px solid rgba(255,255,255,.08);
       background:rgba(0,0,0,.14);
       backdrop-filter: blur(14px);
     }
-    .phaseBox{
-      display:flex;
-      flex-direction:column;
-      gap:3px;
-      min-width:0;
-    }
-    .phaseTitle{
-      font-weight:900;
-      font-size:12px;
-      letter-spacing:.2px;
-      white-space:nowrap;
-      overflow:hidden;
-      text-overflow:ellipsis;
-    }
-    .phaseSub{
-      font-size:12px;
-      color:var(--mut);
-      white-space:nowrap;
-      overflow:hidden;
-      text-overflow:ellipsis;
-    }
-    .actions{
-      display:flex;
-      align-items:center;
-      gap:10px;
-      flex:0 0 auto;
-      flex-wrap:wrap;
-      justify-content:flex-end;
-    }
+    .phaseBox{display:flex; flex-direction:column; gap:3px; min-width:0;}
+    .phaseTitle{font-weight:900; font-size:12px; letter-spacing:.2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+    .phaseSub{font-size:12px; color:var(--mut); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+    .actions{display:flex; align-items:center; gap:10px; flex:0 0 auto; flex-wrap:wrap; justify-content:flex-end;}
 
-    /* Drawer menu */
     .drawerOverlay{
       position:fixed; inset:0;
       background:rgba(0,0,0,.55);
-      opacity:0;
-      pointer-events:none;
+      opacity:0; pointer-events:none;
       transition: opacity .15s ease;
       z-index:50;
     }
@@ -360,8 +221,7 @@
       transform: translateX(100%);
       transition: transform .18s ease;
       z-index:60;
-      display:flex;
-      flex-direction:column;
+      display:flex; flex-direction:column;
     }
     .drawer.open{transform: translateX(0)}
     .drawerHead{
@@ -372,11 +232,8 @@
     .drawerHead h3{margin:0; font-size:13px; font-weight:900}
     .drawerBody{
       padding:12px 14px;
-      overflow:auto;
-      min-height:0;
-      display:flex;
-      flex-direction:column;
-      gap:14px;
+      overflow:auto; min-height:0;
+      display:flex; flex-direction:column; gap:14px;
     }
     .card{
       border:1px solid rgba(255,255,255,.10);
@@ -385,10 +242,9 @@
       padding:12px;
     }
     .row{display:flex; gap:10px; align-items:center}
-    .row .input{flex:1}
-    .mut{color:var(--mut); font-size:12px}
     .sep{height:1px; background:rgba(255,255,255,.08); margin:8px 0}
     .grid2{display:grid; grid-template-columns:1fr 1fr; gap:10px}
+    .mut{color:var(--mut); font-size:12px}
     .tiny{font-size:11px; color:rgba(233,238,252,.55)}
     .kbd{
       font-family:var(--mono);
@@ -401,9 +257,8 @@
       display:inline-block;
     }
 
-    /* Responsive */
     @media (max-width: 980px){
-      .main{grid-template-columns:1fr; }
+      .main{grid-template-columns:1fr;}
       .actions{justify-content:flex-start}
     }
   </style>
@@ -412,18 +267,16 @@
 <body>
 <div class="app">
 
-  <!-- TOP BAR -->
   <header class="topbar">
     <div class="brand">
       <div class="logo" aria-hidden="true"></div>
       <div class="brandText">
         <h1>Loup-Garou — Lobby & Partie</h1>
-        <div class="sub" id="subline">Simple, lisible, pas chargé.</div>
+        <div class="sub" id="subline">Interface séparée du gameplay: propre, lisible.</div>
       </div>
     </div>
-
     <div class="rightbar">
-      <div class="chip" id="statusChip">
+      <div class="chip">
         <span class="dot bad" id="statusDot"></span>
         <span id="statusTxt">Déconnecté</span>
       </div>
@@ -431,10 +284,8 @@
     </div>
   </header>
 
-  <!-- MAIN -->
   <main class="main">
 
-    <!-- PLAYERS -->
     <section class="panel" aria-label="Joueurs">
       <div class="panelHead">
         <div class="playersTop">
@@ -444,12 +295,11 @@
         <button class="btn ghost" id="btnCopyLink" title="Copier le lien à partager">Partager</button>
       </div>
       <div class="panelBody">
-        <div class="mut" id="playersHint">Min: 5. Tout le monde “Prêt”, puis l’hôte démarre.</div>
+        <div class="mut" id="playersHint">Min: —. Connecte-toi via le menu (☰).</div>
         <div class="playersList" id="playersList"></div>
       </div>
     </section>
 
-    <!-- LOG / CHAT -->
     <section class="panel" aria-label="Journal">
       <div class="panelHead">
         <h2>Journal</h2>
@@ -469,7 +319,6 @@
 
   </main>
 
-  <!-- ACTION BAR -->
   <footer class="actionbar">
     <div class="phaseBox">
       <div class="phaseTitle" id="phaseTitle">Phase: —</div>
@@ -485,7 +334,6 @@
   </footer>
 </div>
 
-<!-- DRAWER -->
 <div class="drawerOverlay" id="drawerOverlay"></div>
 <aside class="drawer" id="drawer" aria-label="Menu">
   <div class="drawerHead">
@@ -495,12 +343,11 @@
 
   <div class="drawerBody">
 
-    <!-- Connexion -->
     <div class="card">
       <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">
         <div>
           <div style="font-weight:900">Connexion</div>
-          <div class="tiny">WS par défaut : <span class="kbd" id="wsShown">—</span></div>
+          <div class="tiny">WS : <span class="kbd" id="wsShown">—</span></div>
         </div>
         <button class="btn ghost" id="btnEditWS" title="Changer l'URL WS">WS</button>
       </div>
@@ -518,11 +365,10 @@
 
       <div style="height:10px"></div>
       <div class="mut">
-        Astuce : sur Render gratuit, si ça ne répond pas du 1er coup, retente une fois (réveil serveur).
+        Si ça échoue au 1er essai sur Render gratuit, retente une fois.
       </div>
     </div>
 
-    <!-- Partie (infos + hôte) -->
     <div class="card">
       <div style="font-weight:900">Partie</div>
       <div class="sep"></div>
@@ -543,18 +389,18 @@
       </div>
 
       <div style="height:10px"></div>
-      <div class="mut" id="hostOnlyHint">Paramètres hôte : visibles uniquement si tu es l’hôte.</div>
+      <div class="mut" id="settingsLine">Paramètres: —</div>
 
-      <div id="hostBox" style="display:none; margin-top:10px">
+      <div id="hostBox" style="display:none; margin-top:12px">
         <div class="sep"></div>
         <div style="font-weight:900; font-size:12px; margin-bottom:8px">Paramètres (hôte)</div>
 
         <div class="grid2">
           <label class="mut">Loups
-            <input class="input" id="optWolves" type="number" min="1" max="4" value="1" />
+            <input class="input" id="optWolvesCount" type="number" min="1" max="4" value="1" />
           </label>
           <label class="mut">Chasseur
-            <select class="input" id="optHunter">
+            <select class="input" id="optHunterEnabled">
               <option value="1">ON</option>
               <option value="0">OFF</option>
             </select>
@@ -563,21 +409,43 @@
 
         <div style="height:10px"></div>
 
-        <label class="mut">Timers (secondes)
-          <input class="input" id="optTimers" placeholder="ex: reveal=12 night=20 talk=25 vote=20" />
+        <div class="grid2">
+          <label class="mut">Révélation (ms)
+            <input class="input" id="optRevealMs" type="number" min="1000" step="500" value="12000" />
+          </label>
+          <label class="mut">Nuit (ms)
+            <input class="input" id="optNightMs" type="number" min="1000" step="500" value="20000" />
+          </label>
+        </div>
+
+        <div style="height:10px"></div>
+
+        <div class="grid2">
+          <label class="mut">Discussion (ms)
+            <input class="input" id="optTalkMs" type="number" min="1000" step="500" value="22000" />
+          </label>
+          <label class="mut">Vote (ms)
+            <input class="input" id="optVoteMs" type="number" min="1000" step="500" value="20000" />
+          </label>
+        </div>
+
+        <div style="height:10px"></div>
+
+        <label class="mut">Tir Chasseur (ms)
+          <input class="input" id="optHunterMs" type="number" min="1000" step="500" value="15000" />
         </label>
 
         <div style="height:10px"></div>
         <button class="btn" id="btnApplySettings">Appliquer</button>
+        <div class="tiny" style="margin-top:8px">On enverra exactement les champs que ton serveur utilise: wolvesCount, hunterEnabled, revealMs, nightMs, talkMs, voteMs, hunterMs.</div>
       </div>
     </div>
 
-    <!-- Quitter -->
     <div class="card">
       <div style="font-weight:900">Quitter</div>
       <div class="sep"></div>
       <button class="btn danger" id="btnQuitToHome">Retour accueil</button>
-      <div class="mut" style="margin-top:10px">Tu peux laisser cette page ouverte, et revenir quand tu veux.</div>
+      <div class="mut" style="margin-top:10px">Déconnexion propre avant retour.</div>
     </div>
 
   </div>
@@ -591,7 +459,6 @@
   const DEFAULT_WS = "wss://loup-garou-ws.onrender.com/ws";
   const HOME_URL = "index.html";
 
-  // Query param override: ?ws=wss://... (pratique debug)
   const qs = new URLSearchParams(location.search);
   let wsUrl = qs.get("ws") || localStorage.getItem("lg_ws_url") || DEFAULT_WS;
 
@@ -602,6 +469,7 @@
 
   const statusDot = $("statusDot");
   const statusTxt = $("statusTxt");
+  const subline = $("subline");
 
   const btnMenu = $("btnMenu");
   const drawer = $("drawer");
@@ -625,9 +493,9 @@
 
   const btnQuitToHome = $("btnQuitToHome");
 
+  const playersHint = $("playersHint");
   const playersList = $("playersList");
   const readyBadge = $("readyBadge");
-  const playersHint = $("playersHint");
 
   const logBox = $("log");
   const btnClearLog = $("btnClearLog");
@@ -638,17 +506,22 @@
   const phaseTitle = $("phaseTitle");
   const phaseSub = $("phaseSub");
   const phaseMini = $("phaseMini");
-  const subline = $("subline");
 
   const btnCopyLink = $("btnCopyLink");
 
   const youIdEl = $("youId");
   const hostIdEl = $("hostId");
+  const settingsLine = $("settingsLine");
+
   const hostBox = $("hostBox");
   const btnApplySettings = $("btnApplySettings");
-  const optWolves = $("optWolves");
-  const optHunter = $("optHunter");
-  const optTimers = $("optTimers");
+  const optWolvesCount = $("optWolvesCount");
+  const optHunterEnabled = $("optHunterEnabled");
+  const optRevealMs = $("optRevealMs");
+  const optNightMs = $("optNightMs");
+  const optTalkMs = $("optTalkMs");
+  const optVoteMs = $("optVoteMs");
+  const optHunterMs = $("optHunterMs");
 
   // ---------------------------
   // STATE
@@ -661,11 +534,12 @@
   let isHost = false;
 
   let phase = "—";
-  let readyCount = 0;
-  let totalCount = 0;
-
-  let players = []; // [{id,name,ready,alive,host}]
+  let players = []; // [{id,name,ready}]
   let myReady = false;
+
+  let settings = null; // settings reçus
+  let minPlayers = 5;
+  let allReady = false;
 
   // ---------------------------
   // UI helpers
@@ -702,18 +576,41 @@
     phaseSub.textContent = sub || "";
   }
 
+  function setMyReady(v){
+    myReady = !!v;
+    const txt = myReady ? "Prêt ✓" : "Prêt";
+    btnReady.textContent = txt;
+    btnReadyMenu.textContent = txt;
+    btnReady.classList.toggle("primary", myReady);
+    btnReadyMenu.classList.toggle("primary", myReady);
+  }
+
+  function syncHostUI(){
+    isHost = (youId != null && hostId != null && youId === hostId);
+    hostBox.style.display = isHost ? "block" : "none";
+
+    youIdEl.textContent = youId ?? "—";
+    hostIdEl.textContent = hostId ?? "—";
+
+    // Start enabled seulement si host + conditions
+    const canStart = connected && isHost && (players.length >= minPlayers) && !!allReady;
+    btnStart.disabled = !canStart;
+    btnStartMenu.disabled = !canStart;
+  }
+
   function renderPlayers(){
     playersList.innerHTML = "";
 
-    // ready count
-    totalCount = players.length;
-    readyCount = players.filter(p => !!p.ready).length;
-    readyBadge.textContent = `Prêts: ${readyCount}/${totalCount}`;
+    const total = players.length;
+    const readyCount = players.filter(p => !!p.ready).length;
+    readyBadge.textContent = `Prêts: ${readyCount}/${total}`;
 
-    if(totalCount < 5){
-      playersHint.textContent = `Min: 5. Actuels: ${totalCount}. Partage le lien pour inviter.`;
+    if(!connected){
+      playersHint.textContent = "Connecte-toi via le menu (☰).";
+    } else if(total < minPlayers){
+      playersHint.textContent = `Min: ${minPlayers}. Actuels: ${total}. Partage le lien.`;
     } else {
-      playersHint.textContent = `Min: 5. Tous “Prêt”, puis l’hôte démarre.`;
+      playersHint.textContent = `Min: ${minPlayers}. ${allReady ? "Tous prêts ✅ — l’hôte peut démarrer." : "Attente: tout le monde doit être prêt."}`;
     }
 
     for(const p of players){
@@ -724,7 +621,10 @@
       left.className = "pLeft";
 
       const dot = document.createElement("div");
-      dot.className = "avatarDot " + (p.alive === false ? "dead" : "alive");
+      dot.className = "avatarDot alive";
+
+      const wrap = document.createElement("div");
+      wrap.style.minWidth = "0";
 
       const name = document.createElement("div");
       name.className = "pName";
@@ -732,10 +632,8 @@
 
       const meta = document.createElement("div");
       meta.className = "pMeta";
-      meta.textContent = (p.id === youId ? "toi" : ("#" + (p.id ?? "?")));
+      meta.textContent = (p.id === youId ? "toi" : ("#" + p.id));
 
-      const wrap = document.createElement("div");
-      wrap.style.minWidth = "0";
       wrap.appendChild(name);
       wrap.appendChild(meta);
 
@@ -764,43 +662,61 @@
       playersList.appendChild(row);
     }
 
-    // buttons enabled
     btnReady.disabled = !connected;
     btnReadyMenu.disabled = !connected;
-    btnStart.disabled = !(connected && isHost);
-    btnStartMenu.disabled = !(connected && isHost);
+
+    // action placeholder
+    btnAction.disabled = !connected || (phase === "LOBBY");
   }
 
-  function syncHostUI(){
-    isHost = (youId != null && hostId != null && youId === hostId);
-    hostBox.style.display = isHost ? "block" : "none";
-    hostIdEl.textContent = hostId ?? "—";
-    youIdEl.textContent = youId ?? "—";
-    btnStart.disabled = !(connected && isHost);
-    btnStartMenu.disabled = !(connected && isHost);
+  function formatSettingsLine(s){
+    if(!s) return "Paramètres: —";
+    const reveal = Math.round((s.revealMs ?? 0)/1000);
+    const night  = Math.round((s.nightMs  ?? 0)/1000);
+    const talk   = Math.round((s.talkMs   ?? 0)/1000);
+    const vote   = Math.round((s.voteMs   ?? 0)/1000);
+    const hunter = Math.round((s.hunterMs ?? 0)/1000);
+    const wolves = s.wolvesCount ?? 1;
+    const hunterOn = s.hunterEnabled ? "ON" : "OFF";
+    return `Paramètres: Loups ${wolves} · Chasseur ${hunterOn} · Rév ${reveal}s · Nuit ${night}s · Disc ${talk}s · Vote ${vote}s · Tir ${hunter}s`;
   }
 
-  function setMyReady(v){
-    myReady = !!v;
-    btnReady.textContent = myReady ? "Prêt ✓" : "Prêt";
-    btnReadyMenu.textContent = btnReady.textContent;
-    btnReady.classList.toggle("primary", myReady);
-    btnReadyMenu.classList.toggle("primary", myReady);
+  function applySettingsToInputs(s){
+    if(!s) return;
+    if(s.wolvesCount != null) optWolvesCount.value = String(s.wolvesCount);
+    optHunterEnabled.value = (s.hunterEnabled ? "1" : "0");
+    if(s.revealMs != null) optRevealMs.value = String(s.revealMs);
+    if(s.nightMs  != null) optNightMs.value  = String(s.nightMs);
+    if(s.talkMs   != null) optTalkMs.value   = String(s.talkMs);
+    if(s.voteMs   != null) optVoteMs.value   = String(s.voteMs);
+    if(s.hunterMs != null) optHunterMs.value = String(s.hunterMs);
   }
 
   // ---------------------------
-  // WS protocol (generic)
+  // WS helpers
   // ---------------------------
   function send(obj){
     if(!ws || ws.readyState !== 1) return;
-    try{
-      ws.send(JSON.stringify(obj));
-    }catch(e){
-      // fallback
-      ws.send(String(obj));
-    }
+    ws.send(JSON.stringify(obj));
   }
 
+  function safeParsePlayers(raw){
+    // Ton serveur envoie players comme string JSON: "[{\"id\":4,...}]"
+    if(Array.isArray(raw)) return raw;
+    if(typeof raw === "string"){
+      try{
+        const arr = JSON.parse(raw);
+        return Array.isArray(arr) ? arr : [];
+      }catch{
+        return [];
+      }
+    }
+    return [];
+  }
+
+  // ---------------------------
+  // WS connect / protocol
+  // ---------------------------
   function connect(){
     const name = (nameInput.value || "").trim();
     if(name.length < 1){
@@ -814,9 +730,8 @@
     log(`Connexion… (${wsUrl})`, "sys");
     setStatus(false, "Connexion…");
 
-    try{
-      ws = new WebSocket(wsUrl);
-    }catch(e){
+    try{ ws = new WebSocket(wsUrl); }
+    catch{
       log("WebSocket: URL invalide.", "err");
       setStatus(false, "Erreur URL");
       return;
@@ -825,14 +740,13 @@
     ws.onopen = () => {
       connected = true;
       setStatus(true, "Connecté");
-      subline.textContent = "Connecté. Passe “Prêt”, puis l’hôte démarre.";
+      subline.textContent = "Connecté. Mets-toi prêt, puis l’hôte démarre.";
       btnDisconnect.disabled = false;
       btnConnect.disabled = true;
 
-      // Message "join" (standard)
+      // IMPORTANT: ton serveur sait gérer join (tu l’as vu: name devient “suuu”)
       send({ t:"join", name });
 
-      // si ton serveur attend autre chose, on l’adaptera après ton test.
       log(`Connecté en tant que ${name}.`, "ok");
       closeMenu();
     };
@@ -846,94 +760,114 @@
 
       youId = null; hostId = null; isHost = false;
       players = [];
+      settings = null;
+      minPlayers = 5;
+      allReady = false;
+
       setMyReady(false);
       setPhase("—", "Connecte-toi via le menu (☰).");
+      settingsLine.textContent = "Paramètres: —";
       renderPlayers();
       syncHostUI();
+
       log("Déconnecté.", "sys");
     };
 
-    ws.onerror = () => {
-      log("WebSocket: erreur réseau (ou serveur endormi).", "err");
-    };
+    ws.onerror = () => log("WebSocket: erreur réseau (ou serveur endormi).", "err");
 
     ws.onmessage = (ev) => {
-      // Support: JSON ou texte brut
-      let data = ev.data;
       let msg = null;
-
-      try{ msg = JSON.parse(data); } catch { msg = null; }
-
-      if(!msg){
-        // texte brut
-        log(String(data), "sys");
+      try{ msg = JSON.parse(ev.data); } catch {
+        log(String(ev.data), "sys");
         return;
       }
 
-      // ---- messages standard attendus ----
-      // {t:"hello", youId, hostId}
-      // {t:"state", phase, players:[...], youId, hostId, youReady, info}
-      // {t:"chat", from, text}
-      // {t:"role", role}
-      // {t:"error", message}
-      // {t:"info", message}
+      // --- protocole exact de ton serveur ---
       switch(msg.t){
-        case "hello":
-          youId = msg.youId ?? youId;
-          hostId = msg.hostId ?? hostId;
-          syncHostUI();
-          renderPlayers();
-          break;
-
-        case "state":
+        case "welcome": {
+          // {"t":"welcome","id":4,"isHost":true,"phase":"LOBBY"}
+          youId = msg.id ?? youId;
           if(typeof msg.phase === "string") phase = msg.phase;
-          if(Array.isArray(msg.players)) players = msg.players;
-          if(msg.youId != null) youId = msg.youId;
-          if(msg.hostId != null) hostId = msg.hostId;
-          if(msg.youReady != null) setMyReady(!!msg.youReady);
+          // hostId viendra du message lobby, mais si isHost true, on peut anticiper
+          if(msg.isHost === true && hostId == null) hostId = youId;
+          setPhase(phase, phase === "LOBBY" ? "En attente des joueurs." : "");
+          syncHostUI();
+          renderPlayers();
+          log(`Bienvenue. Ton id=${youId}.`, "sys");
+          break;
+        }
+
+        case "lobby": {
+          // {"t":"lobby","hostId":4,"phase":"LOBBY","players":"[...]","settings":{...}}
+          hostId = msg.hostId ?? hostId;
+          if(typeof msg.phase === "string") phase = msg.phase;
+
+          const arr = safeParsePlayers(msg.players);
+          players = arr.map(p => ({
+            id: p.id,
+            name: p.name ?? ("Joueur " + p.id),
+            ready: !!p.ready
+          }));
+
+          settings = msg.settings ?? settings;
+
+          // settings contient allReady/minPlayers selon tes logs
+          if(settings && typeof settings.minPlayers === "number") minPlayers = settings.minPlayers;
+          if(settings && typeof settings.allReady === "boolean") allReady = settings.allReady;
+
+          // mon état ready = ce que dit le serveur
+          const me = players.find(p => p.id === youId);
+          if(me) setMyReady(!!me.ready);
+
+          // UI settings
+          settingsLine.textContent = formatSettingsLine(settings);
+          applySettingsToInputs(settings);
+
+          // phase text
+          const sub =
+            phase === "LOBBY"
+              ? (players.length < minPlayers
+                  ? `Min ${minPlayers} joueurs. Invite tes amis.`
+                  : (allReady ? "Tous prêts ✅ — l’hôte peut démarrer." : "Attente: tout le monde doit être prêt."))
+              : "Partie en cours.";
+
+          setPhase(phase, sub);
 
           syncHostUI();
           renderPlayers();
-
-          if(msg.info) setPhase(phase, String(msg.info));
-          else setPhase(phase, phase === "LOBBY" ? "Passe Prêt. L’hôte démarre quand tous sont prêts." : "");
-
-          // Action button context (minimal)
-          if(phase === "LOBBY"){
-            btnAction.disabled = true;
-            btnAction.textContent = "Action";
-          } else {
-            btnAction.disabled = false;
-            btnAction.textContent = (phase.includes("VOTE") ? "Voter" : "Action");
-          }
           break;
+        }
 
-        case "chat":
+        case "log": {
+          // {"t":"log","text":"...", "emph": false}
+          const text = String(msg.text ?? "");
+          const kind = msg.emph ? "emph" : "sys";
+          log(text, kind);
+          break;
+        }
+
+        case "chat": {
+          // si tu l’ajoutes côté serveur plus tard
           log(`[${msg.from ?? "?"}] ${msg.text ?? ""}`, "sys");
           break;
+        }
 
-        case "role":
-          log(`(Privé) Ton rôle : ${msg.role}`, "ok");
-          break;
-
-        case "error":
+        case "error": {
           log(`Erreur: ${msg.message ?? "?"}`, "err");
           break;
+        }
 
-        case "info":
-          log(String(msg.message ?? ""), "sys");
-          break;
-
-        default:
-          // inconnu -> log
+        default: {
           log(`MSG ${msg.t}: ${JSON.stringify(msg)}`, "sys");
           break;
+        }
       }
     };
   }
 
   function disconnect(){
     if(ws){
+      try{ send({t:"leave"}); } catch {}
       try{ ws.close(); } catch {}
     }
   }
@@ -943,10 +877,14 @@
   // ---------------------------
   function toggleReady(){
     if(!connected) return;
-    // standard: {t:"ready", value:true/false}
     const next = !myReady;
+
+    // On envoie un message simple. Si ton ws_server.py utilise un autre nom,
+    // on l’ajuste au bloc suivant en 10 secondes avec ton retour.
+    send({ t:"ready", ready: next });
+
+    // UI optimiste (le serveur renverra lobby et confirmera)
     setMyReady(next);
-    send({ t:"ready", value: next });
   }
 
   function startGame(){
@@ -957,24 +895,27 @@
   }
 
   function doAction(){
-    // Ici : bouton “Action” générique.
-    // Le vrai vote/action (UI choix cible) on le fera dans le bloc suivant,
-    // après que tu confirmes le protocole exact renvoyé par ton serveur.
     if(!connected) return;
-    send({ t:"action_click" });
+    // placeholder: on fera la vraie UI vote/choix cible dans le prochain bloc
+    send({ t:"action" });
     log("Action envoyée (placeholder).", "sys");
   }
 
   function applyHostSettings(){
     if(!connected || !isHost) return;
 
-    const wolves = clampInt(optWolves.value, 1, 4, 1);
-    const hunter = optHunter.value === "1";
+    const payload = {
+      t: "settings",
+      wolvesCount: clampInt(optWolvesCount.value, 1, 4, 1),
+      hunterEnabled: optHunterEnabled.value === "1",
+      revealMs: clampInt(optRevealMs.value, 1000, 120000, 12000),
+      nightMs: clampInt(optNightMs.value, 1000, 180000, 20000),
+      talkMs: clampInt(optTalkMs.value, 1000, 300000, 22000),
+      voteMs: clampInt(optVoteMs.value, 1000, 180000, 20000),
+      hunterMs: clampInt(optHunterMs.value, 1000, 180000, 15000),
+    };
 
-    // timers: format "reveal=12 night=20 talk=25 vote=20"
-    const timers = parseKeyVals(optTimers.value);
-
-    send({ t:"settings", wolves, hunter, timers });
+    send(payload);
     log("Paramètres (hôte) envoyés.", "sys");
   }
 
@@ -984,23 +925,10 @@
     return Math.max(min, Math.min(max, n));
   }
 
-  function parseKeyVals(s){
-    const out = {};
-    const parts = String(s||"").trim().split(/\s+/).filter(Boolean);
-    for(const p of parts){
-      const [k,v] = p.split("=");
-      if(!k || v == null) continue;
-      const n = parseInt(v, 10);
-      out[k] = Number.isNaN(n) ? v : n;
-    }
-    return out;
-  }
-
   // ---------------------------
   // Misc
   // ---------------------------
   function copyInviteLink(){
-    // même page = plus simple
     const url = location.href;
     navigator.clipboard?.writeText(url).then(()=>{
       log("Lien copié. Envoie-le à tes amis.", "ok");
@@ -1010,10 +938,9 @@
   }
 
   function goHome(){
-    // Option: si connecté, on déconnecte proprement.
     if(connected){
-      try{ send({t:"leave"}) } catch {}
-      try{ ws.close() } catch {}
+      try{ send({t:"leave"}); } catch {}
+      try{ ws.close(); } catch {}
     }
     location.href = HOME_URL;
   }
@@ -1030,11 +957,14 @@
   // ---------------------------
   // Wire events
   // ---------------------------
-  btnMenu.addEventListener("click", openMenu);
-  btnCloseMenu.addEventListener("click", closeMenu);
+  function openMenu(){ drawer.classList.add("open"); overlay.classList.add("open"); }
+  function closeMenu(){ drawer.classList.remove("open"); overlay.classList.remove("open"); }
+
+  $("btnMenu").addEventListener("click", openMenu);
+  $("btnCloseMenu").addEventListener("click", closeMenu);
   overlay.addEventListener("click", closeMenu);
 
-  btnEditWS.addEventListener("click", editWS);
+  $("btnEditWS").addEventListener("click", editWS);
 
   btnConnect.addEventListener("click", connect);
   btnDisconnect.addEventListener("click", disconnect);
@@ -1051,12 +981,14 @@
   btnQuitToHome.addEventListener("click", goHome);
 
   btnClearLog.addEventListener("click", clearLog);
+
   btnSend.addEventListener("click", () => {
     const t = (chatInput.value||"").trim();
     if(!t) return;
     chatInput.value = "";
     send({ t:"chat", text: t });
   });
+
   chatInput.addEventListener("keydown", (e) => {
     if(e.key === "Enter"){
       e.preventDefault();
@@ -1067,7 +999,6 @@
   btnCopyLink.addEventListener("click", copyInviteLink);
   btnApplySettings.addEventListener("click", applyHostSettings);
 
-  // Esc ferme le menu
   window.addEventListener("keydown", (e) => {
     if(e.key === "Escape"){
       if(drawer.classList.contains("open")) closeMenu();
@@ -1079,12 +1010,15 @@
   wsShown.textContent = wsUrl;
   setStatus(false, "Déconnecté");
   setPhase("—", "Connecte-toi via le menu (☰).");
-  renderPlayers();
-  syncHostUI();
+  settingsLine.textContent = "Paramètres: —";
 
   const savedName = localStorage.getItem("lg_name");
   if(savedName) nameInput.value = savedName;
 
+  // minimal init visuals
+  renderPlayers();
+  syncHostUI();
+  setMyReady(false);
 })();
 </script>
 
