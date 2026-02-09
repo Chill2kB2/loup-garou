@@ -1,598 +1,1051 @@
 (() => {
-  // ---------- DOM ----------
-  const pauseOverlay = document.getElementById("pauseOverlay");
-  const btnPause = document.getElementById("btnPause");
-  const btnResume = document.getElementById("btnResume");
-  const btnToHome = document.getElementById("btnToHome");
+  "use strict";
 
-  const skinSelect = document.getElementById("skinSelect");
+  /* ---------------------------
+    Utils
+  --------------------------- */
 
-  const btnJoy = document.getElementById("btnJoy");
-  const joyWrap = document.getElementById("joyWrap");
-  const joyKnob = document.getElementById("joyKnob");
+  const $ = (sel) => document.querySelector(sel);
 
-  const actWrap = document.getElementById("actWrap");
-  const btnJump = document.getElementById("btnJump");
-  const btnSprint = document.getElementById("btnSprint");
-  const btnCrouch = document.getElementById("btnCrouch");
+  function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+  function lerp(a, b, t) { return a + (b - a) * t; }
 
-  const isMobile =
-    matchMedia("(pointer:coarse)").matches ||
-    /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  function isTouchDevice() {
+    return ("ontouchstart" in window) || (navigator.maxTouchPoints > 0);
+  }
 
-  // ---------- helpers ----------
-  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
-  const lerp = (a, b, t) => a + (b - a) * t;
-  const damp = (current, target, lambda, dt) => lerp(current, target, 1 - Math.exp(-lambda * dt));
+  function toast(msg, ms = 2200) {
+    const box = $("#toast");
+    if (!box) return;
+    const div = document.createElement("div");
+    div.className = "toastLine";
+    div.textContent = msg;
+    box.appendChild(div);
+    setTimeout(() => { div.remove(); }, ms);
+  }
 
-  // ---------- THREE ----------
-  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  function safeJsonParse(s, fallback) {
+    try { return JSON.parse(s); } catch { return fallback; }
+  }
+
+  /* ---------------------------
+    Settings / Storage
+  --------------------------- */
+
+  const DEFAULT_BINDS = {
+    forward: ["KeyZ", "ArrowUp", "KeyW"],
+    back: ["KeyS", "ArrowDown"],
+    left: ["KeyQ", "ArrowLeft", "KeyA"],
+    right: ["KeyD", "ArrowRight"],
+    jump: ["Space"],
+    crouch: ["ControlLeft", "ControlRight"],
+    sprint: ["ShiftLeft", "ShiftRight"],
+    dash: ["KeyF"],
+    pause: ["Escape"],
+    joystickToggle: ["KeyJ"],
+  };
+
+  const DEFAULT_SETTINGS = {
+    graphics: { quality: "high", shadows: true, fov: 60, pixelRatio: "auto" },
+    controls: { sens: 1.2, invertY: false, mouseMode: "drag" }, // drag / lock
+    audio: { master: 70, amb: 60, sfx: 80 },
+    gameplay: { moveRelativeCamera: true, sprintMode: "hold", dash: true, autoJoy: true },
+    skin: { selected: "humanoid", scale: 1.0, color: "#7c5cff" }
+  };
+
+  function loadSettings() {
+    const raw = localStorage.getItem("lg_hub_settings");
+    const s = raw ? safeJsonParse(raw, null) : null;
+    const merged = structuredClone(DEFAULT_SETTINGS);
+    if (s) {
+      // merge shallow
+      Object.assign(merged.graphics, s.graphics || {});
+      Object.assign(merged.controls, s.controls || {});
+      Object.assign(merged.audio, s.audio || {});
+      Object.assign(merged.gameplay, s.gameplay || {});
+      Object.assign(merged.skin, s.skin || {});
+    }
+    return merged;
+  }
+
+  function saveSettings() {
+    localStorage.setItem("lg_hub_settings", JSON.stringify(SETTINGS));
+  }
+
+  function loadBinds() {
+    const raw = localStorage.getItem("lg_hub_binds");
+    const b = raw ? safeJsonParse(raw, null) : null;
+    const merged = structuredClone(DEFAULT_BINDS);
+    if (b) {
+      for (const k of Object.keys(merged)) {
+        if (Array.isArray(b[k]) && b[k].length) merged[k] = b[k];
+      }
+    }
+    return merged;
+  }
+
+  function saveBinds() {
+    localStorage.setItem("lg_hub_binds", JSON.stringify(BINDS));
+  }
+
+  const SETTINGS = loadSettings();
+  const BINDS = loadBinds();
+
+  /* ---------------------------
+    Three.js setup
+  --------------------------- */
+
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
   renderer.setSize(innerWidth, innerHeight);
-  renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
-  renderer.shadowMap.enabled = true;
+
+  // PixelRatio
+  function applyPixelRatio() {
+    const pr = SETTINGS.graphics.pixelRatio;
+    if (pr === "auto") renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    else renderer.setPixelRatio(parseFloat(pr) || 1);
+  }
+  applyPixelRatio();
+
+  renderer.shadowMap.enabled = !!SETTINGS.graphics.shadows;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   document.body.appendChild(renderer.domElement);
 
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x07090d);
-  scene.fog = new THREE.Fog(0x07090d, 30, 220);
+  scene.fog = new THREE.Fog(0x07090d, 25, 160);
 
-  const camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 0.05, 1000);
+  const camera = new THREE.PerspectiveCamera(SETTINGS.graphics.fov, innerWidth / innerHeight, 0.05, 600);
 
-  // lights
-  scene.add(new THREE.HemisphereLight(0xbfd7ff, 0x0b0d12, 0.95));
-  const sun = new THREE.DirectionalLight(0xffffff, 1.25);
-  sun.position.set(18, 22, 12);
+  // Lights (simple mais joli)
+  const hemi = new THREE.HemisphereLight(0xcfe8ff, 0x1a2030, 0.75);
+  scene.add(hemi);
+
+  const sun = new THREE.DirectionalLight(0xffffff, 1.0);
+  sun.position.set(35, 55, 20);
   sun.castShadow = true;
-  sun.shadow.mapSize.set(2048, 2048);
+  sun.shadow.mapSize.set(1024, 1024);
+  sun.shadow.camera.near = 1;
+  sun.shadow.camera.far = 160;
+  sun.shadow.camera.left = -60;
+  sun.shadow.camera.right = 60;
+  sun.shadow.camera.top = 60;
+  sun.shadow.camera.bottom = -60;
   scene.add(sun);
 
-  // ground
+  // Ground (propre)
   const ground = new THREE.Mesh(
-    new THREE.PlaneGeometry(350, 350),
-    new THREE.MeshStandardMaterial({ color: 0x3a4452, roughness: 0.95 })
+    new THREE.PlaneGeometry(600, 600, 1, 1),
+    new THREE.MeshStandardMaterial({ color: 0x3a4452, roughness: 0.95, metalness: 0.0 })
   );
   ground.rotation.x = -Math.PI / 2;
   ground.receiveShadow = true;
   scene.add(ground);
 
-  // quelques blocs de déco
-  const mkBox = (x, z, h, c) => {
-    const m = new THREE.Mesh(
-      new THREE.BoxGeometry(2, h, 2),
-      new THREE.MeshStandardMaterial({ color: c, roughness: 0.85 })
-    );
-    m.position.set(x, h / 2, z);
-    m.castShadow = true;
-    m.receiveShadow = true;
-    scene.add(m);
-  };
-  mkBox(18, 10, 3.2, 0x2b3240);
-  mkBox(-22, -12, 4.6, 0x252b36);
-  mkBox(10, -24, 5.5, 0x1f2430);
+  // Quelques repères (POI minimal)
+  const poiMat = new THREE.MeshStandardMaterial({ color: 0x222a35, roughness: 0.9 });
+  for (let i = 0; i < 8; i++) {
+    const b = new THREE.Mesh(new THREE.BoxGeometry(2, 3 + Math.random() * 3, 2), poiMat);
+    b.position.set(-18 + i * 5, b.geometry.parameters.height / 2, -10 - (i % 2) * 7);
+    b.castShadow = true;
+    b.receiveShadow = true;
+    scene.add(b);
+  }
 
-  // ---------- PLAYER ROOT (pivot unique) ----------
+  /* ---------------------------
+    Input (keyboard + mouse + touch)
+  --------------------------- */
+
+  const Input = {
+    keysDown: new Set(),
+    mouseDown: false,
+    pointerLocked: false,
+    lookDX: 0,
+    lookDY: 0,
+    moveX: 0, // -1..1
+    moveY: 0, // -1..1
+    lookX: 0, // -1..1 (touch stick)
+    lookY: 0, // -1..1
+    jumpPressed: false,
+    dashPressed: false,
+  };
+
+  function actionDown(action) {
+    const codes = BINDS[action] || [];
+    for (const c of codes) if (Input.keysDown.has(c)) return true;
+    return false;
+  }
+
+  function actionPressedOnce(action, latchKey) {
+    if (!Input[latchKey]) {
+      if (actionDown(action)) {
+        Input[latchKey] = true;
+        return true;
+      }
+      return false;
+    } else {
+      if (!actionDown(action)) Input[latchKey] = false;
+      return false;
+    }
+  }
+
+  window.addEventListener("keydown", (e) => {
+    Input.keysDown.add(e.code);
+
+    // éviter scroll
+    if (["ArrowUp","ArrowDown","ArrowLeft","ArrowRight","Space"].includes(e.code)) e.preventDefault();
+
+    // Toggle joystick
+    if (BINDS.joystickToggle.includes(e.code)) toggleTouchUI();
+  }, { passive: false });
+
+  window.addEventListener("keyup", (e) => {
+    Input.keysDown.delete(e.code);
+  });
+
+  // Mouse look
+  window.addEventListener("mousedown", (e) => { Input.mouseDown = true; });
+  window.addEventListener("mouseup", (e) => { Input.mouseDown = false; });
+
+  window.addEventListener("mousemove", (e) => {
+    const mode = SETTINGS.controls.mouseMode;
+    const canLook = (mode === "lock" && Input.pointerLocked) || (mode === "drag" && Input.mouseDown && !PAUSED);
+    if (!canLook) return;
+    Input.lookDX += e.movementX || 0;
+    Input.lookDY += e.movementY || 0;
+  });
+
+  renderer.domElement.addEventListener("click", () => {
+    if (PAUSED) return;
+    if (SETTINGS.controls.mouseMode !== "lock") return;
+    renderer.domElement.requestPointerLock?.();
+  });
+
+  document.addEventListener("pointerlockchange", () => {
+    Input.pointerLocked = (document.pointerLockElement === renderer.domElement);
+  });
+
+  // Touch joysticks
+  const touchUI = $("#touchUI");
+  const stickMove = $("#stickMove");
+  const stickLook = $("#stickLook");
+  const btnJump = $("#btnJump");
+
+  let touchEnabled = false;
+
+  function setStickKnob(stickEl, nx, ny) {
+    const knob = stickEl.querySelector(".knob");
+    const r = 40; // radius px for knob movement
+    knob.style.left = (50 + nx * r / 75 * 50) + "%";
+    knob.style.top  = (50 + ny * r / 75 * 50) + "%";
+    // simple alternative: pixel translate, but % is ok here
+    knob.style.transform = "translate(-50%,-50%)";
+  }
+
+  function makeStick(stickEl, onMove) {
+    let activeId = null;
+    let cx = 0, cy = 0;
+
+    stickEl.addEventListener("pointerdown", (e) => {
+      if (PAUSED) return;
+      stickEl.setPointerCapture(e.pointerId);
+      activeId = e.pointerId;
+      const r = stickEl.getBoundingClientRect();
+      cx = r.left + r.width / 2;
+      cy = r.top + r.height / 2;
+      onMove(0, 0);
+      setStickKnob(stickEl, 0, 0);
+      e.preventDefault();
+    });
+
+    stickEl.addEventListener("pointermove", (e) => {
+      if (activeId !== e.pointerId) return;
+      const dx = e.clientX - cx;
+      const dy = e.clientY - cy;
+      const max = 50;
+      const nx = clamp(dx / max, -1, 1);
+      const ny = clamp(dy / max, -1, 1);
+      onMove(nx, ny);
+      setStickKnob(stickEl, nx * 40, ny * 40);
+      e.preventDefault();
+    });
+
+    stickEl.addEventListener("pointerup", (e) => {
+      if (activeId !== e.pointerId) return;
+      activeId = null;
+      onMove(0, 0);
+      setStickKnob(stickEl, 0, 0);
+      e.preventDefault();
+    });
+  }
+
+  makeStick(stickMove, (x, y) => {
+    Input.moveX = x;
+    Input.moveY = y;
+  });
+
+  makeStick(stickLook, (x, y) => {
+    Input.lookX = x;
+    Input.lookY = y;
+  });
+
+  btnJump.addEventListener("pointerdown", (e) => {
+    if (PAUSED) return;
+    Input.jumpPressed = true;
+    e.preventDefault();
+  });
+
+  function applyAutoTouchUI() {
+    const should = isTouchDevice() && SETTINGS.gameplay.autoJoy;
+    touchEnabled = should;
+    if (should) touchUI.classList.remove("hidden");
+    else touchUI.classList.add("hidden");
+  }
+
+  function toggleTouchUI() {
+    if (!isTouchDevice()) {
+      // sur PC on peut le montrer aussi si tu veux, mais par défaut on le cache
+      touchEnabled = !touchEnabled;
+    } else {
+      touchEnabled = !touchEnabled;
+    }
+    touchUI.classList.toggle("hidden", !touchEnabled);
+    toast(touchEnabled ? "Joysticks: ON" : "Joysticks: OFF");
+  }
+
+  applyAutoTouchUI();
+
+  /* ---------------------------
+    Player + Camera Rig
+  --------------------------- */
+
   const player = {
-    root: new THREE.Group(),       // position du joueur
-    avatar: new THREE.Group(),     // modèle accroché ici (toujours enfant)
-    mixer: null,
-
-    velY: 0,
+    root: new THREE.Group(),
+    model: null,
+    velocity: new THREE.Vector3(0, 0, 0),
     onGround: true,
-    yaw: 0,
-
-    speedWalk: 4.0,
-    speedSprint: 7.8,
-    speedCrouch: 2.4,
-    isSprinting: false,
-    isCrouching: false
+    yaw: 0,          // direction du joueur
+    moveYaw: 0,      // direction de déplacement souhaitée
+    crouching: false,
+    sprinting: false,
+    dashCooldown: 0,
+    dashTime: 0,
+    baseSpeed: 5.2,
+    sprintMul: 1.85, // sprint significatif
+    crouchMul: 0.55,
+    gravity: 18,
+    jumpV: 7.2,
+    height: 1.7,
   };
-
   player.root.position.set(0, 0, 0);
-  player.root.add(player.avatar);
   scene.add(player.root);
 
-  // IMPORTANT : on “lève” l’avatar un tout petit peu si besoin
-  // (mais normalement on met les pieds au sol via bbox)
-  player.avatar.position.set(0, 0, 0);
+  // Placeholder humanoïde “complet” (tête/bras/jambes)
+  function buildHumanoid(colorHex) {
+    const g = new THREE.Group();
+    const matBody = new THREE.MeshStandardMaterial({ color: new THREE.Color(colorHex), roughness: 0.7 });
+    const matDark = new THREE.MeshStandardMaterial({ color: 0x0f1320, roughness: 0.9 });
+    const matSkin = new THREE.MeshStandardMaterial({ color: 0xf1d0b5, roughness: 0.85 });
 
-  // ---------- AVATARS ----------
-  const humanoid = new THREE.Group();
-  const foxContainer = new THREE.Group();
-  humanoid.visible = false;
-  foxContainer.visible = true;
+    const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.28, 0.78, 6, 12), matBody);
+    body.castShadow = true; body.receiveShadow = true;
+    body.position.y = 1.05;
 
-  player.avatar.add(foxContainer);
-  player.avatar.add(humanoid);
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.22, 16, 12), matSkin);
+    head.castShadow = true;
+    head.position.y = 1.62;
 
-  function buildHumanoid() {
-    humanoid.clear();
+    const hair = new THREE.Mesh(new THREE.SphereGeometry(0.23, 16, 12), matDark);
+    hair.castShadow = true;
+    hair.scale.set(1, 0.72, 1);
+    hair.position.y = 1.73;
 
-    // proportions + parties (tête/torse/bassin/bras/avant-bras/mains/jambes/pieds)
-    const matSkin = new THREE.MeshStandardMaterial({ color: 0xd7c2a8, roughness: 0.6 });
-    const matCloth = new THREE.MeshStandardMaterial({ color: 0x7c5cff, roughness: 0.7 });
-    const matDark = new THREE.MeshStandardMaterial({ color: 0x1f2430, roughness: 0.9 });
-
-    const pelvis = new THREE.Group();
-    pelvis.position.y = 0.95;
-
-    const torso = new THREE.Mesh(new THREE.CapsuleGeometry(0.28, 0.70, 6, 12), matCloth);
-    torso.castShadow = torso.receiveShadow = true;
-    torso.position.y = 0.50;
-
-    const head = new THREE.Mesh(new THREE.SphereGeometry(0.22, 18, 18), matSkin);
-    head.castShadow = head.receiveShadow = true;
-    head.position.y = 1.20;
-
-    // petit nez + yeux (simple, mais présents)
     const nose = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.10, 10), matSkin);
     nose.rotation.x = Math.PI / 2;
-    nose.position.set(0, 1.18, 0.22);
-    const eyeMat = new THREE.MeshStandardMaterial({ color: 0x0b0d12, roughness: 0.4 });
-    const eyeL = new THREE.Mesh(new THREE.SphereGeometry(0.03, 10, 10), eyeMat);
-    const eyeR = eyeL.clone();
-    eyeL.position.set(-0.07, 1.22, 0.19);
-    eyeR.position.set(+0.07, 1.22, 0.19);
+    nose.position.set(0, 1.60, 0.22);
 
-    // “cheveux” simple
-    const hair = new THREE.Mesh(new THREE.SphereGeometry(0.235, 18, 18), matDark);
-    hair.scale.y = 0.7;
-    hair.position.set(0, 1.29, -0.02);
-    hair.castShadow = hair.receiveShadow = true;
+    const eyeW = 0.045;
+    const eye = (x) => {
+      const e = new THREE.Mesh(new THREE.SphereGeometry(eyeW, 10, 10), new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.9 }));
+      const p = new THREE.Mesh(new THREE.SphereGeometry(eyeW * 0.45, 10, 10), new THREE.MeshStandardMaterial({ color: 0x0b0f18, roughness: 0.7 }));
+      e.position.set(x, 1.66, 0.20);
+      p.position.set(x, 1.66, 0.235);
+      e.castShadow = true; p.castShadow = true;
+      g.add(e, p);
+    };
+    eye(-0.07); eye(0.07);
 
-    // bras
-    const upperArmGeo = new THREE.CapsuleGeometry(0.085, 0.28, 6, 10);
-    const foreArmGeo = new THREE.CapsuleGeometry(0.075, 0.26, 6, 10);
-    const handGeo = new THREE.SphereGeometry(0.07, 14, 14);
+    const armGeo = new THREE.CapsuleGeometry(0.08, 0.38, 4, 10);
+    const armL = new THREE.Mesh(armGeo, matBody);
+    const armR = new THREE.Mesh(armGeo, matBody);
+    armL.castShadow = armR.castShadow = true;
+    armL.position.set(-0.38, 1.15, 0);
+    armR.position.set( 0.38, 1.15, 0);
+    armL.rotation.z = 0.15;
+    armR.rotation.z = -0.15;
 
-    function makeArm(side) {
-      const s = side; // -1 gauche, +1 droite
-      const g = new THREE.Group();
-      g.position.set(0.34 * s, 0.92, 0);
+    const handGeo = new THREE.SphereGeometry(0.07, 10, 10);
+    const handL = new THREE.Mesh(handGeo, matSkin);
+    const handR = new THREE.Mesh(handGeo, matSkin);
+    handL.castShadow = handR.castShadow = true;
+    handL.position.set(-0.46, 0.92, 0.02);
+    handR.position.set( 0.46, 0.92, 0.02);
 
-      const upper = new THREE.Mesh(upperArmGeo, matCloth);
-      upper.castShadow = upper.receiveShadow = true;
-      upper.rotation.z = 0.25 * -s;
-      upper.position.y = -0.05;
+    const legGeo = new THREE.CapsuleGeometry(0.10, 0.46, 4, 10);
+    const legL = new THREE.Mesh(legGeo, matBody);
+    const legR = new THREE.Mesh(legGeo, matBody);
+    legL.castShadow = legR.castShadow = true;
+    legL.position.set(-0.14, 0.48, 0);
+    legR.position.set( 0.14, 0.48, 0);
 
-      const fore = new THREE.Mesh(foreArmGeo, matCloth);
-      fore.castShadow = fore.receiveShadow = true;
-      fore.position.set(0.10 * s, -0.33, 0);
-      fore.rotation.z = 0.18 * -s;
+    const footGeo = new THREE.BoxGeometry(0.14, 0.08, 0.25);
+    const footL = new THREE.Mesh(footGeo, matDark);
+    const footR = new THREE.Mesh(footGeo, matDark);
+    footL.castShadow = footR.castShadow = true;
+    footL.position.set(-0.14, 0.08, 0.08);
+    footR.position.set( 0.14, 0.08, 0.08);
 
-      const hand = new THREE.Mesh(handGeo, matSkin);
-      hand.castShadow = hand.receiveShadow = true;
-      hand.position.set(0.18 * s, -0.55, 0);
+    g.add(body, head, hair, nose, armL, armR, handL, handR, legL, legR, footL, footR);
+    g.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
 
-      g.add(upper, fore, hand);
-      return g;
-    }
-
-    // jambes + pieds
-    const thighGeo = new THREE.CapsuleGeometry(0.10, 0.38, 6, 10);
-    const shinGeo = new THREE.CapsuleGeometry(0.095, 0.36, 6, 10);
-    const footGeo = new THREE.BoxGeometry(0.16, 0.07, 0.28);
-
-    function makeLeg(side) {
-      const s = side;
-      const g = new THREE.Group();
-      g.position.set(0.16 * s, 0.12, 0);
-
-      const thigh = new THREE.Mesh(thighGeo, matCloth);
-      thigh.castShadow = thigh.receiveShadow = true;
-      thigh.position.y = -0.25;
-
-      const shin = new THREE.Mesh(shinGeo, matCloth);
-      shin.castShadow = shin.receiveShadow = true;
-      shin.position.y = -0.70;
-
-      const foot = new THREE.Mesh(footGeo, matDark);
-      foot.castShadow = foot.receiveShadow = true;
-      foot.position.set(0, -0.95, 0.06);
-
-      g.add(thigh, shin, foot);
-      return g;
-    }
-
-    pelvis.add(torso, head, nose, eyeL, eyeR, hair);
-    pelvis.add(makeArm(-1), makeArm(+1));
-    pelvis.add(makeLeg(-1), makeLeg(+1));
-
-    humanoid.add(pelvis);
-
-    // poser le humanoïde au sol (pieds)
-    const box = new THREE.Box3().setFromObject(humanoid);
-    humanoid.position.y -= box.min.y;
+    return g;
   }
 
-  buildHumanoid();
-
-  // Fox loader (vraiment accroché au pivot avatar)
-  const loader = new THREE.GLTFLoader();
-  let currentSkin = "fox";
-
-  function clearFox() {
-    foxContainer.clear();
-    player.mixer = null;
-  }
-
-  function loadFox() {
-    clearFox();
-    loader.load(
-      "assets/models/test/Fox.glb",
-      (gltf) => {
-        const model = gltf.scene;
-
-        model.traverse((o) => {
-          if (o && o.isMesh) {
-            o.castShadow = true;
-            o.receiveShadow = true;
-          }
-        });
-
-        // scale à une hauteur “joueur” ~1.0 (fox plus petit)
-        const box = new THREE.Box3().setFromObject(model);
-        const size = new THREE.Vector3();
-        const center = new THREE.Vector3();
-        box.getSize(size);
-        box.getCenter(center);
-
-        // recentrer sur (0,0,0)
-        model.position.sub(center);
-
-        const desiredHeight = 0.9; // renard plus bas que humanoïde
-        const h = Math.max(size.y, 0.001);
-        const s = desiredHeight / h;
-        model.scale.setScalar(s);
-
-        // remettre au sol
-        const box2 = new THREE.Box3().setFromObject(model);
-        model.position.y -= box2.min.y;
-
-        // orientation
-        model.rotation.y = Math.PI; // ajuste si ton fox regarde “de travers”
-
-        foxContainer.add(model);
-
-        if (gltf.animations && gltf.animations.length) {
-          player.mixer = new THREE.AnimationMixer(model);
-          player.mixer.clipAction(gltf.animations[0]).play();
-        }
-
-        foxContainer.visible = (currentSkin === "fox");
-        humanoid.visible = (currentSkin !== "fox");
-      },
-      undefined,
-      () => {
-        // fallback
-        currentSkin = "humanoid";
-        skinSelect.value = "humanoid";
-        foxContainer.visible = false;
-        humanoid.visible = true;
-      }
-    );
-  }
-
-  loadFox();
-
-  skinSelect.addEventListener("change", () => {
-    currentSkin = skinSelect.value;
-    if (currentSkin === "fox") {
-      foxContainer.visible = true;
-      humanoid.visible = false;
-      if (foxContainer.children.length === 0) loadFox();
-    } else {
-      foxContainer.visible = false;
-      humanoid.visible = true;
-    }
-  });
-
-  // ---------- INPUT ----------
-  const keys = {
-    forward: false, back: false, left: false, right: false,
-    sprint: false, crouch: false, jump: false
+  // Camera rig 3e personne (suivi + rotation)
+  const camRig = {
+    yaw: 0,
+    pitch: -0.2,
+    dist: 4.2,
+    height: 1.55,
+    smoothPos: new THREE.Vector3(),
+    smoothTarget: new THREE.Vector3(),
   };
-
-  function setKey(e, isDown) {
-    const k = e.key.toLowerCase();
-
-    if (k === "z" || k === "w" || e.key === "ArrowUp") keys.forward = isDown;
-    if (k === "s" || e.key === "ArrowDown") keys.back = isDown;
-    if (k === "q" || k === "a" || e.key === "ArrowLeft") keys.left = isDown;
-    if (k === "d" || e.key === "ArrowRight") keys.right = isDown;
-
-    if (k === "shift") keys.sprint = isDown;
-    if (k === "control") keys.crouch = isDown;
-    if (k === " ") keys.jump = isDown;
-
-    if (k === "escape" && isDown) togglePause();
-  }
-
-  addEventListener("keydown", (e) => setKey(e, true));
-  addEventListener("keyup", (e) => setKey(e, false));
-
-  // ---------- Pause ----------
-  let paused = false;
-  function setPaused(v) {
-    paused = v;
-    pauseOverlay.style.display = paused ? "flex" : "none";
-  }
-  function togglePause() { setPaused(!paused); }
-
-  btnPause.addEventListener("click", () => togglePause());
-  btnResume.addEventListener("click", () => setPaused(false));
-  btnToHome.addEventListener("click", () => { location.href = "index.html"; });
-
-  // ---------- Camera rig (attachée au joueur) ----------
-  let camYaw = 0;                 // rotation horizontale
-  let camPitch = -0.22;           // verticale (légère plongée)
-  let camDist = 7.2;              // distance
-  let camHeight = 1.55;           // hauteur cible (au-dessus du sol / tête)
-
-  const camPos = new THREE.Vector3();     // position lissée
-  const camTarget = new THREE.Vector3();  // cible (joueur)
-
-  // look input: drag souris / doigt
-  let looking = false;
-  let lastX = 0, lastY = 0;
-
-  function startLook(x, y) { looking = true; lastX = x; lastY = y; }
-  function endLook() { looking = false; }
-  function moveLook(x, y) {
-    if (!looking || paused) return;
-    const dx = x - lastX;
-    const dy = y - lastY;
-    lastX = x; lastY = y;
-
-    const sens = isMobile ? 0.0042 : 0.0032;
-    camYaw -= dx * sens;
-    camPitch -= dy * sens;
-    camPitch = clamp(camPitch, -0.85, 0.25);
-  }
-
-  renderer.domElement.addEventListener("mousedown", (e) => {
-    // drag caméra avec clic gauche
-    if (e.button !== 0) return;
-    startLook(e.clientX, e.clientY);
-  });
-  addEventListener("mouseup", () => endLook());
-  addEventListener("mousemove", (e) => moveLook(e.clientX, e.clientY));
-
-  renderer.domElement.addEventListener("touchstart", (e) => {
-    if (e.touches.length !== 1) return;
-    const t = e.touches[0];
-    startLook(t.clientX, t.clientY);
-  }, { passive:true });
-
-  renderer.domElement.addEventListener("touchmove", (e) => {
-    if (e.touches.length !== 1) return;
-    const t = e.touches[0];
-    moveLook(t.clientX, t.clientY);
-  }, { passive:true });
-
-  renderer.domElement.addEventListener("touchend", () => endLook(), { passive:true });
-
-  // zoom molette
-  renderer.domElement.addEventListener("wheel", (e) => {
-    camDist += Math.sign(e.deltaY) * 0.6;
-    camDist = clamp(camDist, 3.5, 14.0);
-  }, { passive:true });
-
-  // ---------- Mobile joystick ----------
-  let joyVisible = false;
-  let joyActiveId = null;
-  let joyCenter = { x: 0, y: 0 };
-  let joyVec = { x: 0, y: 0 };
-  const joyRadius = 55;
-
-  function setJoyVisible(v) {
-    joyVisible = v;
-    joyWrap.style.display = joyVisible ? "block" : "none";
-    actWrap.style.display = isMobile ? "flex" : "none";
-    btnJoy.textContent = joyVisible ? "Joystick: ON" : "Joystick";
-  }
-  if (isMobile) setJoyVisible(true);
-
-  btnJoy.addEventListener("click", () => setJoyVisible(!joyVisible));
-
-  function updateJoyKnob() {
-    joyKnob.style.transform = `translate(${joyVec.x * joyRadius}px, ${joyVec.y * joyRadius}px)`;
-  }
-
-  function joyStart(ev) {
-    if (!joyVisible) return;
-    const t = ev.changedTouches[0];
-    joyActiveId = t.identifier;
-
-    const rect = joyWrap.getBoundingClientRect();
-    joyCenter.x = rect.left + rect.width / 2;
-    joyCenter.y = rect.top + rect.height / 2;
-
-    joyMove(ev);
-  }
-
-  function joyMove(ev) {
-    if (joyActiveId === null) return;
-
-    let touch = null;
-    for (const t of ev.changedTouches) if (t.identifier === joyActiveId) touch = t;
-    if (!touch) return;
-
-    const dx = touch.clientX - joyCenter.x;
-    const dy = touch.clientY - joyCenter.y;
-
-    const len = Math.hypot(dx, dy);
-    const nx = len > 0 ? dx / len : 0;
-    const ny = len > 0 ? dy / len : 0;
-    const mag = clamp(len / joyRadius, 0, 1);
-
-    joyVec.x = nx * mag;
-    joyVec.y = ny * mag;
-    updateJoyKnob();
-  }
-
-  function joyEnd(ev) {
-    if (joyActiveId === null) return;
-    let ended = false;
-    for (const t of ev.changedTouches) if (t.identifier === joyActiveId) ended = true;
-    if (!ended) return;
-
-    joyActiveId = null;
-    joyVec.x = 0; joyVec.y = 0;
-    updateJoyKnob();
-  }
-
-  joyWrap.addEventListener("touchstart", (ev) => { ev.preventDefault(); joyStart(ev); }, { passive: false });
-  joyWrap.addEventListener("touchmove", (ev) => { ev.preventDefault(); joyMove(ev); }, { passive: false });
-  joyWrap.addEventListener("touchend", (ev) => { ev.preventDefault(); joyEnd(ev); }, { passive: false });
-  joyWrap.addEventListener("touchcancel", (ev) => { ev.preventDefault(); joyEnd(ev); }, { passive: false });
-
-  // action buttons
-  const touchHold = { sprint: false, crouch: false, jump: false };
-  const bindHoldBtn = (el, key) => {
-    el.addEventListener("touchstart", (e) => { e.preventDefault(); touchHold[key] = true; }, { passive:false });
-    el.addEventListener("touchend", (e) => { e.preventDefault(); touchHold[key] = false; }, { passive:false });
-    el.addEventListener("touchcancel", (e) => { e.preventDefault(); touchHold[key] = false; }, { passive:false });
-    el.addEventListener("mousedown", () => { touchHold[key] = true; });
-    el.addEventListener("mouseup", () => { touchHold[key] = false; });
-    el.addEventListener("mouseleave", () => { touchHold[key] = false; });
-  };
-  bindHoldBtn(btnSprint, "sprint");
-  bindHoldBtn(btnCrouch, "crouch");
-
-  btnJump.addEventListener("touchstart", (e) => { e.preventDefault(); touchHold.jump = true; }, { passive:false });
-  btnJump.addEventListener("touchend", (e) => { e.preventDefault(); touchHold.jump = false; }, { passive:false });
-  btnJump.addEventListener("mousedown", () => { touchHold.jump = true; });
-  btnJump.addEventListener("mouseup", () => { touchHold.jump = false; });
-
-  if (isMobile) actWrap.style.display = "flex";
-
-  // ---------- Movement (relatif à la caméra yaw) ----------
-  const tmpForward = new THREE.Vector3();
-  const tmpRight = new THREE.Vector3();
-  const tmpMove = new THREE.Vector3();
-  const up = new THREE.Vector3(0, 1, 0);
-
-  function getMoveAxes() {
-    let x = 0, y = 0;
-    if (keys.left) x -= 1;
-    if (keys.right) x += 1;
-    if (keys.forward) y += 1;
-    if (keys.back) y -= 1;
-
-    if (joyVisible) {
-      x += joyVec.x;
-      y += (-joyVec.y); // bas = reculer, donc on inverse
-    }
-
-    const len = Math.hypot(x, y);
-    if (len > 1e-6) { x /= len; y /= len; }
-    return { x, y };
-  }
-
-  function updatePlayer(dt) {
-    player.isCrouching = (keys.crouch || touchHold.crouch);
-    player.isSprinting = (keys.sprint || touchHold.sprint) && !player.isCrouching;
-
-    const { x, y } = getMoveAxes();
-
-    let speed = player.speedWalk;
-    if (player.isCrouching) speed = player.speedCrouch;
-    else if (player.isSprinting) speed = player.speedSprint;
-
-    // forward/right basés sur yaw caméra (pas pitch)
-    tmpForward.set(Math.sin(camYaw), 0, Math.cos(camYaw)).normalize();
-    tmpRight.crossVectors(tmpForward, up).normalize();
-
-    tmpMove.set(0, 0, 0);
-    tmpMove.addScaledVector(tmpForward, y);
-    tmpMove.addScaledVector(tmpRight, x);
-
-    if (tmpMove.lengthSq() > 1e-6) {
-      tmpMove.normalize();
-      player.root.position.addScaledVector(tmpMove, speed * dt);
-
-      const targetYaw = Math.atan2(tmpMove.x, tmpMove.z);
-      player.yaw = damp(player.yaw, targetYaw, 16, dt);
-      player.root.rotation.y = player.yaw;
-    }
-
-    // crouch visuel
-    const targetScaleY = player.isCrouching ? 0.80 : 1.0;
-    player.root.scale.y = damp(player.root.scale.y, targetScaleY, 18, dt);
-
-    // jump + gravity
-    const wantJump = keys.jump || touchHold.jump;
-    if (wantJump && player.onGround) {
-      player.velY = 6.5;
-      player.onGround = false;
-    }
-    touchHold.jump = false;
-
-    player.velY += -18.0 * dt;
-    player.root.position.y += player.velY * dt;
-
-    if (player.root.position.y <= 0) {
-      player.root.position.y = 0;
-      player.velY = 0;
-      player.onGround = true;
-    }
-  }
-
-  // ---------- Camera follow (attachée au perso) ----------
-  const desiredCamPos = new THREE.Vector3();
 
   function updateCamera(dt) {
-    // cible = joueur + hauteur
-    camTarget.set(
+    // Input look
+    const sens = SETTINGS.controls.sens;
+    const invert = SETTINGS.controls.invertY ? -1 : 1;
+
+    // Mouse
+    if (!PAUSED) {
+      camRig.yaw   -= (Input.lookDX * 0.0022) * sens;
+      camRig.pitch -= (Input.lookDY * 0.0018) * sens * invert;
+    }
+    Input.lookDX = 0;
+    Input.lookDY = 0;
+
+    // Touch look
+    if (!PAUSED && touchEnabled) {
+      camRig.yaw   -= (Input.lookX * 1.35) * dt * sens;
+      camRig.pitch -= (Input.lookY * 1.10) * dt * sens * invert;
+    }
+
+    camRig.pitch = clamp(camRig.pitch, -0.95, 0.25);
+
+    // Target = player head
+    const target = new THREE.Vector3(
       player.root.position.x,
-      player.root.position.y + camHeight,
+      player.root.position.y + camRig.height,
       player.root.position.z
     );
 
-    // offset sphérique derrière le joueur selon yaw/pitch
-    const cx = Math.sin(camYaw) * Math.cos(camPitch);
-    const cy = Math.sin(camPitch);
-    const cz = Math.cos(camYaw) * Math.cos(camPitch);
+    // Camera offset (rotated by yaw/pitch)
+    const offset = new THREE.Vector3(0, 0, camRig.dist);
+    const rot = new THREE.Euler(camRig.pitch, camRig.yaw, 0, "YXZ");
+    offset.applyEuler(rot);
 
-    desiredCamPos.set(
-      camTarget.x + cx * camDist,
-      camTarget.y + cy * camDist,
-      camTarget.z + cz * camDist
-    );
+    const desiredPos = target.clone().add(offset);
 
-    // lissage pour que ça “colle” sans trembler
-    camPos.x = damp(camPos.x, desiredCamPos.x, 14, dt);
-    camPos.y = damp(camPos.y, desiredCamPos.y, 14, dt);
-    camPos.z = damp(camPos.z, desiredCamPos.z, 14, dt);
+    // Smooth
+    const k = 1 - Math.pow(0.001, dt);
+    camRig.smoothTarget.lerp(target, k);
+    camRig.smoothPos.lerp(desiredPos, k);
 
-    camera.position.copy(camPos);
-    camera.lookAt(camTarget);
+    camera.position.copy(camRig.smoothPos);
+    camera.lookAt(camRig.smoothTarget);
   }
 
-  // init caméra pos
-  camPos.set(0, 4.5, 9);
+  /* ---------------------------
+    Skins (Humanoid + Fox)
+  --------------------------- */
 
-  // ---------- Loop ----------
-  let last = performance.now();
-  function loop(now) {
-    const dt = Math.min(0.033, (now - last) / 1000);
-    last = now;
+  const loader = new THREE.GLTFLoader();
 
-    if (!paused) {
-      if (player.mixer) player.mixer.update(dt);
-      updatePlayer(dt);
-      updateCamera(dt);
+  const SKINS = [
+    { id: "humanoid", name: "Humanoïde", type: "builtin" },
+    { id: "fox", name: "Fox (GLB)", type: "gltf", url: "assets/models/test/Fox.glb" },
+  ];
+
+  function clearPlayerModel() {
+    if (player.model) {
+      player.root.remove(player.model);
+      player.model.traverse?.((o) => {
+        if (o.isMesh) {
+          o.geometry?.dispose?.();
+          if (o.material) {
+            if (Array.isArray(o.material)) o.material.forEach(m => m.dispose?.());
+            else o.material.dispose?.();
+          }
+        }
+      });
+      player.model = null;
+    }
+  }
+
+  function fitModelToPlayer(m) {
+    // recentre + scale raisonnable
+    const box = new THREE.Box3().setFromObject(m);
+    const size = new THREE.Vector3();
+    box.getSize(size);
+    const center = new THREE.Vector3();
+    box.getCenter(center);
+
+    // Move pivot to ground
+    m.position.sub(center);
+    // put feet on ground
+    const box2 = new THREE.Box3().setFromObject(m);
+    m.position.y -= box2.min.y;
+
+    // scale to ~1.6m
+    const h = Math.max(0.01, size.y);
+    const targetH = 1.55;
+    const s = targetH / h;
+    m.scale.multiplyScalar(s);
+  }
+
+  function applyPlayerAppearance() {
+    const scale = clamp(parseFloat(SETTINGS.skin.scale) || 1.0, 0.8, 1.2);
+    player.root.scale.setScalar(scale);
+
+    // Color for humanoid only
+    if (SETTINGS.skin.selected === "humanoid" && player.model) {
+      const color = new THREE.Color(SETTINGS.skin.color || "#7c5cff");
+      player.model.traverse((o) => {
+        if (o.isMesh && o.material && !Array.isArray(o.material)) {
+          // Heuristic: recolor only body-ish meshes (not skin/eyes)
+          // Our builtin uses different materials; easiest is rebuild if color changes.
+        }
+      });
+      // rebuild builtin with new color:
+      clearPlayerModel();
+      const h = buildHumanoid(SETTINGS.skin.color || "#7c5cff");
+      player.model = h;
+      player.root.add(h);
+    }
+  }
+
+  function loadSkinById(id) {
+    const def = SKINS.find(s => s.id === id) || SKINS[0];
+    SETTINGS.skin.selected = def.id;
+    saveSettings();
+
+    clearPlayerModel();
+
+    if (def.type === "builtin") {
+      const h = buildHumanoid(SETTINGS.skin.color || "#7c5cff");
+      player.model = h;
+      player.root.add(h);
+      applyPlayerAppearance();
+      toast("Skin: Humanoïde");
+      return;
     }
 
-    renderer.render(scene, camera);
-    requestAnimationFrame(loop);
-  }
-  requestAnimationFrame(loop);
+    if (def.type === "gltf") {
+      const url = def.url;
+      loader.load(url, (gltf) => {
+        const m = gltf.scene || gltf.scenes?.[0];
+        if (!m) { toast("Skin: modèle vide"); return; }
 
-  addEventListener("resize", () => {
+        m.traverse((o) => {
+          if (o.isMesh) {
+            o.castShadow = true;
+            o.receiveShadow = true;
+            if (o.material && !Array.isArray(o.material)) {
+              o.material.metalness = o.material.metalness ?? 0.0;
+            }
+          }
+        });
+
+        fitModelToPlayer(m);
+
+        player.model = m;
+        player.root.add(m);
+
+        applyPlayerAppearance();
+        toast("Skin: Fox");
+      }, undefined, () => {
+        toast("Erreur: impossible de charger le modèle (chemin ?).");
+        // fallback humanoid
+        const h = buildHumanoid(SETTINGS.skin.color || "#7c5cff");
+        player.model = h;
+        player.root.add(h);
+      });
+    }
+  }
+
+  loadSkinById(SETTINGS.skin.selected);
+
+  /* ---------------------------
+    Movement / Physics
+  --------------------------- */
+
+  let PAUSED = false;
+  let sprintToggled = false;
+
+  function setPaused(v) {
+    PAUSED = v;
+
+    const overlay = $("#pauseOverlay");
+    overlay.classList.toggle("active", v);
+
+    // Release pointer lock in pause
+    if (v && document.pointerLockElement) document.exitPointerLock?.();
+
+    // Show/hide touch UI depending
+    applyAutoTouchUI();
+
+    $("#hudHint").textContent = v ? "Pause (menu ouvert)" : "Clique / touche l’écran pour contrôler la caméra";
+  }
+
+  function teleportSpawn() {
+    player.root.position.set(0, 0, 0);
+    player.velocity.set(0, 0, 0);
+    toast("Téléporté au spawn");
+  }
+
+  function updatePlayer(dt) {
+    // Pause: no movement
+    if (PAUSED) return;
+
+    // Compute input vector
+    let ix = 0, iz = 0;
+
+    // Keyboard (ZQSD + flèches)
+    if (actionDown("left")) ix -= 1;
+    if (actionDown("right")) ix += 1;
+    if (actionDown("forward")) iz -= 1;
+    if (actionDown("back")) iz += 1;
+
+    // Touch move stick (y is forward)
+    if (touchEnabled) {
+      ix += Input.moveX;
+      iz += Input.moveY;
+    }
+
+    const len = Math.hypot(ix, iz);
+    if (len > 1e-3) { ix /= len; iz /= len; }
+
+    // Sprint logic
+    let sprintWanted = actionDown("sprint");
+    if (SETTINGS.gameplay.sprintMode === "toggle") {
+      if (actionPressedOnce("sprint", "_sprintLatch")) sprintToggled = !sprintToggled;
+      sprintWanted = sprintToggled;
+    } else {
+      sprintToggled = false;
+    }
+    player.sprinting = sprintWanted;
+
+    // Crouch
+    player.crouching = actionDown("crouch");
+
+    // Dash
+    if (SETTINGS.gameplay.dash) {
+      if (actionPressedOnce("dash", "_dashLatch") && player.dashCooldown <= 0 && (len > 0.2)) {
+        player.dashTime = 0.18;
+        player.dashCooldown = 0.9;
+        toast("Dash!");
+      }
+    }
+
+    // Direction relative camera or world
+    let desiredDir = new THREE.Vector3(ix, 0, iz);
+    if (SETTINGS.gameplay.moveRelativeCamera) {
+      // rotate by camera yaw only
+      const yaw = camRig.yaw;
+      desiredDir.applyAxisAngle(new THREE.Vector3(0,1,0), yaw);
+    }
+
+    // Speed
+    let speed = player.baseSpeed;
+    if (player.sprinting) speed *= player.sprintMul;
+    if (player.crouching) speed *= player.crouchMul;
+    if (player.dashTime > 0) speed *= 3.2;
+
+    // Apply movement (simple accel)
+    const accel = 22;
+    const targetVel = desiredDir.multiplyScalar(speed);
+    player.velocity.x = lerp(player.velocity.x, targetVel.x, 1 - Math.exp(-accel * dt));
+    player.velocity.z = lerp(player.velocity.z, targetVel.z, 1 - Math.exp(-accel * dt));
+
+    // Gravity
+    player.velocity.y -= player.gravity * dt;
+
+    // Jump
+    const jumpNow = actionPressedOnce("jump", "_jumpLatch") || (Input.jumpPressed === true);
+    Input.jumpPressed = false;
+
+    if (jumpNow && player.onGround) {
+      player.velocity.y = player.jumpV;
+      player.onGround = false;
+    }
+
+    // Integrate
+    player.root.position.x += player.velocity.x * dt;
+    player.root.position.y += player.velocity.y * dt;
+    player.root.position.z += player.velocity.z * dt;
+
+    // Ground collision (y=0)
+    if (player.root.position.y <= 0) {
+      player.root.position.y = 0;
+      player.velocity.y = 0;
+      player.onGround = true;
+    }
+
+    // Dash timers
+    if (player.dashCooldown > 0) player.dashCooldown -= dt;
+    if (player.dashTime > 0) player.dashTime -= dt;
+
+    // Face direction (only if moving)
+    const mv = Math.hypot(player.velocity.x, player.velocity.z);
+    if (mv > 0.25) {
+      const ang = Math.atan2(player.velocity.x, player.velocity.z);
+      player.yaw = lerpAngle(player.yaw, ang, 1 - Math.pow(0.0008, dt));
+      player.root.rotation.y = player.yaw;
+    }
+
+    // Crouch visual
+    const targetScaleY = player.crouching ? 0.85 : 1.0;
+    player.root.scale.y = lerp(player.root.scale.y, targetScaleY * clamp(SETTINGS.skin.scale || 1.0, 0.8, 1.2), 1 - Math.pow(0.001, dt));
+  }
+
+  function lerpAngle(a, b, t) {
+    const d = ((b - a + Math.PI) % (Math.PI * 2)) - Math.PI;
+    return a + d * t;
+  }
+
+  /* ---------------------------
+    UI Wiring (Pause / Tabs / Options / Skins / Rebind)
+  --------------------------- */
+
+  // Pause toggles
+  $("#btnPause").addEventListener("click", () => setPaused(!PAUSED));
+  $("#btnClosePause").addEventListener("click", () => setPaused(false));
+  $("#btnResume").addEventListener("click", () => setPaused(false));
+  $("#btnStay").addEventListener("click", () => setPaused(false));
+  $("#btnGoHome").addEventListener("click", () => { location.href = "index.html"; });
+  $("#btnResetPos").addEventListener("click", () => teleportSpawn());
+  $("#btnJoystick").addEventListener("click", () => toggleTouchUI());
+
+  // Escape
+  window.addEventListener("keydown", (e) => {
+    if (BINDS.pause.includes(e.code)) {
+      e.preventDefault();
+      setPaused(!PAUSED);
+    }
+  }, { passive: false });
+
+  // Main tabs
+  const tabButtons = Array.from(document.querySelectorAll(".tabBtn[data-tab]"));
+  const tabPages = {
+    resume: $("#tab_resume"),
+    options: $("#tab_options"),
+    skins: $("#tab_skins"),
+    home: $("#tab_home"),
+  };
+
+  function showTab(name) {
+    for (const k of Object.keys(tabPages)) tabPages[k].classList.toggle("hidden", k !== name);
+    tabButtons.forEach(b => b.classList.toggle("active", b.dataset.tab === name));
+  }
+
+  tabButtons.forEach(b => b.addEventListener("click", () => showTab(b.dataset.tab)));
+
+  // Options subtabs
+  const subBtns = Array.from(document.querySelectorAll(".tabBtn[data-subtab]"));
+  const subPages = {
+    graphics: $("#sub_graphics"),
+    controls: $("#sub_controls"),
+    audio: $("#sub_audio"),
+    gameplay: $("#sub_gameplay"),
+  };
+
+  function showSub(name) {
+    for (const k of Object.keys(subPages)) subPages[k].classList.toggle("hidden", k !== name);
+    subBtns.forEach(b => b.classList.toggle("active", b.dataset.subtab === name));
+  }
+  subBtns.forEach(b => b.addEventListener("click", () => showSub(b.dataset.subtab)));
+
+  // Apply settings to UI
+  function refreshOptionsUI() {
+    $("#optQuality").value = SETTINGS.graphics.quality;
+    $("#optShadows").textContent = SETTINGS.graphics.shadows ? "ON" : "OFF";
+    $("#optFov").value = String(SETTINGS.graphics.fov);
+    $("#optPixelRatio").value = SETTINGS.graphics.pixelRatio;
+
+    $("#optSens").value = String(SETTINGS.controls.sens);
+    $("#optInvertY").textContent = SETTINGS.controls.invertY ? "ON" : "OFF";
+    $("#optMouseMode").value = SETTINGS.controls.mouseMode;
+
+    $("#optVolMaster").value = String(SETTINGS.audio.master);
+    $("#optVolAmb").value = String(SETTINGS.audio.amb);
+    $("#optVolSfx").value = String(SETTINGS.audio.sfx);
+
+    $("#optMoveRel").textContent = SETTINGS.gameplay.moveRelativeCamera ? "ON" : "OFF";
+    $("#optSprintMode").value = SETTINGS.gameplay.sprintMode;
+    $("#optDash").textContent = SETTINGS.gameplay.dash ? "ON" : "OFF";
+    $("#optAutoJoy").textContent = SETTINGS.gameplay.autoJoy ? "ON" : "OFF";
+
+    $("#optScale").value = String(SETTINGS.skin.scale);
+    $("#optColor").value = SETTINGS.skin.color;
+  }
+
+  refreshOptionsUI();
+
+  // Graphics handlers
+  $("#optQuality").addEventListener("change", (e) => {
+    SETTINGS.graphics.quality = e.target.value;
+    // quality affects shadow map size & fog density lightly
+    if (SETTINGS.graphics.quality === "low") {
+      sun.shadow.mapSize.set(512, 512);
+      scene.fog.near = 18; scene.fog.far = 110;
+    } else if (SETTINGS.graphics.quality === "med") {
+      sun.shadow.mapSize.set(1024, 1024);
+      scene.fog.near = 25; scene.fog.far = 140;
+    } else {
+      sun.shadow.mapSize.set(2048, 2048);
+      scene.fog.near = 25; scene.fog.far = 160;
+    }
+    saveSettings();
+    toast("Graphiques: " + SETTINGS.graphics.quality);
+  });
+
+  $("#optShadows").addEventListener("click", () => {
+    SETTINGS.graphics.shadows = !SETTINGS.graphics.shadows;
+    renderer.shadowMap.enabled = SETTINGS.graphics.shadows;
+    $("#optShadows").textContent = SETTINGS.graphics.shadows ? "ON" : "OFF";
+    saveSettings();
+  });
+
+  $("#optFov").addEventListener("change", (e) => {
+    SETTINGS.graphics.fov = clamp(parseInt(e.target.value || "60", 10), 45, 85);
+    camera.fov = SETTINGS.graphics.fov;
+    camera.updateProjectionMatrix();
+    saveSettings();
+  });
+
+  $("#optPixelRatio").addEventListener("change", (e) => {
+    SETTINGS.graphics.pixelRatio = e.target.value;
+    applyPixelRatio();
+    saveSettings();
+  });
+
+  // Controls handlers
+  $("#optSens").addEventListener("change", (e) => {
+    SETTINGS.controls.sens = clamp(parseFloat(e.target.value || "1.2"), 0.3, 3);
+    saveSettings();
+  });
+
+  $("#optInvertY").addEventListener("click", () => {
+    SETTINGS.controls.invertY = !SETTINGS.controls.invertY;
+    $("#optInvertY").textContent = SETTINGS.controls.invertY ? "ON" : "OFF";
+    saveSettings();
+  });
+
+  $("#optMouseMode").addEventListener("change", (e) => {
+    SETTINGS.controls.mouseMode = e.target.value;
+    saveSettings();
+    toast("Souris: " + (SETTINGS.controls.mouseMode === "lock" ? "Pointer Lock" : "Drag"));
+  });
+
+  // Gameplay handlers
+  $("#optMoveRel").addEventListener("click", () => {
+    SETTINGS.gameplay.moveRelativeCamera = !SETTINGS.gameplay.moveRelativeCamera;
+    $("#optMoveRel").textContent = SETTINGS.gameplay.moveRelativeCamera ? "ON" : "OFF";
+    saveSettings();
+  });
+
+  $("#optSprintMode").addEventListener("change", (e) => {
+    SETTINGS.gameplay.sprintMode = e.target.value;
+    sprintToggled = false;
+    saveSettings();
+  });
+
+  $("#optDash").addEventListener("click", () => {
+    SETTINGS.gameplay.dash = !SETTINGS.gameplay.dash;
+    $("#optDash").textContent = SETTINGS.gameplay.dash ? "ON" : "OFF";
+    saveSettings();
+  });
+
+  $("#optAutoJoy").addEventListener("click", () => {
+    SETTINGS.gameplay.autoJoy = !SETTINGS.gameplay.autoJoy;
+    $("#optAutoJoy").textContent = SETTINGS.gameplay.autoJoy ? "ON" : "OFF";
+    applyAutoTouchUI();
+    saveSettings();
+  });
+
+  // Skins UI
+  const skinsGrid = $("#skinsGrid");
+  function renderSkinsGrid() {
+    skinsGrid.innerHTML = "";
+    for (const s of SKINS) {
+      const row = document.createElement("div");
+      row.className = "kv";
+      row.innerHTML = `
+        <div class="k">${s.name}</div>
+        <div class="v">
+          <button class="btn ${SETTINGS.skin.selected === s.id ? "btn--primary" : ""}" data-skin="${s.id}">
+            ${SETTINGS.skin.selected === s.id ? "Sélectionné" : "Choisir"}
+          </button>
+        </div>
+      `;
+      skinsGrid.appendChild(row);
+    }
+    skinsGrid.querySelectorAll("button[data-skin]").forEach(b => {
+      b.addEventListener("click", () => {
+        loadSkinById(b.dataset.skin);
+        renderSkinsGrid();
+      });
+    });
+  }
+  renderSkinsGrid();
+
+  $("#optScale").addEventListener("change", (e) => {
+    SETTINGS.skin.scale = clamp(parseFloat(e.target.value || "1.0"), 0.8, 1.2);
+    saveSettings();
+    applyPlayerAppearance();
+  });
+
+  $("#optColor").addEventListener("change", (e) => {
+    SETTINGS.skin.color = e.target.value;
+    saveSettings();
+    applyPlayerAppearance();
+  });
+
+  // Rebind UI
+  const btnRebind = $("#btnRebind");
+  const rebindPanel = $("#rebindPanel");
+  const rebindList = $("#rebindList");
+  const btnCloseRebind = $("#btnCloseRebind");
+  const btnResetBinds = $("#btnResetBinds");
+  const btnClose = $("#btnCloseRebind");
+
+  let waitingAction = null;
+
+  function niceKey(code) {
+    if (code.startsWith("Key")) return code.slice(3);
+    if (code.startsWith("Digit")) return code.slice(5);
+    if (code === "Space") return "Espace";
+    if (code.startsWith("Arrow")) return code.replace("Arrow", "Flèche ");
+    if (code === "ShiftLeft" || code === "ShiftRight") return "Shift";
+    if (code === "ControlLeft" || code === "ControlRight") return "Ctrl";
+    return code;
+  }
+
+  function renderRebindList() {
+    rebindList.innerHTML = "";
+    const actions = [
+      ["forward","Avancer"], ["back","Reculer"], ["left","Gauche"], ["right","Droite"],
+      ["jump","Saut"], ["crouch","Accroupi"], ["sprint","Sprint"], ["dash","Dash"],
+      ["joystickToggle","Joysticks (toggle)"]
+    ];
+
+    for (const [key, label] of actions) {
+      const row = document.createElement("div");
+      row.className = "kv";
+      const current = (BINDS[key] || []).map(niceKey).join(" / ");
+      row.innerHTML = `
+        <div class="k">${label}</div>
+        <div class="v">
+          <button class="btn" data-action="${key}">${waitingAction === key ? "Appuie sur une touche..." : "Changer"}</button>
+          <span class="smallNote">${current}</span>
+        </div>
+      `;
+      rebindList.appendChild(row);
+    }
+
+    rebindList.querySelectorAll("button[data-action]").forEach(b => {
+      b.addEventListener("click", () => {
+        waitingAction = b.dataset.action;
+        renderRebindList();
+        toast("Remap: appuie sur une touche");
+      });
+    });
+  }
+
+  btnRebind.addEventListener("click", () => {
+    rebindPanel.classList.remove("hidden");
+    renderRebindList();
+  });
+
+  btnCloseRebind.addEventListener("click", () => {
+    waitingAction = null;
+    rebindPanel.classList.add("hidden");
+    saveBinds();
+    toast("Touches sauvegardées");
+  });
+
+  btnResetBinds.addEventListener("click", () => {
+    for (const k of Object.keys(DEFAULT_BINDS)) BINDS[k] = structuredClone(DEFAULT_BINDS[k]);
+    saveBinds();
+    waitingAction = null;
+    renderRebindList();
+    toast("Touches réinitialisées");
+  });
+
+  window.addEventListener("keydown", (e) => {
+    if (!waitingAction) return;
+    e.preventDefault();
+
+    // On évite Escape (sinon tu te bloques)
+    if (e.code === "Escape") { toast("Escape réservé au menu pause"); return; }
+
+    BINDS[waitingAction] = [e.code];
+    waitingAction = null;
+    saveBinds();
+    renderRebindList();
+    toast("Touche assignée");
+  }, { passive: false });
+
+  /* ---------------------------
+    Resize
+  --------------------------- */
+
+  window.addEventListener("resize", () => {
     renderer.setSize(innerWidth, innerHeight);
     camera.aspect = innerWidth / innerHeight;
     camera.updateProjectionMatrix();
+    applyPixelRatio();
   });
+
+  /* ---------------------------
+    Main Loop
+  --------------------------- */
+
+  let last = performance.now();
+
+  function tick(now) {
+    const dt = clamp((now - last) / 1000, 0, 0.05);
+    last = now;
+
+    updatePlayer(dt);
+    updateCamera(dt);
+
+    renderer.render(scene, camera);
+
+    requestAnimationFrame(tick);
+  }
+
+  requestAnimationFrame(tick);
+
+  /* ---------------------------
+    Start state / URL name
+  --------------------------- */
+
+  (function initName() {
+    const url = new URL(location.href);
+    const name = (url.searchParams.get("name") || "").trim();
+    if (name) localStorage.setItem("lg_name", name);
+  })();
+
+  // Start not paused
+  setPaused(false);
 })();
