@@ -5,95 +5,82 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
   <meta name="theme-color" content="#07090d" />
   <title>Loup-Garou / Murder — Accueil</title>
-  <link rel="icon" href="data:," />
-
   <style>
     :root{
       --bg:#07090d;
-      --panel:rgba(10,14,22,.58);
-      --panel2:rgba(255,255,255,.06);
-      --bd:rgba(255,255,255,.14);
-      --txt:#eaeef7;
-      --mut:rgba(234,238,247,.72);
-      --acc:#7c5cff;
-      --acc2:#4dd6ff;
-      --good:#3ad17a;
-      --warn:#ffb020;
-      --bad:#ff5c5c;
-      --r:22px;
+      --ink:#eaf0ff;
+      --muted:rgba(234,240,255,.72);
+      --panel:rgba(10,12,18,.62);
+      --bd:rgba(255,255,255,.12);
       --shadow:0 18px 60px rgba(0,0,0,.55);
+      --r:20px;
+      --gold:#f7c67a;
+      --ember:#ff7a2f;
+      --frost:#7cc5ff;
+
+      --btnH:86px;
+      --btnW:min(560px, 92vw);
     }
 
-    *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-    html,body{height:100%}
-    body{
-      margin:0;
-      font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif;
-      color:var(--txt);
-      background: radial-gradient(1200px 700px at 20% 10%, rgba(124,92,255,.18), transparent 55%),
-                  radial-gradient(900px 600px at 80% 20%, rgba(77,214,255,.14), transparent 60%),
-                  radial-gradient(1200px 900px at 55% 110%, rgba(58,209,122,.10), transparent 55%),
-                  var(--bg);
-      overflow-x:hidden;
-    }
+    *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+    html,body{ height:100%; margin:0; background:var(--bg); color:var(--ink); font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial; overflow:hidden; }
 
-    .bg3d{
+    /* ===== Background ===== */
+    .bg{
       position:fixed; inset:0;
       background:
-        radial-gradient(1000px 520px at 50% 30%, rgba(255,255,255,.06), transparent 65%),
-        linear-gradient(to bottom, rgba(0,0,0,.0), rgba(0,0,0,.25) 55%, rgba(0,0,0,.55));
+        radial-gradient(1200px 600px at 70% 20%, rgba(255,255,255,.10), transparent 55%),
+        radial-gradient(900px 520px at 78% 22%, rgba(255,210,140,.10), transparent 55%),
+        radial-gradient(1000px 700px at 20% 85%, rgba(255,120,70,.10), transparent 58%),
+        linear-gradient(180deg, #07090d 0%, #060811 55%, #05060d 100%);
+    }
+    .bg::before{
+      content:"";
+      position:absolute; inset:-2%;
+      background:
+        linear-gradient(180deg, rgba(0,0,0,.35), rgba(0,0,0,.55)),
+        radial-gradient(1200px 900px at 50% 40%, transparent 55%, rgba(0,0,0,.72) 100%);
       pointer-events:none;
     }
-    .grain{
-      position:fixed; inset:-40%;
-      background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='240' height='240' filter='url(%23n)' opacity='.25'/%3E%3C/svg%3E");
-      opacity:.08;
-      transform:rotate(8deg);
+    .bgImage{
+      position:absolute; inset:-4%;
+      background-size:cover;
+      background-position:center;
+      filter:saturate(1.02) contrast(1.05) brightness(.92);
+      transform:translate3d(0,0,0);
+      opacity:.86;
+    }
+    .fog{
+      position:absolute; inset:0;
+      background:
+        radial-gradient(800px 340px at 30% 30%, rgba(255,255,255,.06), transparent 60%),
+        radial-gradient(900px 420px at 65% 55%, rgba(255,255,255,.05), transparent 60%),
+        radial-gradient(1000px 460px at 45% 85%, rgba(255,255,255,.04), transparent 60%);
+      mix-blend-mode:screen;
+      opacity:.55;
+      filter:blur(0.2px);
       pointer-events:none;
-      mix-blend-mode:overlay;
     }
 
-    .wrap{max-width:1100px;margin:0 auto;padding:28px 18px 26px}
-    header{
-      display:flex;align-items:center;justify-content:space-between;gap:12px;
-      margin-bottom:18px;
-    }
-    .brand{
-      display:flex; align-items:center; gap:12px; min-width:0;
-    }
-    .logo{
-      width:44px;height:44px;border-radius:14px;
-      background: radial-gradient(18px 18px at 30% 30%, rgba(255,255,255,.22), transparent 60%),
-                  linear-gradient(135deg, var(--acc), var(--acc2));
-      box-shadow:0 12px 35px rgba(124,92,255,.25);
-      flex:0 0 auto;
-    }
-    .brand h1{
-      margin:0;
-      font-size:20px;
-      line-height:1.1;
-      letter-spacing:.2px;
-      white-space:nowrap;
-      overflow:hidden;
-      text-overflow:ellipsis;
-    }
-    .brand .sub{color:var(--mut);font-size:12.5px;margin-top:4px}
-    .status{
-      display:flex;align-items:center;gap:10px;flex:0 0 auto;
-      padding:10px 12px;border:1px solid var(--bd);border-radius:999px;
-      background:rgba(0,0,0,.18);
-      box-shadow:0 10px 35px rgba(0,0,0,.25);
-    }
-    .dot{width:10px;height:10px;border-radius:50%;background:var(--warn);box-shadow:0 0 0 4px rgba(255,176,32,.15)}
-    .status b{font-size:12.5px}
-    .status small{display:block;color:var(--mut);font-size:11px;margin-top:2px}
-    .status .col{display:flex;flex-direction:column;line-height:1.1}
-
-    main{
+    /* ===== Layout ===== */
+    .wrap{
+      position:relative;
+      height:100%;
       display:grid;
-      grid-template-columns: 1.2fr .8fr;
+      place-items:center;
+      padding:28px 16px;
+    }
+
+    .shell{
+      width:min(1100px, 96vw);
+      display:grid;
+      grid-template-columns: 1.1fr .9fr;
       gap:18px;
-      align-items:start;
+      align-items:stretch;
+    }
+
+    @media (max-width: 920px){
+      .shell{ grid-template-columns:1fr; gap:14px; }
     }
 
     .card{
@@ -101,621 +88,641 @@
       border:1px solid var(--bd);
       border-radius:var(--r);
       box-shadow:var(--shadow);
-      padding:18px;
       backdrop-filter: blur(10px);
+      padding:18px;
+      position:relative;
+      overflow:hidden;
     }
-    .card h2{margin:0 0 10px;font-size:20px}
-    .mut{color:var(--mut);font-size:13px;line-height:1.45}
-    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}
-    .row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
-
-    label{display:block;color:var(--mut);font-size:12px;margin-bottom:6px}
-    input{
-      width:100%;
-      padding:12px 12px;
-      border-radius:14px;
-      border:1px solid rgba(255,255,255,.14);
-      background:rgba(0,0,0,.25);
-      color:var(--txt);
-      outline:none;
+    .card::after{
+      content:"";
+      position:absolute; inset:0;
+      background:
+        radial-gradient(600px 240px at 18% 12%, rgba(124,197,255,.10), transparent 55%),
+        radial-gradient(700px 260px at 85% 20%, rgba(255,122,47,.12), transparent 55%);
+      pointer-events:none;
     }
-    input:focus{border-color:rgba(124,92,255,.65);box-shadow:0 0 0 4px rgba(124,92,255,.18)}
 
-    .btn{
-      appearance:none; border:1px solid rgba(255,255,255,.16);
-      background:rgba(255,255,255,.06);
-      color:var(--txt);
-      padding:12px 14px;
+    .brand{
+      display:flex; align-items:center; gap:12px;
+      margin-bottom:10px;
+      position:relative;
+      z-index:1;
+    }
+    .logo{
+      width:44px; height:44px; border-radius:14px;
+      background:
+        radial-gradient(circle at 30% 30%, rgba(255,255,255,.16), transparent 40%),
+        linear-gradient(135deg, rgba(124,197,255,.95), rgba(255,122,47,.95));
+      box-shadow:0 10px 28px rgba(0,0,0,.45);
+    }
+    .title{
+      display:flex; flex-direction:column; line-height:1.05;
+    }
+    .title b{
+      font-size:22px;
+      letter-spacing:.2px;
+      text-shadow:0 10px 26px rgba(0,0,0,.55);
+    }
+    .title span{
+      margin-top:4px;
+      font-size:12.5px;
+      color:rgba(234,240,255,.68);
+    }
+
+    .hint{
+      font-size:13px;
+      color:rgba(234,240,255,.72);
+      margin:10px 0 14px;
+      position:relative; z-index:1;
+    }
+
+    /* ===== Medieval Buttons (wood plank) ===== */
+    .menu{
+      display:flex;
+      flex-direction:column;
+      gap:14px;
+      align-items:center;
+      justify-content:center;
+      padding:10px 0 2px;
+      position:relative;
+      z-index:1;
+    }
+
+    .plank{
+      width:var(--btnW);
+      height:var(--btnH);
       border-radius:16px;
-      font-weight:700;
-      cursor:pointer;
-      display:inline-flex;align-items:center;justify-content:center;gap:10px;
-      user-select:none;
-      text-decoration:none;
-      box-shadow:0 14px 40px rgba(0,0,0,.22);
-    }
-    .btn:hover{filter:brightness(1.06)}
-    .btn:active{transform:translateY(1px)}
-    .btn.primary{
-      background:linear-gradient(135deg, rgba(124,92,255,.95), rgba(77,214,255,.75));
-      border-color:rgba(255,255,255,.10);
-    }
-    .btn.secondary{
-      background:linear-gradient(135deg, rgba(58,209,122,.85), rgba(77,214,255,.55));
-      border-color:rgba(255,255,255,.10);
-    }
-    .btn.ghost{
-      background:transparent;
-    }
-    .btn.danger{
-      background:rgba(255,92,92,.12);
-      border-color:rgba(255,92,92,.25);
-    }
-    .btn.small{padding:10px 12px;border-radius:14px;font-size:13px}
-
-    .pill{
-      display:inline-flex;align-items:center;gap:8px;
-      padding:8px 10px;border-radius:999px;
-      background:rgba(0,0,0,.18);
       border:1px solid rgba(255,255,255,.12);
-      color:var(--mut);
-      font-size:12px;
+      position:relative;
+      cursor:pointer;
+      user-select:none;
+      display:flex;
+      align-items:center;
+      justify-content:flex-start;
+      padding:0 22px;
+      transition:transform .12s ease, filter .18s ease, box-shadow .18s ease;
+      box-shadow:0 18px 45px rgba(0,0,0,.42);
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.06), rgba(0,0,0,.08)),
+        radial-gradient(120px 80px at 15% 45%, rgba(255,210,140,.12), transparent 70%),
+        radial-gradient(150px 90px at 85% 50%, rgba(0,0,0,.25), transparent 70%),
+        linear-gradient(90deg, rgba(0,0,0,.18), rgba(0,0,0,.02) 18%, rgba(0,0,0,.18) 100%),
+        repeating-linear-gradient(90deg, rgba(0,0,0,.22) 0 2px, rgba(0,0,0,0) 2px 18px),
+        linear-gradient(180deg, #2b1a12, #1b0f0b);
+      overflow:hidden;
+    }
+    .plank::before{
+      content:"";
+      position:absolute; inset:0;
+      background:
+        radial-gradient(900px 120px at 50% 0%, rgba(255,255,255,.09), transparent 60%),
+        radial-gradient(700px 160px at 50% 120%, rgba(0,0,0,.35), transparent 65%);
+      pointer-events:none;
+      mix-blend-mode:screen;
+      opacity:.7;
+    }
+    .plank::after{
+      content:"";
+      position:absolute; inset:0;
+      background:linear-gradient(90deg, transparent, rgba(255,255,255,.10), transparent);
+      transform:translateX(-120%);
+      transition:transform .6s ease;
+      pointer-events:none;
+      opacity:.35;
+    }
+
+    .plank:hover{ transform:translateY(-2px); filter:saturate(1.05) contrast(1.02); }
+    .plank:hover::after{ transform:translateX(120%); }
+    .plank:active{ transform:translateY(0px) scale(.995); }
+
+    .plank:focus-visible{
+      outline:none;
+      box-shadow:0 0 0 3px rgba(124,197,255,.28), 0 18px 45px rgba(0,0,0,.42);
+    }
+
+    .plank .label{
+      font-weight:900;
+      font-size:26px;
+      letter-spacing:.8px;
+      text-transform:uppercase;
+      text-shadow:
+        0 2px 0 rgba(0,0,0,.25),
+        0 14px 26px rgba(0,0,0,.60);
+      display:flex;
+      align-items:center;
+      gap:12px;
+    }
+
+    .plank.gold .label{
+      color:#ffe0b5;
+      text-shadow:
+        0 2px 0 rgba(0,0,0,.35),
+        0 0 16px rgba(255,140,70,.22),
+        0 14px 26px rgba(0,0,0,.60);
+    }
+    .plank.iron .label{ color:#e8edf7; }
+    .plank.stone{
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.06), rgba(0,0,0,.10)),
+        repeating-linear-gradient(135deg, rgba(255,255,255,.05) 0 10px, rgba(0,0,0,.08) 10px 20px),
+        linear-gradient(180deg, #2a2e3a, #171a22);
+    }
+    .plank.stone .label{
+      color:#e9f2ff;
+      text-shadow:0 2px 0 rgba(0,0,0,.35), 0 14px 26px rgba(0,0,0,.60);
+    }
+
+    .ico{
+      width:44px; height:44px;
+      border-radius:14px;
+      display:grid; place-items:center;
+      background:rgba(255,255,255,.08);
+      border:1px solid rgba(255,255,255,.12);
+      box-shadow:inset 0 1px 0 rgba(255,255,255,.10);
+      flex:0 0 auto;
+    }
+    .ico svg{ width:24px; height:24px; opacity:.95; }
+
+    /* ===== Right panel (quick info) ===== */
+    .side{
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+      position:relative;
+      z-index:1;
+    }
+    .side h3{
+      margin:6px 0 0;
+      font-size:14px;
+      letter-spacing:.4px;
+      text-transform:uppercase;
+      color:rgba(234,240,255,.85);
+    }
+    .side p{
+      margin:6px 0 0;
+      font-size:13px;
+      color:rgba(234,240,255,.74);
+      line-height:1.35;
+    }
+    .pillRow{
+      display:flex; flex-wrap:wrap; gap:8px;
       margin-top:10px;
     }
-
-    .list{
-      margin:14px 0 0;
-      padding:0;
-      list-style:none;
-      display:grid;
-      gap:10px;
-    }
-    .li{
+    .pill{
+      font-size:12.5px;
+      padding:7px 10px;
+      border-radius:999px;
       border:1px solid rgba(255,255,255,.12);
-      border-radius:16px;
-      background:rgba(255,255,255,.04);
-      padding:12px;
+      background:rgba(0,0,0,.22);
+      color:rgba(234,240,255,.78);
+      display:inline-flex;
+      gap:8px;
+      align-items:center;
     }
-    .li b{display:block;font-size:13.5px;margin-bottom:4px}
-    .li span{display:block;color:var(--mut);font-size:12.5px;line-height:1.35}
+    .dot{
+      width:8px; height:8px; border-radius:99px;
+      background:rgba(255,255,255,.35);
+      box-shadow:0 0 0 2px rgba(255,255,255,.10);
+    }
+    .dot.ok{ background:rgba(74, 240, 170, .75); box-shadow:0 0 0 2px rgba(74,240,170,.18); }
+    .dot.warn{ background:rgba(255, 190, 70, .80); box-shadow:0 0 0 2px rgba(255,190,70,.18); }
 
-    footer{
-      margin-top:14px;
-      display:flex;justify-content:space-between;align-items:center;gap:12px;
-      color:var(--mut);
+    .footer{
+      position:fixed;
+      left:14px; bottom:12px;
       font-size:12px;
-      opacity:.95;
+      color:rgba(234,240,255,.55);
+      text-shadow:0 10px 24px rgba(0,0,0,.55);
+      z-index:5;
     }
 
-    /* Modal */
-    .modal{
+    /* ===== Settings Modal ===== */
+    .modalBack{
       position:fixed; inset:0;
-      display:none;
-      align-items:center; justify-content:center;
-      padding:18px;
       background:rgba(0,0,0,.55);
-      backdrop-filter: blur(8px);
+      display:none;
+      align-items:center;
+      justify-content:center;
+      padding:16px;
       z-index:50;
     }
-    .modal.show{display:flex}
-    .modal .box{
-      width:min(760px, 100%);
-      background:rgba(10,14,22,.78);
-      border:1px solid rgba(255,255,255,.16);
-      border-radius:24px;
-      box-shadow:0 24px 80px rgba(0,0,0,.65);
-      padding:16px;
-    }
-    .tabs{
-      display:flex;gap:8px;flex-wrap:wrap;
-      margin:10px 0 12px;
-    }
-    .tab{
-      padding:10px 12px;border-radius:999px;
-      border:1px solid rgba(255,255,255,.12);
-      background:rgba(255,255,255,.06);
-      color:var(--txt);
-      font-weight:800;
-      font-size:12.5px;
-      cursor:pointer;
-    }
-    .tab.active{
-      background:linear-gradient(135deg, rgba(124,92,255,.85), rgba(77,214,255,.55));
-      border-color:rgba(255,255,255,.10);
-    }
-    .pane{display:none}
-    .pane.active{display:block}
-    .line{
-      display:flex;align-items:center;justify-content:space-between;gap:12px;
-      padding:12px;border-radius:16px;
-      background:rgba(255,255,255,.04);
-      border:1px solid rgba(255,255,255,.10);
-      margin-bottom:10px;
-    }
-    .line b{font-size:13px}
-    .line small{display:block;color:var(--mut);font-size:12px;margin-top:3px}
-    select, input[type="range"]{
-      width:220px; max-width:45vw;
-    }
-    .kbd{
-      font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-      font-size:12px;
-      padding:6px 8px;
-      border-radius:10px;
-      border:1px solid rgba(255,255,255,.18);
-      background:rgba(0,0,0,.25);
-      color:var(--txt);
-      white-space:nowrap;
-    }
-    .closeRow{display:flex;justify-content:space-between;align-items:center;gap:10px}
-    .closeRow h3{margin:0;font-size:16px}
-    .closeRow .x{
-      width:40px;height:40px;border-radius:14px;
+    .modal{
+      width:min(720px, 96vw);
+      background:rgba(10,12,18,.78);
       border:1px solid rgba(255,255,255,.14);
-      background:rgba(255,255,255,.06);
-      color:var(--txt);
+      border-radius:22px;
+      box-shadow:0 24px 80px rgba(0,0,0,.65);
+      backdrop-filter: blur(12px);
+      overflow:hidden;
+    }
+    .modalHead{
+      display:flex; align-items:center; justify-content:space-between;
+      padding:14px 16px;
+      background:linear-gradient(90deg, rgba(124,197,255,.08), rgba(255,122,47,.08));
+      border-bottom:1px solid rgba(255,255,255,.10);
+    }
+    .modalHead b{ letter-spacing:.3px; }
+    .xbtn{
+      border:1px solid rgba(255,255,255,.16);
+      background:rgba(0,0,0,.25);
+      color:rgba(234,240,255,.88);
+      border-radius:12px;
+      height:38px; width:38px;
+      display:grid; place-items:center;
       cursor:pointer;
-      font-weight:900;
+    }
+    .modalBody{ padding:14px 16px 16px; }
+    .grid{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:12px;
+    }
+    @media (max-width: 740px){ .grid{ grid-template-columns:1fr; } }
+
+    .row{
+      border:1px solid rgba(255,255,255,.10);
+      background:rgba(0,0,0,.20);
+      border-radius:16px;
+      padding:12px;
+    }
+    .row .k{ font-size:12px; color:rgba(234,240,255,.70); text-transform:uppercase; letter-spacing:.35px; }
+    .row .v{ margin-top:8px; display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+    select, input[type="range"]{
+      width:100%;
+      accent-color: #7cc5ff;
+    }
+    .small{
+      font-size:12px;
+      color:rgba(234,240,255,.62);
+      margin-top:8px;
+      line-height:1.3;
+    }
+    .btnBar{
+      display:flex; gap:10px; justify-content:flex-end;
+      padding:12px 16px 16px;
+      border-top:1px solid rgba(255,255,255,.10);
+      background:rgba(0,0,0,.18);
+    }
+    .btn{
+      height:42px;
+      padding:0 14px;
+      border-radius:14px;
+      border:1px solid rgba(255,255,255,.14);
+      background:rgba(0,0,0,.20);
+      color:rgba(234,240,255,.90);
+      cursor:pointer;
+      font-weight:700;
+    }
+    .btn.primary{
+      background:linear-gradient(135deg, rgba(124,197,255,.35), rgba(255,122,47,.25));
+      border-color: rgba(124,197,255,.35);
     }
 
-    /* Responsive */
-    @media (max-width: 920px){
-      main{grid-template-columns:1fr}
-      .status{display:none}
+    /* Reduced motion */
+    @media (prefers-reduced-motion: reduce){
+      .plank, .plank::after{ transition:none !important; }
     }
   </style>
 </head>
 
 <body>
-  <div class="bg3d"></div>
-  <div class="grain"></div>
-
-  <div class="wrap">
-    <header>
-      <div class="brand">
-        <div class="logo" aria-hidden="true"></div>
-        <div style="min-width:0">
-          <h1>Loup-Garou / Murder</h1>
-          <div class="sub">Lobby en ligne + Salon 3D (Hub) — simple à partager</div>
-        </div>
-      </div>
-
-      <div class="status" title="Le lobby utilise un serveur WebSocket. Sur hébergement gratuit, il peut “s’endormir”.">
-        <div class="dot" id="dot"></div>
-        <div class="col">
-          <b id="srvTxt">Serveur : inconnu</b>
-          <small id="srvSub">Clique “Tester” dans Options si besoin</small>
-        </div>
-      </div>
-    </header>
-
-    <main>
-      <section class="card">
-        <h2>Bienvenue 👋</h2>
-        <div class="mut">
-          Choisis un pseudo. Ensuite tu peux lancer une partie <b>Loup-Garou</b> (multijoueur) ou rejoindre le <b>Hub 3D</b> pour te balader et tester tes skins.
-        </div>
-
-        <div class="grid2">
-          <div>
-            <label for="name">Pseudo</label>
-            <input id="name" maxlength="20" placeholder="Ex : Stan" autocomplete="nickname" />
-          </div>
-          <div>
-            <label for="room">Code salon (optionnel)</label>
-            <input id="room" maxlength="10" placeholder="Ex : ABC123" autocomplete="off" />
-          </div>
-        </div>
-
-        <div class="pill" id="hint">
-          Astuce : si ton lobby “ne répond pas”, retente une fois (hébergement gratuit = parfois réveil).
-        </div>
-
-        <div class="row" style="margin-top:14px">
-          <button class="btn primary" id="btnLobby">🎮 Loup-Garou (Lobby)</button>
-          <button class="btn secondary" id="btnHub">🌍 Hub 3D (Salon)</button>
-        </div>
-
-        <ul class="list">
-          <li class="li">
-            <b>Comment ça marche</b>
-            <span>Tu partages l’URL. Tes amis rejoignent avec le même code salon (si tu en mets un).</span>
-          </li>
-          <li class="li">
-            <b>Mobile friendly</b>
-            <span>Le Hub supporte joystick + caméra tactile. Les menus sont pensés téléphone.</span>
-          </li>
-          <li class="li">
-            <b>Propre</b>
-            <span>Pas de pages de test sur l’accueil. Juste le jeu, le hub, options, quitter.</span>
-          </li>
-        </ul>
-      </section>
-
-      <aside class="card">
-        <h2>Menu</h2>
-        <div class="mut">Accès directs. Les réglages sont sauvegardés dans ton navigateur.</div>
-
-        <div class="row" style="margin-top:14px">
-          <button class="btn small" id="btnOptions">⚙️ Paramètres</button>
-          <button class="btn small danger" id="btnQuit">⏻ Quitter</button>
-        </div>
-
-        <ul class="list" style="margin-top:14px">
-          <li class="li">
-            <b>Raccourcis Hub</b>
-            <span>ZQSD / flèches · Sprint <span class="kbd">Shift</span> · Saut <span class="kbd">Espace</span> · Pause <span class="kbd">Échap</span> · Joysticks <span class="kbd">J</span></span>
-          </li>
-          <li class="li">
-            <b>Conseil</b>
-            <span>Ouvre toujours via un serveur local (pas <span class="kbd">file:///</span>), sinon les modèles/WS peuvent casser.</span>
-          </li>
-        </ul>
-
-        <footer>
-          <span>© Prototype — Loup-Garou</span>
-          <span id="ver">v0</span>
-        </footer>
-      </aside>
-    </main>
+  <div class="bg" id="bg">
+    <div class="bgImage" id="bgImage"></div>
+    <div class="fog"></div>
   </div>
 
-  <!-- MODAL OPTIONS -->
-  <div class="modal" id="modal" role="dialog" aria-modal="true" aria-label="Paramètres">
-    <div class="box">
-      <div class="closeRow">
-        <h3>Paramètres</h3>
-        <button class="x" id="btnClose" aria-label="Fermer">✕</button>
-      </div>
-
-      <div class="tabs" id="tabs">
-        <button class="tab active" data-tab="t-connexion">Connexion</button>
-        <button class="tab" data-tab="t-controles">Commandes</button>
-        <button class="tab" data-tab="t-audio">Audio</button>
-        <button class="tab" data-tab="t-jouabilite">Jouabilité</button>
-      </div>
-
-      <div class="pane active" id="t-connexion">
-        <div class="line">
-          <div>
-            <b>URL WebSocket (Lobby)</b>
-            <small>Utilisée pour le mode Loup-Garou en ligne. Laisse par défaut si Render.</small>
+  <div class="wrap">
+    <div class="shell">
+      <!-- Left: main menu -->
+      <div class="card">
+        <div class="brand">
+          <div class="logo" aria-hidden="true"></div>
+          <div class="title">
+            <b>Loup-Garou / Murder</b>
+            <span>Lobby en ligne + Salon 3D (Hub) — prototype en évolution</span>
           </div>
-          <input id="wsUrl" style="width:min(360px,60vw)" placeholder="wss://ton-serveur.onrender.com" />
         </div>
 
-        <div class="line">
-          <div>
-            <b>Tester la connexion</b>
-            <small>Vérifie rapidement si le serveur répond (utile si “endormi”).</small>
-          </div>
-          <button class="btn small" id="btnTest">Tester</button>
+        <div class="hint">
+          Choisis ton mode. Tu pourras toujours revenir ici depuis le menu pause.
         </div>
 
-        <div class="mut" id="testResult" style="margin-top:8px"></div>
-      </div>
+        <div class="menu" role="menu" aria-label="Menu principal">
+          <button class="plank gold" id="btnLobby" role="menuitem">
+            <div class="ico" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none">
+                <path d="M12 3l9 7-1.2 1.6L12 5.6 4.2 11.6 3 10l9-7Z" fill="currentColor" opacity=".9"/>
+                <path d="M6 10v10h12V10" stroke="currentColor" stroke-width="2" opacity=".9"/>
+              </svg>
+            </div>
+            <div class="label">Jouer au Loup Garou</div>
+          </button>
 
-      <div class="pane" id="t-controles">
-        <div class="line">
-          <div>
-            <b>Disposition clavier</b>
-            <small>AZERTY (ZQSD) recommandé en France.</small>
-          </div>
-          <select id="layout">
-            <option value="azerty">AZERTY (ZQSD)</option>
-            <option value="qwerty">QWERTY (WASD)</option>
-          </select>
-        </div>
+          <button class="plank iron" id="btnHub" role="menuitem">
+            <div class="ico" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none">
+                <path d="M4 7.5 12 3l8 4.5v9L12 21l-8-4.5v-9Z" stroke="currentColor" stroke-width="2"/>
+                <path d="M12 3v18" stroke="currentColor" stroke-width="2" opacity=".85"/>
+                <path d="M4 7.5 12 12l8-4.5" stroke="currentColor" stroke-width="2" opacity=".85"/>
+              </svg>
+            </div>
+            <div class="label">Rejoindre le Hub</div>
+          </button>
 
-        <div class="line">
-          <div>
-            <b>Afficher joysticks sur mobile</b>
-            <small>Dans le Hub : bouton “Joystick” + raccourci J.</small>
-          </div>
-          <select id="mobileJoy">
-            <option value="on">ON</option>
-            <option value="off">OFF</option>
-          </select>
-        </div>
+          <button class="plank stone" id="btnSettings" role="menuitem">
+            <div class="ico" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none">
+                <path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z" stroke="currentColor" stroke-width="2"/>
+                <path d="M19 12a7.2 7.2 0 0 0-.1-1l2-1.6-2-3.4-2.4 1a7.6 7.6 0 0 0-1.7-1l-.4-2.6H9.6L9.2 6a7.6 7.6 0 0 0-1.7 1l-2.4-1-2 3.4 2 1.6A7.2 7.2 0 0 0 5 12c0 .34.03.67.08 1l-2 1.6 2 3.4 2.4-1c.53.4 1.1.73 1.7 1l.4 2.6h4.8l.4-2.6c.6-.27 1.17-.6 1.7-1l2.4 1 2-3.4-2-1.6c.07-.33.1-.66.1-1Z" stroke="currentColor" stroke-width="1.6" opacity=".9"/>
+              </svg>
+            </div>
+            <div class="label">Paramètres</div>
+          </button>
 
-        <div class="line">
-          <div>
-            <b>Sensibilité caméra (Hub)</b>
-            <small>Drag souris / joystick droit.</small>
-          </div>
-          <input id="camSens" type="range" min="0.2" max="2.5" step="0.05" />
+          <button class="plank iron" id="btnQuit" role="menuitem" aria-label="Quitter">
+            <div class="ico" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none">
+                <path d="M10 7V5a2 2 0 0 1 2-2h7v18h-7a2 2 0 0 1-2-2v-2" stroke="currentColor" stroke-width="2"/>
+                <path d="M4 12h10" stroke="currentColor" stroke-width="2"/>
+                <path d="M7 9l-3 3 3 3" stroke="currentColor" stroke-width="2"/>
+              </svg>
+            </div>
+            <div class="label">Quitter</div>
+          </button>
         </div>
       </div>
 
-      <div class="pane" id="t-audio">
-        <div class="line">
-          <div>
-            <b>Volume global</b>
-            <small>Appliqué au Hub et au Lobby.</small>
-          </div>
-          <input id="volMaster" type="range" min="0" max="1" step="0.01" />
+      <!-- Right: info / tips -->
+      <div class="card side">
+        <h3>Infos rapides</h3>
+        <p>
+          <b>Lobby</b> : parties Loup-Garou en ligne (rôles, votes, host).<br/>
+          <b>Hub 3D</b> : salon communautaire (skins, déplacements, plus tard chat vocal/texte).
+        </p>
+
+        <div class="pillRow" aria-label="Raccourcis">
+          <span class="pill"><span class="dot ok"></span> Mobile friendly</span>
+          <span class="pill"><span class="dot warn"></span> Serveur gratuit : parfois “réveil”</span>
+          <span class="pill"><span class="dot"></span> Échap : menu pause (dans le Hub)</span>
         </div>
-        <div class="line">
-          <div>
-            <b>Ambiance</b>
-            <small>Musique / ambiance (si activée plus tard).</small>
+
+        <h3>Conseil</h3>
+        <p>
+          Teste toujours via serveur local ou Render (pas en <i>file://</i>), sinon certains chargements (GLB, textures) cassent.
+        </p>
+
+        <h3>Routes</h3>
+        <p class="small">
+          Le menu pointe vers <code>lg.html</code> (lobby) et <code>hub_world.html</code> (hub). Tu peux changer ça en 2 secondes dans le script.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">© Prototype perso — Loup-Garou</div>
+
+  <!-- Settings modal -->
+  <div class="modalBack" id="modalBack" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-label="Paramètres">
+      <div class="modalHead">
+        <b>Paramètres</b>
+        <button class="xbtn" id="btnCloseModal" aria-label="Fermer">✕</button>
+      </div>
+
+      <div class="modalBody">
+        <div class="grid">
+          <div class="row">
+            <div class="k">Audio</div>
+            <div class="v">
+              <label style="width:100%">
+                <div style="display:flex;justify-content:space-between;font-size:12px;color:rgba(234,240,255,.72)">
+                  <span>Volume global</span><span id="volLabel">70%</span>
+                </div>
+                <input id="vol" type="range" min="0" max="100" step="1" value="70" />
+              </label>
+            </div>
+            <div class="small">Ce réglage servira aussi dans le Hub (sons / plus tard voix).</div>
           </div>
-          <input id="volAmb" type="range" min="0" max="1" step="0.01" />
-        </div>
-        <div class="line">
-          <div>
-            <b>Effets</b>
-            <small>Pas / actions / UI.</small>
+
+          <div class="row">
+            <div class="k">Graphiques</div>
+            <div class="v">
+              <label style="width:100%">
+                <div style="font-size:12px;color:rgba(234,240,255,.72);margin-bottom:6px">Qualité</div>
+                <select id="gfx">
+                  <option value="auto">Auto</option>
+                  <option value="low">Basse</option>
+                  <option value="med">Moyenne</option>
+                  <option value="high">Haute</option>
+                </select>
+              </label>
+            </div>
+            <div class="small">Le Hub utilisera ça pour la densité, ombres, etc.</div>
           </div>
-          <input id="volSfx" type="range" min="0" max="1" step="0.01" />
+
+          <div class="row">
+            <div class="k">Contrôles</div>
+            <div class="v">
+              <label style="width:100%">
+                <div style="font-size:12px;color:rgba(234,240,255,.72);margin-bottom:6px">Disposition clavier</div>
+                <select id="kb">
+                  <option value="azerty">AZERTY (ZQSD)</option>
+                  <option value="qwerty">QWERTY (WASD)</option>
+                  <option value="arrows">Flèches</option>
+                </select>
+              </label>
+            </div>
+            <div class="small">Dans le Hub, tu pourras rebind chaque touche.</div>
+          </div>
+
+          <div class="row">
+            <div class="k">Jouabilité</div>
+            <div class="v">
+              <label style="width:100%">
+                <div style="font-size:12px;color:rgba(234,240,255,.72);margin-bottom:6px">Vibrations (mobile)</div>
+                <select id="haptics">
+                  <option value="on">ON</option>
+                  <option value="off">OFF</option>
+                </select>
+              </label>
+            </div>
+            <div class="small">Option simple, utile pour les joysticks/boutons.</div>
+          </div>
         </div>
       </div>
 
-      <div class="pane" id="t-jouabilite">
-        <div class="line">
-          <div>
-            <b>Confirmer avant de quitter</b>
-            <small>Évite les fermetures accidentelles sur mobile.</small>
-          </div>
-          <select id="confirmQuit">
-            <option value="on">ON</option>
-            <option value="off">OFF</option>
-          </select>
-        </div>
-
-        <div class="line">
-          <div>
-            <b>Auto-sauvegarde pseudo</b>
-            <small>Remplit ton pseudo automatiquement au prochain lancement.</small>
-          </div>
-          <select id="saveName">
-            <option value="on">ON</option>
-            <option value="off">OFF</option>
-          </select>
-        </div>
-      </div>
-
-      <div class="row" style="justify-content:flex-end;margin-top:8px">
-        <button class="btn ghost" id="btnReset">Réinitialiser</button>
-        <button class="btn primary" id="btnSave">Enregistrer</button>
+      <div class="btnBar">
+        <button class="btn" id="btnReset">Réinitialiser</button>
+        <button class="btn primary" id="btnSave">Sauvegarder</button>
       </div>
     </div>
   </div>
 
   <script>
-    // ====== CONFIG / ROUTES ======
-    // Mets ici tes pages (dans le même dossier que index.html)
-    const ROUTE_LOBBY = "lg.html";          // <- ta page lobby (à adapter si différent)
-    const ROUTE_HUB   = "hub_world.html";   // <- ton hub 3D
+    // ====== ROUTES (change ici si tes fichiers ont un autre nom) ======
+    const ROUTE_LOBBY = "lg.html";
+    const ROUTE_HUB   = "hub_world.html";
 
-    // Valeurs par défaut
-    const DEFAULTS = {
-      name: "",
-      room: "",
-      wsUrl: "wss://loup-garou-ws.onrender.com",
-      layout: "azerty",
-      mobileJoy: "on",
-      camSens: 1.0,
-      volMaster: 0.8,
-      volAmb: 0.5,
-      volSfx: 0.8,
-      confirmQuit: "on",
-      saveName: "on",
-      ver: "v0.1"
-    };
+    // ====== Background image (optionnel) ======
+    // Mets ton image ici : assets/ui/menu_bg.jpg (ou change le nom)
+    const BG_URL = "assets/ui/menu_bg.png";
+
+    // ====== Settings storage ======
+    const LS_KEY = "lg_settings_v1";
 
     const $ = (id)=>document.getElementById(id);
 
-    // ====== STATE (localStorage) ======
-    const KEY = "lg_settings_v1";
+    const state = {
+      volume: 70,
+      gfx: "auto",
+      kb: "azerty",
+      haptics: "on",
+    };
+
     function loadSettings(){
       try{
-        const raw = localStorage.getItem(KEY);
-        if(!raw) return structuredClone(DEFAULTS);
-        const o = JSON.parse(raw);
-        return { ...structuredClone(DEFAULTS), ...o };
-      }catch(e){
-        return structuredClone(DEFAULTS);
-      }
+        const raw = localStorage.getItem(LS_KEY);
+        if(!raw) return;
+        const obj = JSON.parse(raw);
+        if(typeof obj.volume === "number") state.volume = Math.max(0, Math.min(100, obj.volume));
+        if(["auto","low","med","high"].includes(obj.gfx)) state.gfx = obj.gfx;
+        if(["azerty","qwerty","arrows"].includes(obj.kb)) state.kb = obj.kb;
+        if(["on","off"].includes(obj.haptics)) state.haptics = obj.haptics;
+      }catch{}
     }
-    function saveSettings(s){
-      localStorage.setItem(KEY, JSON.stringify(s));
+    function saveSettings(){
+      localStorage.setItem(LS_KEY, JSON.stringify(state));
+    }
+    function applySettingsToUI(){
+      $("vol").value = String(state.volume);
+      $("volLabel").textContent = state.volume + "%";
+      $("gfx").value = state.gfx;
+      $("kb").value = state.kb;
+      $("haptics").value = state.haptics;
     }
 
-    let S = loadSettings();
+    function openModal(){
+      $("modalBack").style.display = "flex";
+      $("modalBack").setAttribute("aria-hidden","false");
+      $("btnCloseModal").focus();
+    }
+    function closeModal(){
+      $("modalBack").style.display = "none";
+      $("modalBack").setAttribute("aria-hidden","true");
+    }
 
-    // ====== UI INIT ======
-    $("ver").textContent = S.ver;
-
-    // Fill inputs
-    $("wsUrl").value = S.wsUrl;
-    $("layout").value = S.layout;
-    $("mobileJoy").value = S.mobileJoy;
-    $("camSens").value = String(S.camSens);
-    $("volMaster").value = String(S.volMaster);
-    $("volAmb").value = String(S.volAmb);
-    $("volSfx").value = String(S.volSfx);
-    $("confirmQuit").value = S.confirmQuit;
-    $("saveName").value = S.saveName;
-
-    // Name/room
-    const savedName = localStorage.getItem("lg_player_name") || "";
-    if(S.saveName === "on" && savedName){
-      $("name").value = savedName;
-    }else if(S.name){
-      $("name").value = S.name;
-    }
-    if(S.room) $("room").value = S.room;
-
-    // Status dot (optimistic)
-    setServerStatus("inconnu", "Clique “Tester” dans Options si besoin", "warn");
-
-    // ====== Helpers ======
-    function cleanName(x){
-      return (x||"").trim().slice(0,20);
-    }
-    function cleanRoom(x){
-      return (x||"").trim().toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,10);
-    }
-    function setServerStatus(main, sub, level){
-      $("srvTxt").textContent = "Serveur : " + main;
-      $("srvSub").textContent = sub || "";
-      const dot = $("dot");
-      dot.style.background = (level==="good") ? "var(--good)" : (level==="bad") ? "var(--bad)" : "var(--warn)";
-      dot.style.boxShadow = (level==="good") ? "0 0 0 4px rgba(58,209,122,.15)"
-                        : (level==="bad") ? "0 0 0 4px rgba(255,92,92,.15)"
-                        : "0 0 0 4px rgba(255,176,32,.15)";
-    }
-    function buildQuery(){
-      const name = cleanName($("name").value);
-      const room = cleanRoom($("room").value);
-      const qs = new URLSearchParams();
-      if(name) qs.set("name", name);
-      if(room) qs.set("room", room);
-      // on passe aussi quelques settings utiles (optionnel)
-      qs.set("layout", S.layout);
-      qs.set("camSens", String(S.camSens));
-      qs.set("mobileJoy", S.mobileJoy);
-      return qs.toString();
-    }
-    function persistBasics(){
-      const name = cleanName($("name").value);
-      const room = cleanRoom($("room").value);
-      S.name = name;
-      S.room = room;
-      saveSettings(S);
-      if(S.saveName === "on" && name){
-        localStorage.setItem("lg_player_name", name);
-      }
-    }
-    function go(url){
-      // évite les erreurs du style "index.htmlhttp://..."
+    // ====== Navigation ======
+    function goto(url){
       window.location.href = url;
     }
 
-    // ====== Buttons ======
-    $("btnLobby").addEventListener("click", ()=>{
-      persistBasics();
-      const q = buildQuery();
-      go(ROUTE_LOBBY + (q ? ("?"+q) : ""));
-    });
+    // ====== Init ======
+    (function init(){
+      loadSettings();
+      applySettingsToUI();
 
-    $("btnHub").addEventListener("click", ()=>{
-      persistBasics();
-      const q = buildQuery();
-      go(ROUTE_HUB + (q ? ("?"+q) : ""));
-    });
+      // BG image: if exists, load; else keep gradient fallback.
+      const bgEl = $("bgImage");
+      bgEl.style.backgroundImage = `url('${BG_URL}')`;
+      // If image missing, keep fallback (we can't detect reliably without fetch; leave it).
 
-    $("btnOptions").addEventListener("click", ()=> openModal());
-    $("btnClose").addEventListener("click", ()=> closeModal());
-    $("btnSave").addEventListener("click", ()=> {
-      S.wsUrl = ($("wsUrl").value || "").trim();
-      S.layout = $("layout").value;
-      S.mobileJoy = $("mobileJoy").value;
-      S.camSens = Number($("camSens").value);
-      S.volMaster = Number($("volMaster").value);
-      S.volAmb = Number($("volAmb").value);
-      S.volSfx = Number($("volSfx").value);
-      S.confirmQuit = $("confirmQuit").value;
-      S.saveName = $("saveName").value;
+      // Parallax subtle
+      const reduced = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      if(!reduced){
+        let tx=0, ty=0, cx=0, cy=0;
+        const onMove = (x,y)=>{
+          const w = window.innerWidth, h = window.innerHeight;
+          tx = ((x / w) - 0.5) * 8;
+          ty = ((y / h) - 0.5) * 6;
+        };
+        window.addEventListener("mousemove", (e)=>onMove(e.clientX, e.clientY), {passive:true});
+        window.addEventListener("touchmove", (e)=>{
+          if(!e.touches || !e.touches[0]) return;
+          onMove(e.touches[0].clientX, e.touches[0].clientY);
+        }, {passive:true});
 
-      persistBasics();
-      saveSettings(S);
-      closeModal();
-    });
+        function tick(){
+          cx += (tx - cx) * 0.06;
+          cy += (ty - cy) * 0.06;
+          bgEl.style.transform = `translate3d(${cx}px, ${cy}px, 0) scale(1.02)`;
+          requestAnimationFrame(tick);
+        }
+        tick();
+      }
 
-    $("btnReset").addEventListener("click", ()=>{
-      if(!confirm("Réinitialiser les paramètres ?")) return;
-      localStorage.removeItem(KEY);
-      S = loadSettings();
-      location.reload();
-    });
-
-    $("btnQuit").addEventListener("click", ()=>{
-      const ask = (S.confirmQuit === "on");
-      if(ask && !confirm("Quitter le jeu ?")) return;
-      // Impossible de fermer un onglet sans interaction navigateur.
-      // On redirige vers une page neutre.
-      go("about:blank");
-    });
-
-    // Tabs
-    document.querySelectorAll(".tab").forEach(t=>{
-      t.addEventListener("click", ()=>{
-        document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));
-        document.querySelectorAll(".pane").forEach(x=>x.classList.remove("active"));
-        t.classList.add("active");
-        const id = t.dataset.tab;
-        $(id).classList.add("active");
+      // Buttons
+      $("btnLobby").addEventListener("click", ()=>{
+        goto(ROUTE_LOBBY + "?kb=" + encodeURIComponent(state.kb));
       });
-    });
+      $("btnHub").addEventListener("click", ()=>{
+        const qs = new URLSearchParams();
+        qs.set("kb", state.kb);
+        qs.set("gfx", state.gfx);
+        qs.set("vol", String(state.volume));
+        qs.set("haptics", state.haptics);
+        goto(ROUTE_HUB + "?" + qs.toString());
+      });
+      $("btnSettings").addEventListener("click", openModal);
+      $("btnQuit").addEventListener("click", ()=>{
+        // Sur le web on ne peut pas "quitter" proprement. On propose une action claire.
+        if(confirm("Fermer la page ? (Sur le web, tu peux aussi simplement fermer l’onglet.)")){
+          window.close(); // fonctionne seulement si la page a été ouverte par script
+        }
+      });
 
-    // ESC to close modal
-    window.addEventListener("keydown", (e)=>{
-      if(e.key === "Escape"){
-        const m = $("modal");
-        if(m.classList.contains("show")) closeModal();
-      }
-    });
+      // Modal controls
+      $("btnCloseModal").addEventListener("click", closeModal);
+      $("modalBack").addEventListener("click", (e)=>{
+        if(e.target === $("modalBack")) closeModal();
+      });
 
-    function openModal(){
-      $("modal").classList.add("show");
-      $("testResult").textContent = "";
-    }
-    function closeModal(){
-      $("modal").classList.remove("show");
-    }
-    $("modal").addEventListener("click",(e)=>{
-      if(e.target === $("modal")) closeModal();
-    });
+      $("vol").addEventListener("input", (e)=>{
+        state.volume = Number(e.target.value)||0;
+        $("volLabel").textContent = state.volume + "%";
+      });
+      $("gfx").addEventListener("change", (e)=> state.gfx = e.target.value);
+      $("kb").addEventListener("change", (e)=> state.kb = e.target.value);
+      $("haptics").addEventListener("change", (e)=> state.haptics = e.target.value);
 
-    // ====== WebSocket test ======
-    let testSock = null;
-    $("btnTest").addEventListener("click", ()=>{
-      const url = ($("wsUrl").value || "").trim();
-      $("testResult").textContent = "Test en cours...";
-      $("testResult").style.color = "var(--mut)";
+      $("btnSave").addEventListener("click", ()=>{
+        saveSettings();
+        closeModal();
+      });
+      $("btnReset").addEventListener("click", ()=>{
+        if(!confirm("Réinitialiser les paramètres ?")) return;
+        state.volume = 70;
+        state.gfx = "auto";
+        state.kb = "azerty";
+        state.haptics = "on";
+        applySettingsToUI();
+        saveSettings();
+      });
 
-      try{
-        if(testSock){ try{testSock.close()}catch(_){} }
-        testSock = new WebSocket(url);
-        const t0 = performance.now();
+      // Keyboard (Esc to close modal, arrows to focus menu)
+      const menuButtons = ["btnLobby","btnHub","btnSettings","btnQuit"].map($);
+      let idx = 0;
+      function focusIdx(){ menuButtons[idx].focus(); }
 
-        const done = (ok, msg)=>{
-          const dt = Math.round(performance.now()-t0);
-          $("testResult").textContent = (ok ? "OK" : "Échec") + " — " + msg + " ("+dt+"ms)";
-          $("testResult").style.color = ok ? "var(--good)" : "var(--bad)";
-          setServerStatus(ok ? "en ligne" : "hors ligne", ok ? "Connexion OK" : "Impossible de se connecter", ok ? "good" : "bad");
-          try{testSock.close()}catch(_){}
-          testSock = null;
-        };
+      window.addEventListener("keydown", (e)=>{
+        const modalOpen = $("modalBack").style.display === "flex";
 
-        const timer = setTimeout(()=>{
-          done(false, "timeout");
-        }, 5000);
+        if(e.key === "Escape"){
+          if(modalOpen){ e.preventDefault(); closeModal(); return; }
+        }
 
-        testSock.onopen = ()=>{
-          clearTimeout(timer);
-          done(true, "connexion ouverte");
-        };
-        testSock.onerror = ()=>{
-          clearTimeout(timer);
-          done(false, "erreur réseau / URL");
-        };
-      }catch(err){
-        $("testResult").textContent = "Échec — URL invalide";
-        $("testResult").style.color = "var(--bad)";
-        setServerStatus("hors ligne", "URL invalide", "bad");
-      }
-    });
+        if(modalOpen) return;
 
-    // ====== Input sanitation ======
-    $("name").addEventListener("input", ()=> {
-      $("name").value = cleanName($("name").value);
-    });
-    $("room").addEventListener("input", ()=> {
-      $("room").value = cleanRoom($("room").value);
-    });
+        if(e.key === "ArrowDown" || e.key === "ArrowUp"){
+          e.preventDefault();
+          idx = (e.key === "ArrowDown") ? (idx+1)%menuButtons.length : (idx-1+menuButtons.length)%menuButtons.length;
+          focusIdx();
+        }
+        if(e.key === "Enter"){
+          const el = document.activeElement;
+          if(menuButtons.includes(el)) el.click();
+        }
+      });
+    })();
   </script>
 </body>
 </html>
