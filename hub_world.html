@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
   <meta name="theme-color" content="#07090d" />
-  <title>Hub 3D — Loup-Garou (controls v2)</title>
+  <title>Hub 3D — Loup-Garou (controls v3)</title>
 
   <link rel="icon" href="data:," />
 
@@ -1440,7 +1440,8 @@
       dashCd: 0,
       sprintToggle: false,
       crouch: false
-    
+    };
+
     // ----------------------------
     // Spawn: éviter que tous les joueurs apparaissent au même endroit (0,0,0)
     // => réduit le "clip" caméra dans les autres skins (ex: Fox) au spawn.
@@ -1470,7 +1471,6 @@
       player.yaw = (idx / HUB_SPAWNS.length) * Math.PI * 2;
     }
 
-};
 
     // camera orbit params
     const camState = {
