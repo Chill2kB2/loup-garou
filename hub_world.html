@@ -6,530 +6,364 @@
   <meta name="theme-color" content="#07090d" />
   <title>Hub 3D — Loup-Garou</title>
   <link rel="icon" href="data:," />
-
   <style>
     :root{
       --bg:#07090d;
-      --panel: rgba(10,14,22,.72);
-      --panel2: rgba(255,255,255,.06);
-      --bd: rgba(255,255,255,.14);
-      --txt: rgba(235,242,255,.92);
-      --mut: rgba(235,242,255,.62);
-      --acc:#7c5cff;
-      --acc2:#34d399;
-      --danger:#ef4444;
-      --shadow: 0 18px 60px rgba(0,0,0,.55);
-      --radius: 18px;
-      --radius2: 14px;
-      --font: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+      --ink:#eaf0ff;
+      --muted:rgba(234,240,255,.72);
+      --panel:rgba(10,12,18,.78);
+      --bd:rgba(255,255,255,.12);
+      --accent:rgba(124,92,255,.55);
+      --r:18px;
     }
-    *{ box-sizing:border-box; }
-    html,body{ width:100%; height:100%; margin:0; background:var(--bg); color:var(--txt); font-family:var(--font); overflow:hidden; }
-    button, select, input{ font-family:inherit; }
+    html,body{ height:100%; margin:0; background:var(--bg); color:var(--ink); overflow:hidden; font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial; }
+    canvas{ position:fixed; inset:0; z-index:0; display:block; }
 
-    /* Canvas is injected by JS (renderer.domElement). Keep it fullscreen. */
-    canvas{ display:block; width:100vw; height:100vh; }
-
-    /* HUD */
-    .hudTop{ position:fixed; top:12px; left:12px; right:12px; display:flex; align-items:center; justify-content:space-between; gap:12px; pointer-events:none; z-index:20; }
-    .hudPill{
+    /* HUD top */
+    #hudTop{
+      position:fixed; top:12px; left:12px; right:12px;
+      z-index:10; display:flex; gap:10px; align-items:center;
+      pointer-events:none;
+    }
+    #btnPause{
       pointer-events:auto;
-      display:flex; align-items:center; gap:10px;
-      padding:10px 12px;
-      border:1px solid var(--bd);
-      background:linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.03));
-      border-radius:999px;
-      box-shadow:var(--shadow);
-      backdrop-filter: blur(10px);
+      height:42px; padding:0 14px; border-radius:14px;
+      border:1px solid var(--bd); background:rgba(12,14,22,.55); color:var(--ink);
+      cursor:pointer;
     }
-    .dot{ width:10px; height:10px; border-radius:999px; background:var(--acc2); box-shadow:0 0 0 3px rgba(52,211,153,.16); }
-    .dot.off{ background:var(--danger); box-shadow:0 0 0 3px rgba(239,68,68,.16); }
-    .hudTitle{ font-weight:700; }
-    .hudSub{ font-size:12px; color:var(--mut); }
-
     #hudHint{
-      position:fixed; left:12px; bottom:12px;
-      padding:10px 12px;
-      border:1px solid var(--bd);
-      background:rgba(10,14,22,.55);
-      border-radius:999px;
-      backdrop-filter: blur(10px);
-      box-shadow:var(--shadow);
-      font-size:13px;
       pointer-events:none;
-      z-index:20;
-    }
-
-    /* Buttons */
-    .btn{
-      display:inline-flex; align-items:center; justify-content:center;
-      gap:8px;
-      padding:10px 12px;
-      border-radius:12px;
-      border:1px solid var(--bd);
-      background:rgba(255,255,255,.06);
-      color:var(--txt);
-      cursor:pointer;
-      user-select:none;
-      transition: transform .06s ease, background .15s ease, border-color .15s ease;
-    }
-    .btn:hover{ background:rgba(255,255,255,.09); border-color:rgba(255,255,255,.20); }
-    .btn:active{ transform: translateY(1px); }
-    .btn--primary{ background:rgba(124,92,255,.18); border-color:rgba(124,92,255,.55); }
-    .btn--primary:hover{ background:rgba(124,92,255,.24); }
-    .btn--ghost{ background:transparent; }
-    .btnSmall{ padding:8px 10px; border-radius:10px; font-size:13px; }
-
-    /* Overlay base */
-    .overlay{
-      position:fixed; inset:0;
-      display:flex; align-items:center; justify-content:center;
-      background:rgba(0,0,0,.55);
-      backdrop-filter: blur(10px);
-      z-index:50;
-      padding:18px;
-    }
-    .hidden{ display:none !important; }
-
-    .panel{
-      width:min(980px, 96vw);
-      max-height: min(720px, 92vh);
-      overflow:hidden;
-      border-radius:var(--radius);
-      border:1px solid var(--bd);
-      background:linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.03));
-      box-shadow:var(--shadow);
-      display:flex;
-      flex-direction:column;
-    }
-    .panelHeader{
-      padding:14px 16px;
-      display:flex; align-items:center; justify-content:space-between; gap:12px;
-      border-bottom:1px solid rgba(255,255,255,.08);
-      background:rgba(0,0,0,.22);
-    }
-    .panelHeader h2{ margin:0; font-size:16px; letter-spacing:.2px; }
-    .panelBody{ display:flex; flex:1; min-height:0; }
-    .side{
-      width:260px;
-      padding:12px;
-      border-right:1px solid rgba(255,255,255,.08);
-      background:rgba(0,0,0,.12);
-      overflow:auto;
-    }
-    .main{
-      flex:1;
-      padding:14px;
-      overflow:auto;
-    }
-
-    .tabRow{ display:flex; gap:10px; flex-wrap:wrap; }
-    .tabBtn{
-      pointer-events:auto;
-      border-radius:999px;
-      padding:10px 12px;
-      border:1px solid var(--bd);
-      background:rgba(255,255,255,.06);
-      color:var(--txt);
-      cursor:pointer;
-      font-weight:650;
-      font-size:13px;
-    }
-    .tabBtn.active{ background:rgba(124,92,255,.20); border-color:rgba(124,92,255,.55); }
-
-    .sectionTitle{ margin:12px 0 8px; color:var(--mut); font-size:12px; text-transform:uppercase; letter-spacing:.12em; }
-    .kv{
-      display:flex; align-items:flex-start; justify-content:space-between; gap:12px;
-      padding:10px 12px;
-      border:1px solid rgba(255,255,255,.09);
-      border-radius:14px;
-      background:rgba(0,0,0,.18);
-      margin-bottom:10px;
-    }
-    .k{ font-weight:650; }
-    .v{ display:flex; align-items:center; gap:10px; justify-content:flex-end; flex-wrap:wrap; }
-    .smallNote{ color:var(--mut); font-size:12px; }
-
-    select, input[type="range"], input[type="number"], input[type="color"]{
-      background:rgba(255,255,255,.06);
-      color:var(--txt);
-      border:1px solid rgba(255,255,255,.14);
-      border-radius:12px;
-      padding:9px 10px;
-      outline:none;
-      min-width: 160px;
-    }
-    input[type="range"]{ min-width: 220px; padding:0; }
-
-    .footerRow{
-      display:flex; justify-content:flex-end; gap:10px;
-      padding:12px 16px;
-      border-top:1px solid rgba(255,255,255,.08);
-      background:rgba(0,0,0,.18);
-    }
-
-    /* Rebind panel */
-    .panelSm{
-      width:min(720px, 96vw);
-      max-height:min(720px, 92vh);
-    }
-
-    /* Touch UI */
-    #touchUI{
-      position:fixed; inset:0;
-      pointer-events:none;
-      z-index:30;
-    }
-    .stick{
-      position:absolute;
-      width:150px; height:150px;
-      border-radius:999px;
-      border:1px solid rgba(255,255,255,.14);
-      background:rgba(255,255,255,.04);
-      box-shadow:0 10px 30px rgba(0,0,0,.45);
-      backdrop-filter: blur(8px);
-      pointer-events:auto;
-      touch-action:none;
-    }
-    .stick .knob{
-      position:absolute;
-      left:50%; top:50%;
-      width:64px; height:64px;
-      border-radius:999px;
-      transform: translate(-50%,-50%);
-      background:rgba(124,92,255,.18);
-      border:1px solid rgba(124,92,255,.55);
-    }
-    #stickMove{ left:18px; bottom:18px; }
-    #stickLook{ right:18px; bottom:18px; }
-
-    .touchBtns{
-      position:absolute; right:18px; bottom:188px;
-      display:flex; flex-direction:column; gap:10px;
-      pointer-events:auto;
+      font-size:13px; color:var(--muted);
+      padding:10px 12px; border-radius:14px; border:1px solid var(--bd);
+      background:rgba(12,14,22,.35);
+      max-width:min(760px, 72vw);
     }
 
     /* Toast */
     #toast{
-      position:fixed; left:50%; bottom:22px;
-      transform: translateX(-50%);
-      padding:10px 14px;
-      border-radius:999px;
-      border:1px solid rgba(255,255,255,.14);
-      background:rgba(10,14,22,.70);
-      backdrop-filter: blur(10px);
-      box-shadow:var(--shadow);
-      color:var(--txt);
-      font-size:13px;
-      opacity:0;
+      position:fixed; bottom:14px; left:50%; transform:translateX(-50%);
+      z-index:20; display:flex; flex-direction:column; gap:8px;
       pointer-events:none;
-      transition: opacity .18s ease, transform .18s ease;
-      z-index:60;
+      width:min(720px, 92vw);
     }
-    #toast.show{ opacity:1; transform: translateX(-50%) translateY(-2px); }
+    .toastLine{
+      background:rgba(10,12,18,.75); border:1px solid var(--bd);
+      padding:10px 12px; border-radius:14px; color:var(--ink); font-size:13px;
+    }
 
-    /* Mobile hint: show touch UI only when JS wants it */
-    @media (pointer:coarse){
-      #hudHint{ left:12px; right:12px; width:fit-content; max-width: calc(100% - 24px); }
+    /* Pause overlay */
+    #pauseOverlay{
+      position:fixed; inset:0; z-index:30;
+      display:none; align-items:center; justify-content:center;
+      background:rgba(0,0,0,.55);
+      padding:18px;
+    }
+    #pauseOverlay.active{ display:flex; }
+    .pauseCard{
+      width:min(980px, 96vw); height:min(720px, 92vh);
+      background:var(--panel); border:1px solid var(--bd); border-radius:22px;
+      box-shadow:0 20px 70px rgba(0,0,0,.55);
+      display:flex; flex-direction:column; overflow:hidden;
+      backdrop-filter: blur(10px);
+    }
+    .pauseHeader{
+      display:flex; align-items:center; justify-content:space-between;
+      padding:14px 16px; border-bottom:1px solid var(--bd);
+    }
+    .pauseHeader .title{ font-weight:700; letter-spacing:.2px; }
+    #btnClosePause{
+      height:38px; padding:0 12px; border-radius:12px;
+      border:1px solid var(--bd); background:rgba(12,14,22,.45); color:var(--ink);
+      cursor:pointer;
+    }
+
+    .tabs, .subtabs{
+      display:flex; gap:10px; padding:12px 14px; border-bottom:1px solid var(--bd);
+      flex-wrap:wrap;
+    }
+    .tabBtn{
+      height:38px; padding:0 12px; border-radius:12px;
+      border:1px solid var(--bd); background:rgba(12,14,22,.35); color:var(--ink);
+      cursor:pointer;
+    }
+    .tabBtn.active{ background:rgba(124,92,255,.22); border-color:var(--accent); }
+
+    .page{ flex:1; overflow:auto; padding:14px; }
+    .hidden{ display:none !important; }
+
+    .row{ display:flex; gap:12px; flex-wrap:wrap; }
+    .card{
+      background:rgba(12,14,22,.35);
+      border:1px solid var(--bd); border-radius:18px; padding:14px;
+      min-width:280px; flex:1;
+    }
+    .label{ font-size:12px; color:var(--muted); margin-bottom:6px; }
+    input, select{
+      width:100%; height:38px; border-radius:12px;
+      border:1px solid var(--bd); background:rgba(8,10,16,.55); color:var(--ink);
+      padding:0 10px;
+      outline:none;
+    }
+
+    .btn{
+      height:38px; padding:0 12px; border-radius:12px;
+      border:1px solid var(--bd); background:rgba(12,14,22,.45); color:var(--ink);
+      cursor:pointer;
+    }
+    .btn--primary{
+      background:rgba(124,92,255,.22);
+      border-color:var(--accent);
+    }
+    .smallNote{
+      margin-left:10px;
+      font-size:12px;
+      color:var(--muted);
+      white-space:nowrap;
+    }
+
+    .kv{
+      display:flex;
+      gap:12px;
+      align-items:center;
+      justify-content:space-between;
+      padding:10px 12px;
+      border:1px solid var(--bd);
+      border-radius:14px;
+      background:rgba(8,10,16,.35);
+      margin-bottom:10px;
+    }
+    .kv .k{ font-size:13px; color:var(--ink); }
+    .kv .v{ display:flex; align-items:center; gap:10px; justify-content:flex-end; flex-wrap:wrap; }
+
+    /* Touch UI (mobile) */
+    #touchUI{ position:fixed; inset:0; z-index:25; pointer-events:none; }
+    #touchUI.hidden{ display:none; }
+    .stick{
+      position:absolute; width:150px; height:150px; border-radius:999px;
+      border:1px solid var(--bd); background:rgba(12,14,22,.22);
+      pointer-events:auto;
+      touch-action:none;
+    }
+    .stick .knob{
+      position:absolute; left:50%; top:50%;
+      width:58px; height:58px; border-radius:999px;
+      border:1px solid var(--bd); background:rgba(124,92,255,.20);
+      transform:translate(-50%,-50%);
+    }
+    #stickMove{ left:18px; bottom:18px; }
+    #stickLook{ right:18px; bottom:18px; }
+    #btnJump{
+      position:absolute; right:24px; bottom:190px;
+      width:72px; height:72px; border-radius:999px;
+      border:1px solid var(--bd); background:rgba(255,255,255,.06); color:var(--ink);
+      pointer-events:auto;
+    }
+
+    /* Rebind panel */
+    #rebindPanel{
+      position:fixed; inset:0; z-index:40;
+      display:flex; align-items:center; justify-content:center;
+      background:rgba(0,0,0,.62);
+      padding:18px;
+    }
+    #rebindPanel.hidden{ display:none; }
+    .rebindCard{
+      width:min(760px, 96vw); height:min(640px, 92vh);
+      background:var(--panel); border:1px solid var(--bd); border-radius:22px;
+      display:flex; flex-direction:column; overflow:hidden;
+      backdrop-filter: blur(10px);
+    }
+    .rebindHeader{
+      padding:14px 16px; border-bottom:1px solid var(--bd);
+      display:flex; justify-content:space-between; align-items:center;
+    }
+    #rebindList{ padding:14px; overflow:auto; }
+    .rebindFooter{
+      padding:14px; border-top:1px solid var(--bd);
+      display:flex; gap:10px; justify-content:flex-end; flex-wrap:wrap;
     }
   </style>
 </head>
 
 <body>
-
-  <!-- HUD top -->
-  <div class="hudTop">
-    <div class="hudPill">
-      <div class="dot" id="netDot" aria-hidden="true"></div>
-      <div>
-        <div class="hudTitle">Hub 3D — <span id="hudName">Joueur</span></div>
-        <div class="hudSub" id="hudStatus">Caméra: clique pour contrôler</div>
-      </div>
-    </div>
-
-    <div class="hudPill" style="gap:10px">
-      <button class="btn btnSmall" id="btnJoystick" type="button">Joystick</button>
-      <button class="btn btnSmall btn--primary" id="btnPause" type="button">Menu</button>
-    </div>
+  <div id="hudTop">
+    <button id="btnPause">Menu</button>
+    <div id="hudHint">Appuie sur Z/Q/S/D ou clique pour contrôler la caméra</div>
   </div>
 
-  <div id="hudHint">Clique / touche l’écran pour contrôler la caméra</div>
+  <div id="toast"></div>
 
-  <!-- Touch UI -->
-  <div id="touchUI" class="hidden" aria-hidden="true">
+  <div id="touchUI" class="hidden">
     <div id="stickMove" class="stick"><div class="knob"></div></div>
     <div id="stickLook" class="stick"><div class="knob"></div></div>
-
-    <div class="touchBtns">
-      <button class="btn btn--primary" id="btnJump" type="button">Saut</button>
-    </div>
+    <button id="btnJump" class="btn">⤒</button>
   </div>
 
-  <!-- Pause overlay -->
-  <div id="pauseOverlay" class="overlay hidden" role="dialog" aria-modal="true" aria-label="Menu Pause">
-    <div class="panel">
-      <div class="panelHeader">
-        <h2>Loup-Garou — Hub</h2>
-        <button class="btn btnSmall btn--ghost" id="btnClosePause" type="button">✕</button>
+  <div id="pauseOverlay" aria-hidden="true">
+    <div class="pauseCard">
+      <div class="pauseHeader">
+        <div class="title">Pause</div>
+        <button id="btnClosePause" class="btn">✕</button>
       </div>
 
-      <div class="panelBody">
-        <div class="side">
-          <div class="tabRow" style="flex-direction:column;">
-            <button class="tabBtn active" data-tab="resume" type="button">Reprendre</button>
-            <button class="tabBtn" data-tab="options" type="button">Options</button>
-            <button class="tabBtn" data-tab="skins" type="button">Skins</button>
-            <button class="tabBtn" data-tab="home" type="button">Accueil</button>
-          </div>
+      <div class="tabs">
+        <button class="tabBtn active" data-tab="resume">Reprendre</button>
+        <button class="tabBtn" data-tab="options">Options</button>
+        <button class="tabBtn" data-tab="skins">Skins</button>
+        <button class="tabBtn" data-tab="home">Accueil</button>
+      </div>
 
-          <div class="sectionTitle">Raccourcis</div>
-          <div class="smallNote">Échap: menu • Clique: caméra</div>
-        </div>
-
-        <div class="main">
-          <!-- TAB: resume -->
-          <div id="tab_resume">
-            <div class="sectionTitle">Session</div>
-
-            <div class="kv">
-              <div class="k">Reprendre</div>
-              <div class="v">
-                <button class="btn btn--primary" id="btnResume" type="button">Reprendre</button>
-              </div>
+      <div class="page" id="tab_resume">
+        <div class="row">
+          <div class="card">
+            <div class="label">Actions</div>
+            <div class="row">
+              <button class="btn btn--primary" id="btnResume">Reprendre</button>
+              <button class="btn" id="btnResetPos">Reset position</button>
+              <button class="btn" id="btnJoystick">Joysticks</button>
+              <button class="btn" id="btnRebind">Rebind touches</button>
             </div>
-
-            <div class="kv">
-              <div class="k">Touches</div>
-              <div class="v">
-                <button class="btn" id="btnRebind" type="button">Personnaliser</button>
-                <button class="btn" id="btnResetBinds" type="button">Réinitialiser</button>
-              </div>
-            </div>
-
-            <div class="kv">
-              <div class="k">Position</div>
-              <div class="v">
-                <button class="btn" id="btnResetPos" type="button">Reset position</button>
-              </div>
-            </div>
-
-            <div class="kv">
-              <div class="k">Quitter</div>
-              <div class="v">
-                <button class="btn" id="btnStay" type="button">Rester</button>
-                <button class="btn" id="btnGoHome" type="button">Retour accueil</button>
-              </div>
-            </div>
-
-            <div class="smallNote">Astuce: si les touches sont inversées après des essais, réinitialise + reload.</div>
-          </div>
-
-          <!-- TAB: options -->
-          <div id="tab_options" class="hidden">
-            <div class="sectionTitle">Catégories</div>
-            <div class="tabRow" style="margin-bottom:12px;">
-              <button class="tabBtn active" data-subtab="graphics" type="button">Graphiques</button>
-              <button class="tabBtn" data-subtab="controls" type="button">Contrôles</button>
-              <button class="tabBtn" data-subtab="audio" type="button">Audio</button>
-              <button class="tabBtn" data-subtab="gameplay" type="button">Gameplay</button>
-            </div>
-
-            <div id="sub_graphics">
-              <div class="kv">
-                <div class="k">Qualité</div>
-                <div class="v">
-                  <select id="optQuality">
-                    <option value="low">Low</option>
-                    <option value="med">Medium</option>
-                    <option value="high">High</option>
-                  </select>
-                </div>
-              </div>
-
-              <div class="kv">
-                <div class="k">Ombres</div>
-                <div class="v">
-                  <button class="btn" id="optShadows" type="button">ON</button>
-                </div>
-              </div>
-
-              <div class="kv">
-                <div class="k">FOV</div>
-                <div class="v">
-                  <input id="optFov" type="range" min="45" max="85" step="1" value="66" />
-                </div>
-              </div>
-
-              <div class="kv">
-                <div class="k">Pixel Ratio</div>
-                <div class="v">
-                  <select id="optPixelRatio">
-                    <option value="auto">Auto</option>
-                    <option value="1">1.0</option>
-                    <option value="1.5">1.5</option>
-                    <option value="2">2.0</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-
-            <div id="sub_controls" class="hidden">
-              <div class="kv">
-                <div class="k">Sensibilité</div>
-                <div class="v">
-                  <input id="optSens" type="range" min="0.3" max="3" step="0.05" value="1.2" />
-                </div>
-              </div>
-
-              <div class="kv">
-                <div class="k">Inverser Y</div>
-                <div class="v">
-                  <button class="btn" id="optInvertY" type="button">OFF</button>
-                </div>
-              </div>
-
-              <div class="kv">
-                <div class="k">Mode souris</div>
-                <div class="v">
-                  <select id="optMouseMode">
-                    <option value="lock">Pointer Lock</option>
-                    <option value="drag">Drag (clic)</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-
-            <div id="sub_audio" class="hidden">
-              <div class="kv">
-                <div class="k">Volume global</div>
-                <div class="v">
-                  <input id="optVolMaster" type="range" min="0" max="1" step="0.01" value="0.9" />
-                </div>
-              </div>
-              <div class="kv">
-                <div class="k">Ambiance</div>
-                <div class="v">
-                  <input id="optVolAmb" type="range" min="0" max="1" step="0.01" value="0.6" />
-                </div>
-              </div>
-              <div class="kv">
-                <div class="k">SFX</div>
-                <div class="v">
-                  <input id="optVolSfx" type="range" min="0" max="1" step="0.01" value="0.8" />
-                </div>
-              </div>
-              <div class="smallNote">Note: ton projet peut choisir de ne pas jouer de son, c’est ok.</div>
-            </div>
-
-            <div id="sub_gameplay" class="hidden">
-              <div class="kv">
-                <div class="k">Déplacement relatif caméra</div>
-                <div class="v">
-                  <button class="btn" id="optMoveRel" type="button">ON</button>
-                </div>
-              </div>
-
-              <div class="kv">
-                <div class="k">Sprint</div>
-                <div class="v">
-                  <select id="optSprintMode">
-                    <option value="hold">Hold</option>
-                    <option value="toggle">Toggle</option>
-                  </select>
-                </div>
-              </div>
-
-              <div class="kv">
-                <div class="k">Dash</div>
-                <div class="v">
-                  <button class="btn" id="optDash" type="button">ON</button>
-                </div>
-              </div>
-
-              <div class="kv">
-                <div class="k">Auto Joystick (mobile)</div>
-                <div class="v">
-                  <button class="btn" id="optAutoJoy" type="button">ON</button>
-                </div>
-              </div>
-            </div>
-
-          </div>
-
-          <!-- TAB: skins -->
-          <div id="tab_skins" class="hidden">
-            <div class="sectionTitle">Skins</div>
-
-            <div class="kv">
-              <div class="k">Échelle</div>
-              <div class="v">
-                <input id="optScale" type="range" min="0.8" max="1.2" step="0.01" value="1.0" />
-              </div>
-            </div>
-
-            <div class="kv">
-              <div class="k">Couleur</div>
-              <div class="v">
-                <input id="optColor" type="color" value="#7c5cff" />
-              </div>
-            </div>
-
-            <div id="skinsGrid"></div>
-          </div>
-
-          <!-- TAB: home -->
-          <div id="tab_home" class="hidden">
-            <div class="sectionTitle">Accueil</div>
-            <div class="kv">
-              <div class="k">Retour menu</div>
-              <div class="v">
-                <button class="btn" id="btnGoHome" type="button">Aller à l’accueil</button>
-              </div>
-            </div>
-
-            <div class="smallNote">
-              Si tu veux “multi” : le Hub doit être connecté à ton serveur WS. Le HTML ici est prêt; c’est le JS qui gère la connexion.
+            <div style="margin-top:10px;color:var(--muted);font-size:13px">
+              Astuce PC: Échap sort du lock souris. Avec ce build, la perte du lock ouvre le menu automatiquement. (Pause aussi sur P)
             </div>
           </div>
-
         </div>
       </div>
 
-      <div class="footerRow">
-        <button class="btn" id="btnStay" type="button">Fermer</button>
-        <button class="btn btn--primary" id="btnResume" type="button">Reprendre</button>
+      <div class="page hidden" id="tab_options">
+        <div class="subtabs">
+          <button class="tabBtn active" data-subtab="graphics">Graphiques</button>
+          <button class="tabBtn" data-subtab="controls">Contrôles</button>
+          <button class="tabBtn" data-subtab="audio">Audio</button>
+          <button class="tabBtn" data-subtab="gameplay">Gameplay</button>
+        </div>
+
+        <div id="sub_graphics">
+          <div class="row">
+            <div class="card">
+              <div class="label">Qualité</div>
+              <select id="optQuality">
+                <option value="low">Basse</option>
+                <option value="med">Moyenne</option>
+                <option value="high">Haute</option>
+              </select>
+            </div>
+            <div class="card">
+              <div class="label">Ombres</div>
+              <button class="btn" id="optShadows">ON</button>
+            </div>
+            <div class="card">
+              <div class="label">FOV</div>
+              <input id="optFov" type="number" min="40" max="100" step="1" />
+            </div>
+            <div class="card">
+              <div class="label">Pixel Ratio</div>
+              <select id="optPixelRatio">
+                <option value="auto">Auto</option>
+                <option value="1">1</option>
+                <option value="1.5">1.5</option>
+                <option value="2">2</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div id="sub_controls" class="hidden">
+          <div class="row">
+            <div class="card">
+              <div class="label">Sensibilité</div>
+              <input id="optSens" type="number" step="0.05" min="0.1" max="5" />
+            </div>
+            <div class="card">
+              <div class="label">Invert Y</div>
+              <button class="btn" id="optInvertY">OFF</button>
+            </div>
+            <div class="card">
+              <div class="label">Mode souris</div>
+              <select id="optMouseMode">
+                <option value="lock">Pointer lock</option>
+                <option value="drag">Drag</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div id="sub_audio" class="hidden">
+          <div class="row">
+            <div class="card"><div class="label">Master</div><input id="optVolMaster" type="range" min="0" max="100" /></div>
+            <div class="card"><div class="label">Ambiance</div><input id="optVolAmb" type="range" min="0" max="100" /></div>
+            <div class="card"><div class="label">SFX</div><input id="optVolSfx" type="range" min="0" max="100" /></div>
+          </div>
+        </div>
+
+        <div id="sub_gameplay" class="hidden">
+          <div class="row">
+            <div class="card"><div class="label">Déplacement relatif caméra</div><button class="btn" id="optMoveRel">ON</button></div>
+            <div class="card"><div class="label">Sprint</div>
+              <select id="optSprintMode">
+                <option value="hold">Maintenir</option>
+                <option value="toggle">Toggle</option>
+              </select>
+            </div>
+            <div class="card"><div class="label">Dash</div><button class="btn" id="optDash">ON</button></div>
+            <div class="card"><div class="label">Auto joysticks (mobile)</div><button class="btn" id="optAutoJoy">ON</button></div>
+          </div>
+
+          <div class="row" style="margin-top:12px">
+            <div class="card">
+              <div class="label">Taille skin</div>
+              <input id="optScale" type="number" step="0.05" min="0.8" max="1.2" />
+            </div>
+            <div class="card">
+              <div class="label">Couleur</div>
+              <input id="optColor" type="color" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="page hidden" id="tab_skins">
+        <div class="card">
+          <div class="label">Skins</div>
+          <div id="skinsGrid"></div>
+        </div>
+      </div>
+
+      <div class="page hidden" id="tab_home">
+        <div class="card">
+          <div class="label">Retour</div>
+          <div class="row">
+            <button class="btn btn--primary" id="btnGoHome">Retour accueil</button>
+            <button class="btn" id="btnStay">Rester</button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
 
-  <!-- Rebind overlay -->
-  <div id="rebindPanel" class="overlay hidden" role="dialog" aria-modal="true" aria-label="Touches">
-    <div class="panel panelSm">
-      <div class="panelHeader">
-        <h2>Touches</h2>
-        <button class="btn btnSmall btn--ghost" id="btnCloseRebind" type="button">✕</button>
+  <div id="rebindPanel" class="hidden" aria-hidden="true">
+    <div class="rebindCard">
+      <div class="rebindHeader">
+        <div style="font-weight:700">Rebind touches</div>
+        <button class="btn" id="btnCloseRebind">✕</button>
       </div>
-      <div class="main">
-        <div class="smallNote" style="margin-bottom:10px">
-          Clique sur “Changer”, puis appuie sur la touche. (Escape est réservé au menu.)
-        </div>
-        <div id="rebindList"></div>
-      </div>
-      <div class="footerRow">
-        <button class="btn" id="btnResetBinds" type="button">Réinitialiser</button>
-        <button class="btn btn--primary" id="btnCloseRebind" type="button">Sauvegarder</button>
+      <div id="rebindList"></div>
+      <div class="rebindFooter">
+        <button class="btn" id="btnResetBinds">Reset</button>
+        <button class="btn btn--primary" id="btnCloseRebind2">OK</button>
       </div>
     </div>
   </div>
 
-  <div id="toast">—</div>
+  <script src="three.min.js"></script>
+  <script src="GLTFLoader.js"></script>
+  <script src="hub_world.js"></script>
 
-  <!-- Libs -->
-  <script src="./three.min.js"></script>
-  <script src="./GLTFLoader.js"></script>
-  <script src="./OrbitControls.js"></script>
-
-  <!-- Hub code (in hub_world.js) -->
-  <script src="./hub_world.js?v=2"></script>
+  <script>
+    // Map "OK" to the real close button (avoid duplicate IDs)
+    document.getElementById("btnCloseRebind2").addEventListener("click", () => {
+      document.getElementById("btnCloseRebind").click();
+    });
+  </script>
 </body>
 </html>
