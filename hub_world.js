@@ -455,8 +455,9 @@
     if (!pointerLocked || paused) return;
 
     // movementX > 0 => mouse right => look right (gamer expectation)
+    // Orbit camera: invert sign here to match intuitive direction.
     const k = settings.mouseSens * 0.0026;
-    cam.yaw += e.movementX * k;
+    cam.yaw -= e.movementX * k;
 
     // movementY < 0 (mouse up) => look up. Default: pitch -= movementY*k
     const mult = settings.invertY ? -1 : 1;
