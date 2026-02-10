@@ -1,6 +1,7 @@
 <!doctype html>
 <html lang="fr">
 <head>
+  <!-- HUB_WORLD_HTML_VERSION: 5.6.1 -->
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
   <meta name="theme-color" content="#07090d" />
@@ -201,7 +202,7 @@
       <div id="hudHint">ZQSD pour bouger • Souris pour regarder • Échap/P pour menu</div>
     </div>
     <div id="hudRight">
-      <div id="wsBadge">WS: …</div>
+      <div id="wsBadge">WS: …</div><div id="bootBadge" style="margin-left:10px; font-size:13px; color:rgba(234,240,255,.72); padding:10px 12px; border-radius:14px; border:1px solid rgba(255,255,255,.12); background:rgba(12,14,22,.35);">Chargement…</div>
     </div>
   </div>
 
@@ -350,8 +351,25 @@
     </div>
   </div>
 
-  <script src="three.min.js"></script>
-  <script src="GLTFLoader.js"></script>
-  <script src="hub_world.js"></script>
+
+<!-- Three.js (CDN) with local fallback -->
+<script src="https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.min.js?v=561"></script>
+<script>
+  // Local fallback if CDN blocked
+  if (typeof THREE === "undefined") {
+    document.write('<script src="three.min.js?v=561"><\/script>');
+  }
+</script>
+
+<!-- GLTFLoader (CDN) with local fallback -->
+<script src="https://cdn.jsdelivr.net/npm/three@0.152.2/examples/js/loaders/GLTFLoader.js?v=561"></script>
+<script>
+  if (typeof THREE === "undefined" || typeof THREE.GLTFLoader === "undefined") {
+    document.write('<script src="GLTFLoader.js?v=561"><\/script>');
+  }
+</script>
+
+<script src="hub_world.js?v=561"></script>
+
 </body>
 </html>
