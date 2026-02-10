@@ -26,12 +26,7 @@
     *{ box-sizing:border-box; -webkit-tap-highlight-color: transparent; }
     html,body{ margin:0; height:100%; background:var(--bg); overflow:hidden; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; color:var(--txt); }
     body{ touch-action:none; }
-    canvas{ display:block; width:100%; height:100%; position:fixed; inset:0; z-index:0; }
-
-    .hud{ z-index:10; }
-    .overlay{ z-index:20; }
-    body.mouse-locked{ cursor:none; }
-    body.mouse-locked *{ cursor:none !important; }
+    canvas{ display:block; width:100%; height:100%; }
 
     /* HUD minimal (rien d’inutile) */
     .hud{
@@ -284,6 +279,8 @@
       <span class="pill">Hub 3D</span>
       <span class="pill">·</span>
       <span id="playerName" class="name">Joueur</span>
+      <span class="pill">·</span>
+      <span id="onlineCount" class="pill">En ligne: 1</span>
     </div>
 
     <div class="btnrow">
@@ -654,6 +651,8 @@
      * Lecture URL (pseudo)
      ************************/
     const params = new URLSearchParams(location.search);
+    const WS_DEFAULT = "wss://loup-garou-ws.onrender.com/ws";
+    const WS_URL = (params.get("ws")||"").trim() || localStorage.getItem("lg_ws_url") || WS_DEFAULT;
     const urlName = (params.get("name")||"").trim();
     const SET = loadSettings();
     if(urlName) SET.name = urlName;
@@ -777,15 +776,6 @@
       }
 
       input.keysDown.add(e.code);
-// Auto pointer-lock (PC) dès qu’on commence à bouger : pas besoin de cliquer.
-// Note: les navigateurs exigent une action utilisateur; une touche (ZQSD) compte.
-const isCoarse = matchMedia("(pointer:coarse)").matches;
-if(!isPaused() && !isCoarse && !camState.pointerLocked){
-  const autoKeys = new Set(["KeyZ","KeyQ","KeyS","KeyD","ArrowUp","ArrowDown","ArrowLeft","ArrowRight"]);
-  if(autoKeys.has(e.code)){
-    setPointerLock(true);
-  }
-}
 
       // pause global (même hors focus canvas)
       if(e.code === (SET.keys.pause?.[0] || "Escape") || e.code === (SET.keys.pause?.[1] || "")){
@@ -1009,9 +999,7 @@ if(!isPaused() && !isCoarse && !camState.pointerLocked){
 
     let currentAvatar = null;
     let currentMixer = null;
-    let avatarBaseScale = 1.0; // auto-scale par modèle (GLB)
     function clearAvatar(){
-      avatarBaseScale = 1.0;
       if(currentMixer){ currentMixer.stopAllAction(); currentMixer = null; }
       if(currentAvatar){
         avatarRoot.remove(currentAvatar);
@@ -1112,13 +1100,28 @@ if(!isPaused() && !isCoarse && !camState.pointerLocked){
           // recentrer au sol
           const box = new THREE.Box3().setFromObject(currentAvatar);
           const size = new THREE.Vector3(); box.getSize(size);
-          // auto-scale: ramène le modèle à une hauteur cohérente dans le hub
-          const TARGET_H = 1.65;
-          avatarBaseScale = clamp(TARGET_H / Math.max(size.y, 1e-6), 0.001, 10.0);
           const center = new THREE.Vector3(); box.getCenter(center);
           currentAvatar.position.x -= center.x;
           currentAvatar.position.z -= center.z;
           currentAvatar.position.y -= box.min.y; // au sol
+
+          // auto-normalisation taille (Fox.glb est souvent énorme)
+          // Objectif: ~1.65m de haut (caméra cohérente) puis scale user via SET.skin.scale.
+          {
+            const desiredH = 1.65;
+            let b2 = new THREE.Box3().setFromObject(currentAvatar);
+            const s2 = new THREE.Vector3(); b2.getSize(s2);
+            if(s2.y > 1e-4){
+              const auto = desiredH / s2.y;
+              currentAvatar.scale.setScalar(auto);
+              // réaligner après scaling
+              b2 = new THREE.Box3().setFromObject(currentAvatar);
+              const c2 = new THREE.Vector3(); b2.getCenter(c2);
+              currentAvatar.position.x -= c2.x;
+              currentAvatar.position.z -= c2.z;
+              currentAvatar.position.y -= b2.min.y;
+            }
+          }
 
           avatarRoot.add(currentAvatar);
 
@@ -1144,10 +1147,280 @@ if(!isPaused() && !isCoarse && !camState.pointerLocked){
 
     function setAvatarScale(s){
       SET.skin.scale = s;
-      const ss = (avatarBaseScale || 1.0) * s;
-      avatarRoot.scale.setScalar(ss);
+      avatarRoot.scale.setScalar(s);
       saveSettings();
     }
+
+
+    /***********************
+     * Multiplayer (Hub)
+     * - synchro position/orientation (sans gameplay)
+     * - affichage des autres joueurs dans la scène
+     ************************/
+    const NET = {
+      ws: null,
+      id: null,
+      connected: false,
+      room: "hub",
+      remotes: new Map(), // id -> remote
+      sendHz: 15,
+      acc: 0,
+      wsUrl: WS_URL,
+    };
+
+    const _glbPrepared = new Map(); // url -> Promise<Object3D>
+
+    function netOnlineCount(){
+      const el = $("#onlineCount");
+      if(!el) return;
+      if(!NET.connected) { el.textContent = "Hors-ligne"; return; }
+      el.textContent = `En ligne: ${1 + NET.remotes.size}`;
+    }
+
+    function netSend(obj){
+      if(!NET.ws || NET.ws.readyState !== 1) return;
+      NET.ws.send(JSON.stringify(obj));
+    }
+
+    function cloneMaterialsDeep(obj){
+      obj.traverse(o=>{
+        if(!o.isMesh) return;
+        const m = o.material;
+        if(!m) return;
+        if(Array.isArray(m)) o.material = m.map(mm=>mm.clone());
+        else o.material = m.clone();
+      });
+      return obj;
+    }
+
+    function netLerpAngle(a,b,t){
+      const da = ((b - a + Math.PI) % (Math.PI*2)) - Math.PI;
+      return a + da * t;
+    }
+
+    function netCenterGround(obj){
+      const box = new THREE.Box3().setFromObject(obj);
+      const center = new THREE.Vector3(); box.getCenter(center);
+      obj.position.x -= center.x;
+      obj.position.z -= center.z;
+      obj.position.y -= box.min.y;
+      return box;
+    }
+
+    function netNormalizeToHeight(obj, desiredH=1.65){
+      let box = netCenterGround(obj);
+      const size = new THREE.Vector3(); box.getSize(size);
+      if(size.y > 1e-4){
+        const auto = desiredH / size.y;
+        obj.scale.setScalar(auto);
+        netCenterGround(obj); // réaligner après scaling
+      }
+    }
+
+    async function netGetPreparedModel(def){
+      if(def.type === "placeholder"){
+        const m = buildHumanoidPlaceholder();
+        cloneMaterialsDeep(m);
+        // petit tint pour différencier les joueurs
+        const hue = (Math.random()*360)|0;
+        const col = new THREE.Color(`hsl(${hue}, 55%, 55%)`);
+        m.traverse(o=>{
+          if(!o.isMesh) return;
+          if(!o.material || !o.material.color) return;
+          // tint seulement sur le corps (capsule)
+          if((o.geometry && o.geometry.type && o.geometry.type.includes("Capsule")) || (o.name||"").toLowerCase().includes("torso")){
+            o.material.color.copy(col);
+          }
+        });
+        return m;
+      }
+
+      if(def.type === "glb"){
+        const url = def.url;
+        if(!_glbPrepared.has(url)){
+          _glbPrepared.set(url, new Promise((resolve, reject)=>{
+            const L = ensureLoader();
+            if(!L) return reject(new Error("GLTFLoader indisponible"));
+            L.load(url, (gltf)=>{
+              let base = gltf.scene || gltf.scenes?.[0];
+              if(!base) return reject(new Error("GLB invalide"));
+              base = base.clone(true);
+              base.traverse(o=>{
+                if(o.isMesh){
+                  o.castShadow = true;
+                  o.receiveShadow = true;
+                  if(o.material && o.material.map){
+                    o.material.map.colorSpace = THREE.SRGBColorSpace;
+                  }
+                }
+              });
+              netNormalizeToHeight(base, 1.65);
+              resolve(base);
+            }, undefined, (err)=>reject(err));
+          }));
+        }
+        const base = await _glbPrepared.get(url);
+        const inst = cloneMaterialsDeep(base.clone(true));
+        return inst;
+      }
+
+      const fb = buildHumanoidPlaceholder();
+      cloneMaterialsDeep(fb);
+      return fb;
+    }
+
+    async function netSpawnRemote(p){
+      if(!p || p.id == null) return;
+      if(p.id === NET.id) return;
+      if(NET.remotes.has(p.id)) return;
+
+      const root = new THREE.Group();
+      root.name = `Remote_${p.id}`;
+      const st = p.st || {};
+      root.position.set(st.x||0, st.y||0, st.z||0);
+      root.rotation.y = (typeof st.yaw === "number") ? st.yaw : 0;
+
+      const def = AVATARS.find(a=>a.id === (p.skin?.model||"")) || AVATARS[0];
+      let model;
+      try{
+        model = await netGetPreparedModel(def);
+      }catch(e){
+        model = buildHumanoidPlaceholder();
+        cloneMaterialsDeep(model);
+      }
+      root.add(model);
+
+      // scale user
+      const sc = Number(p.skin?.scale ?? 1.0);
+      root.scale.setScalar(sc);
+
+      scene.add(root);
+
+      const r = {
+        id: p.id,
+        name: p.name || "Joueur",
+        root,
+        targetPos: new THREE.Vector3(root.position.x, root.position.y, root.position.z),
+        targetYaw: root.rotation.y,
+        lastSeen: performance.now(),
+      };
+
+      NET.remotes.set(p.id, r);
+      netOnlineCount();
+      toast(`${r.name} a rejoint`, 1200);
+    }
+
+    function netDespawnRemote(id){
+      const r = NET.remotes.get(id);
+      if(!r) return;
+      r.root.removeFromParent();
+      NET.remotes.delete(id);
+      netOnlineCount();
+    }
+
+    function netHandle(msg){
+      if(!msg || typeof msg !== "object") return;
+
+      if(msg.t === "welcome"){
+        NET.id = msg.id;
+        return;
+      }
+
+      if(msg.t === "hub_snapshot"){
+        (msg.players || []).forEach(p=>netSpawnRemote(p));
+        netOnlineCount();
+        return;
+      }
+
+      if(msg.t === "hub_join"){
+        netSpawnRemote(msg.p);
+        return;
+      }
+
+      if(msg.t === "hub_leave"){
+        netDespawnRemote(msg.id);
+        return;
+      }
+
+      if(msg.t === "hub_state"){
+        const r = NET.remotes.get(msg.id);
+        if(!r) return;
+        const st = msg.st || {};
+        r.targetPos.set(st.x||0, st.y||0, st.z||0);
+        if(typeof st.yaw === "number") r.targetYaw = st.yaw;
+        r.lastSeen = performance.now();
+        return;
+      }
+
+      if(msg.t === "hub_skin"){
+        // re-spawn rapide (modèle/scale)
+        const p = msg.p || {};
+        if(p.id == null) return;
+        if(p.id === NET.id) return;
+        const old = NET.remotes.get(p.id);
+        const st = old ? { x: old.targetPos.x, y: old.targetPos.y, z: old.targetPos.z, yaw: old.targetYaw } : (p.st||{});
+        netDespawnRemote(p.id);
+        netSpawnRemote({ ...p, st });
+        return;
+      }
+    }
+
+    function netConnect(){
+      try{
+        NET.ws = new WebSocket(NET.wsUrl);
+      }catch(e){
+        toast("WS invalide", 1800);
+        return;
+      }
+
+      NET.ws.onopen = ()=>{
+        NET.connected = true;
+        netOnlineCount();
+        toast("Connecté au Hub", 1000);
+        netSend({ t:"join", room:"hub", name: SET.name, skin: SET.skin });
+      };
+
+      NET.ws.onmessage = (ev)=>{
+        try{ netHandle(JSON.parse(ev.data)); }catch(e){}
+      };
+
+      NET.ws.onclose = ()=>{
+        NET.connected = false;
+        NET.id = null;
+        for(const id of Array.from(NET.remotes.keys())) netDespawnRemote(id);
+        netOnlineCount();
+        toast("Hub hors-ligne", 1400);
+      };
+    }
+
+    function netTick(dt, paused){
+      // interpolate remote always (même en pause)
+      const alpha = 1 - Math.pow(0.001, dt*10);
+      const now = performance.now();
+      for(const [id,r] of NET.remotes){
+        if(now - r.lastSeen > 15000){
+          netDespawnRemote(id);
+          continue;
+        }
+        r.root.position.lerp(r.targetPos, alpha);
+        r.root.rotation.y = netLerpAngle(r.root.rotation.y, r.targetYaw, alpha);
+      }
+
+      if(paused) return;
+      if(!NET.connected || !NET.ws || NET.ws.readyState !== 1 || NET.id == null) return;
+
+      NET.acc += dt;
+      const step = 1 / NET.sendHz;
+      if(NET.acc < step) return;
+      NET.acc = 0;
+
+      // état minimal
+      netSend({ t:"hub_state", st:{ x: player.pos.x, y: player.pos.y, z: player.pos.z, yaw: player.yaw } });
+    }
+
+    window.addEventListener("beforeunload", ()=>{
+      try{ netSend({ t:"leave" }); }catch(e){}
+    });
 
     /***********************
      * Controller + Camera (1A / 2A)
@@ -1174,11 +1447,6 @@ if(!isPaused() && !isCoarse && !camState.pointerLocked){
       pointerLocked: false
     };
 
-    // limites pitch caméra (plus libre, sans inversion)
-    const PITCH_MIN = -1.15; // regarder vers le haut (évite caméra sous le sol)
-    const PITCH_MAX =  1.35; // regarder vers le bas (plus de blocage sol)
-
-
     function updateCamera(dt){
       camState.dist = SET.gameplay.camDist;
       camState.height = SET.gameplay.camHeight;
@@ -1191,7 +1459,7 @@ if(!isPaused() && !isCoarse && !camState.pointerLocked){
       camPivot.getWorldPosition(pivotWorld);
 
       // calcul orbit
-      const cp = clamp(camState.pitch, PITCH_MIN, PITCH_MAX);
+      const cp = clamp(camState.pitch, -1.45, 1.35);
       camState.pitch = cp;
 
       const cy = camState.yaw;
@@ -1257,8 +1525,8 @@ if(!isPaused() && !isCoarse && !camState.pointerLocked){
 
       // direction relative camera yaw (projection sol)
       const yaw = camState.yaw;
-      const forward = new THREE.Vector3(-Math.sin(yaw), 0, -Math.cos(yaw));
-      const right   = new THREE.Vector3().crossVectors(forward, new THREE.Vector3(0,1,0));
+      const forward = new THREE.Vector3(Math.sin(yaw), 0, Math.cos(yaw));
+      const right   = new THREE.Vector3(Math.sin(yaw + Math.PI/2), 0, Math.cos(yaw + Math.PI/2));
       const wishDir = new THREE.Vector3()
         .addScaledVector(right, x)
         .addScaledVector(forward, z);
@@ -1328,14 +1596,12 @@ if(!isPaused() && !isCoarse && !camState.pointerLocked){
       // appliquer au modèle
       avatarRoot.position.copy(player.pos);
 
-      // petit “crouch” visuel (conserve l’auto-scale GLB)
-      const s = (avatarBaseScale || 1.0) * SET.skin.scale;
+      // petit “crouch” visuel
       const desiredScaleY = crouch ? 0.90 : 1.0;
-      const targetY = s * desiredScaleY;
-      avatarRoot.scale.y = lerp(avatarRoot.scale.y, targetY, 1 - Math.pow(0.0008, dt));
-      avatarRoot.scale.x = s;
-      avatarRoot.scale.z = s;
-}
+      avatarRoot.scale.y = lerp(avatarRoot.scale.y, desiredScaleY * SET.skin.scale, 1 - Math.pow(0.0008, dt));
+      avatarRoot.scale.x = SET.skin.scale;
+      avatarRoot.scale.z = SET.skin.scale;
+    }
 
     /***********************
      * Mouse + Touch camera
@@ -1349,14 +1615,13 @@ if(!isPaused() && !isCoarse && !camState.pointerLocked){
 
       camState.yaw   -= dx * 0.0023 * sens;
       camState.pitch += dy * 0.0020 * sens * inv;
-      camState.pitch = clamp(camState.pitch, PITCH_MIN, PITCH_MAX);
+      camState.pitch = clamp(camState.pitch, -1.45, 1.35);
     }
 
     renderer.domElement.addEventListener("mousedown", (e)=>{
       if(isPaused()) return;
-      // Clic = capture souris (mode classique). Ensuite plus besoin de maintenir le clic.
-      setPointerLock(true);
-      dragging = false;
+      dragging = true;
+      lastX = e.clientX; lastY = e.clientY;
     });
     window.addEventListener("mouseup", ()=>dragging=false);
     window.addEventListener("mousemove", (e)=>{
@@ -1382,7 +1647,6 @@ if(!isPaused() && !isCoarse && !camState.pointerLocked){
     }
     document.addEventListener("pointerlockchange", ()=>{
       camState.pointerLocked = (document.pointerLockElement === renderer.domElement);
-      document.body.classList.toggle("mouse-locked", camState.pointerLocked);
       toast(camState.pointerLocked ? "Mode souris: ON" : "Mode souris: OFF");
     });
 
@@ -1491,13 +1755,9 @@ if(!isPaused() && !isCoarse && !camState.pointerLocked){
         // reset actions “one-shot”
         input.dash = false;
       }else{
-        // Recapture auto sur PC pour retrouver le “mode jeu” sans clic-glissé
-        const isCoarse = matchMedia("(pointer:coarse)").matches;
-        if(!isCoarse){
-          setPointerLock(true);
-        }
+        // rien
       }
-}
+    }
 
     $("#btnPause").addEventListener("click", ()=>togglePause(true));
     $("#btnResume").addEventListener("click", ()=>togglePause(false));
@@ -1548,9 +1808,8 @@ if(!isPaused() && !isCoarse && !camState.pointerLocked){
 
     // pointer lock toggle button
     $("#btnTogglePointer").addEventListener("click", ()=>{
-      const want = !camState.pointerLocked;
-      if(want) togglePause(false);
-      setPointerLock(want);
+      if(isPaused()) return;
+      setPointerLock(!camState.pointerLocked);
     });
 
     /***********************
@@ -1678,6 +1937,8 @@ if(!isPaused() && !isCoarse && !camState.pointerLocked){
       await setAvatarModel(SET.skin.model);
       applyHairEyesToModel(currentAvatar || avatarRoot);
       setAvatarScale(SET.skin.scale);
+      // synchro skin sur le hub
+      if(NET.connected) netSend({ t:"hub_skin", skin: SET.skin });
       toast("Skin appliqué");
     });
     $("#btnSkinReset").addEventListener("click", async ()=>{
@@ -1708,6 +1969,7 @@ if(!isPaused() && !isCoarse && !camState.pointerLocked){
       await setAvatarModel(SET.skin.model);
       setAvatarScale(SET.skin.scale);
       applyHairEyesToModel(currentAvatar || avatarRoot);
+      netConnect();
     })();
 
     const clock = new THREE.Clock();
@@ -1715,8 +1977,10 @@ if(!isPaused() && !isCoarse && !camState.pointerLocked){
     function tick(){
       const dt = Math.min(0.033, clock.getDelta());
 
+      const paused = isPaused();
+
       // si pause: on freeze la simulation (mais on garde rendu)
-      if(!isPaused()){
+      if(!paused){
         // camera input from keyboard (optionnel) – rien ici
         updatePlayer(dt);
         updateCamera(dt);
@@ -1724,6 +1988,9 @@ if(!isPaused() && !isCoarse && !camState.pointerLocked){
         // animations
         if(currentMixer) currentMixer.update(dt);
       }
+
+      // réseau: remote interp + envoi état local
+      netTick(dt, paused);
 
       renderer.render(scene, camera);
       requestAnimationFrame(tick);
