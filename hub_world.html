@@ -164,7 +164,34 @@
       .skinsGrid{ grid-template-columns: 1fr; }
       select{ min-width: 160px; }
     }
-  </style>
+  
+    .hidden{ display:none !important; }
+
+    /* Touch controls */
+    #touchUI{ position:fixed; inset:0; z-index:25; pointer-events:none; }
+    .stick{
+      position:absolute; width:150px; height:150px; border-radius:999px;
+      border:1px solid var(--bd); background:rgba(12,14,22,.22);
+      pointer-events:auto;
+      touch-action:none;
+    }
+    .stick .knob{
+      position:absolute; left:50%; top:50%;
+      width:58px; height:58px; border-radius:999px;
+      border:1px solid var(--bd); background:rgba(124,92,255,.20);
+      transform:translate(-50%,-50%);
+    }
+    #stickMove{ left:18px; bottom:18px; }
+    #stickLook{ right:18px; bottom:18px; }
+    #btnJump{
+      position:absolute; right:26px; bottom:190px;
+      width:74px; height:74px; border-radius:999px;
+      border:1px solid var(--bd); background:rgba(255,255,255,.07); color:var(--ink);
+      pointer-events:auto;
+      font-weight:800;
+      touch-action:none;
+    }
+
 </head>
 
 <body>
@@ -176,6 +203,13 @@
     <div id="hudRight">
       <div id="wsBadge">WS: …</div>
     </div>
+  </div>
+
+
+  <div id="touchUI" class="hidden" aria-hidden="true">
+    <div id="stickMove" class="stick"><div class="knob"></div></div>
+    <div id="stickLook" class="stick"><div class="knob"></div></div>
+    <button id="btnJump" class="btn">Saut</button>
   </div>
 
   <div id="pauseOverlay" aria-hidden="true">
@@ -216,7 +250,12 @@
               <div class="field">
                 <label>Inverser axe Y</label>
                 <div class="val"><button class="btn" id="optInvertY">OFF</button></div>
+              
+              <div class="field">
+                <label>Inverser axe X</label>
+                <div class="val"><button class="btn" id="optInvertX">OFF</button></div>
               </div>
+
 
               <div class="field">
                 <label>Touches</label>
