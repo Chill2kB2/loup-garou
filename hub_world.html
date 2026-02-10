@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
   <meta name="theme-color" content="#07090d" />
-  <title>Hub 3D — Loup-Garou</title>
+  <title>Hub 3D — Loup-Garou (controls v2)</title>
 
   <link rel="icon" href="data:," />
 
@@ -574,7 +574,7 @@
     const DEFAULTS = {
       name: "Joueur",
       gfx: { quality:"auto", shadows:"on", fov: 66, scale: 1.0 },
-      controls: { sens: 1.0, invertY:"off" },
+      controls: { sens: 1.0, invertY:"on" },
       audio: { master: 0.9, amb: 0.6, sfx: 0.8, voice: 0.8 },
       gameplay: { camDist: 3.6, camHeight: 1.65, sprintMode:"hold", joyVisible:"on" },
       keys: {
@@ -1459,10 +1459,10 @@
       camPivot.getWorldPosition(pivotWorld);
 
       // calcul orbit
-      const cp = clamp(camState.pitch, -1.45, 1.35);
+      const cp = clamp(camState.pitch, -0.25, 1.52);
       camState.pitch = cp;
 
-      const cy = camState.yaw;
+      const cy = camState.yaw + Math.PI;
       const offset = new THREE.Vector3(
         Math.sin(cy) * Math.cos(cp),
         Math.sin(cp),
@@ -1615,7 +1615,7 @@
 
       camState.yaw   -= dx * 0.0023 * sens;
       camState.pitch += dy * 0.0020 * sens * inv;
-      camState.pitch = clamp(camState.pitch, -1.45, 1.35);
+      camState.pitch = clamp(camState.pitch, -0.25, 1.52);
     }
 
     renderer.domElement.addEventListener("mousedown", (e)=>{
@@ -1645,7 +1645,31 @@
         document.exitPointerLock?.();
       }
     }
-    document.addEventListener("pointerlockchange", ()=>{
+    
+    // Auto-capture souris sur PC dès le premier déplacement (ZQSD / flèches)
+    const IS_DESKTOP = (matchMedia?.("(pointer:fine)")?.matches ?? true);
+
+    function isTypingTarget(el){
+      if(!el) return false;
+      const tag = (el.tagName||"").toLowerCase();
+      return tag === "input" || tag === "textarea" || el.isContentEditable;
+    }
+
+    window.addEventListener("keydown", (e)=>{
+      if(!IS_DESKTOP) return;
+      if(isPaused()) return;
+      if(isTypingTarget(document.activeElement)) return;
+      if(camState.pointerLocked) return;
+
+      const moveCodes = [
+        ...SET.keys.forward, ...SET.keys.back, ...SET.keys.left, ...SET.keys.right
+      ];
+      if(moveCodes.includes(e.code)){
+        setPointerLock(true);
+      }
+    }, { passive:true });
+
+document.addEventListener("pointerlockchange", ()=>{
       camState.pointerLocked = (document.pointerLockElement === renderer.domElement);
       toast(camState.pointerLocked ? "Mode souris: ON" : "Mode souris: OFF");
     });
