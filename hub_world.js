@@ -375,6 +375,12 @@
     gravity: 18,
     jumpV: 7.2,
     height: 1.7,
+
+    // Dynamic camera profile (per skin)
+    baseScale: 1.0,
+    baseSkinHeight: 1.65,
+    baseEyeHeight: 1.45,
+    baseCamDist: 4.2,
   };
   player.root.position.set(0, 0, 0);
   scene.add(player.root);
@@ -468,7 +474,7 @@
     // Mouse
     if (!PAUSED) {
       camRig.yaw   += (Input.lookDX * 0.0022) * sens;
-      camRig.pitch += (Input.lookDY * 0.0018) * sens * invert;
+      camRig.pitch -= (Input.lookDY * 0.0018) * sens * invert;
     }
     Input.lookDX = 0;
     Input.lookDY = 0;
@@ -476,10 +482,17 @@
     // Touch look
     if (!PAUSED && touchEnabled) {
       camRig.yaw   += (Input.lookX * 1.35) * dt * sens;
-      camRig.pitch += (Input.lookY * 1.10) * dt * sens * invert;
+      camRig.pitch -= (Input.lookY * 1.10) * dt * sens * invert;
     }
 
     camRig.pitch = clamp(camRig.pitch, -1.25, 1.05);
+
+    // Adapt camera rig to current skin scale / crouch
+    const camK = 1 - Math.pow(0.001, dt);
+    const desiredHeight = (player.baseEyeHeight || camRig.height) * player.root.scale.y;
+    const desiredDist = (player.baseCamDist || camRig.dist) * player.root.scale.x;
+    camRig.height = lerp(camRig.height, desiredHeight, camK);
+    camRig.dist = lerp(camRig.dist, desiredDist, camK);
 
     // Target = player head
     const target = new THREE.Vector3(
@@ -499,7 +512,7 @@
     desiredPos.y = Math.max(desiredPos.y, 0.25);
 
     // Smooth
-    const k = 1 - Math.pow(0.001, dt);
+    const k = 1 - Math.pow(0.00005, dt);
     camRig.smoothTarget.lerp(target, k);
     camRig.smoothPos.lerp(desiredPos, k);
 
@@ -535,29 +548,43 @@
   }
 
   function fitModelToPlayer(m) {
-    // recentre + scale raisonnable
-    const box = new THREE.Box3().setFromObject(m);
-    const size = new THREE.Vector3();
-    box.getSize(size);
-    const center = new THREE.Vector3();
-    box.getCenter(center);
-
-    // Move pivot to ground
-    m.position.sub(center);
-    // put feet on ground
-    const box2 = new THREE.Box3().setFromObject(m);
-    m.position.y -= box2.min.y;
-
-    // scale to ~1.6m
-    const h = Math.max(0.01, size.y);
+    // Scale first, then recenter & put feet on ground (important for camera anchoring)
     const targetH = 1.55;
-    const s = targetH / h;
+
+    // Scale to target height
+    const b0 = new THREE.Box3().setFromObject(m);
+    const s0 = new THREE.Vector3();
+    b0.getSize(s0);
+    const h0 = Math.max(0.01, s0.y);
+    const s = targetH / h0;
     m.scale.multiplyScalar(s);
+
+    // Recompute after scaling
+    m.updateMatrixWorld(true);
+
+    // Recentre pivot
+    const b1 = new THREE.Box3().setFromObject(m);
+    const c1 = new THREE.Vector3();
+    b1.getCenter(c1);
+    m.position.sub(c1);
+
+    // Put feet on ground
+    m.updateMatrixWorld(true);
+    const b2 = new THREE.Box3().setFromObject(m);
+    m.position.y -= b2.min.y;
+
+    m.updateMatrixWorld(true);
   }
 
   function applyPlayerAppearance() {
     const scale = clamp(parseFloat(SETTINGS.skin.scale) || 1.0, 0.8, 1.2);
-    player.root.scale.setScalar(scale);
+    player.baseScale = scale;
+
+    // Keep X/Z scale consistent; Y can be reduced when crouching
+    const crouchY = player.crouching ? 0.85 : 1.0;
+    player.root.scale.set(scale, scale * crouchY, scale);
+
+    refreshPlayerMetrics();
 
     // Color for humanoid only
     if (SETTINGS.skin.selected === "humanoid" && player.model) {
@@ -576,7 +603,43 @@
     }
   }
 
-  function loadSkinById(id) {
+  
+  function refreshPlayerMetrics() {
+    // Compute a stable "base" profile independent of current root scale
+    if (!player.model) return;
+
+    const prevScale = player.root.scale.clone();
+
+    // normalize temporarily (standing)
+    player.root.scale.set(1, 1, 1);
+    player.root.updateMatrixWorld(true);
+
+    const box = new THREE.Box3().setFromObject(player.model);
+    const size = new THREE.Vector3();
+    box.getSize(size);
+    const h = Math.max(0.01, size.y);
+
+    player.baseSkinHeight = h;
+
+    // Different eye height / distance heuristics per rig
+    if (SETTINGS.skin.selected === "fox") {
+      player.baseEyeHeight = h * 0.58;                 // quadrupède: point de visée plus bas
+      player.baseCamDist  = clamp(h * 2.35, 2.9, 5.4); // plus proche pour éviter l'effet "décollé"
+    } else {
+      player.baseEyeHeight = h * 0.88;                 // humanoïde: proche de la tête
+      player.baseCamDist  = clamp(h * 2.70, 3.4, 6.4);
+    }
+
+    // restore
+    player.root.scale.copy(prevScale);
+    player.root.updateMatrixWorld(true);
+
+    // snap camera rig targets gently (no sudden jumps)
+    camRig.height = player.baseEyeHeight * player.root.scale.y;
+    camRig.dist = player.baseCamDist * player.root.scale.x;
+  }
+
+function loadSkinById(id) {
     const def = SKINS.find(s => s.id === id) || SKINS[0];
     SETTINGS.skin.selected = def.id;
     saveSettings();
@@ -757,8 +820,13 @@
 
     // Crouch visual
     const targetScaleY = player.crouching ? 0.85 : 1.0;
-    player.root.scale.y = lerp(player.root.scale.y, targetScaleY * clamp(SETTINGS.skin.scale || 1.0, 0.8, 1.2), 1 - Math.pow(0.001, dt));
-  }
+    const base = player.baseScale ?? clamp(SETTINGS.skin.scale || 1.0, 0.8, 1.2);
+    player.baseScale = base;
+    const kScale = 1 - Math.pow(0.001, dt);
+    const targetY = targetScaleY * base;
+    const newY = lerp(player.root.scale.y, targetY, kScale);
+    player.root.scale.set(base, newY, base);
+}
 
   function lerpAngle(a, b, t) {
     const d = ((b - a + Math.PI) % (Math.PI * 2)) - Math.PI;
