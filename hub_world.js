@@ -41,7 +41,7 @@
     crouch: ["ControlLeft", "ControlRight"],
     sprint: ["ShiftLeft", "ShiftRight"],
     dash: ["KeyF"],
-    pause: ["Escape"],
+    pause: ["Escape", "KeyP"],
     joystickToggle: ["KeyJ"],
   };
 
@@ -234,9 +234,35 @@
     renderer.domElement.requestPointerLock?.();
   });
 
-  document.addEventListener("pointerlockchange", () => {
-    Input.pointerLocked = (document.pointerLockElement === renderer.domElement);
+  // Auto pointer-lock on first meaningful keyboard input (still requires a user gesture; keydown qualifies).
+  // This removes the need to click to enable mouse-look in most browsers.
+  document.addEventListener("keydown", (e) => {
+    if (PAUSED) return;
+    if (SETTINGS.controls.mouseMode !== "lock") return;
+    if (Input.pointerLocked) return;
+
+    // Only react to gameplay-ish keys to avoid locking when typing in the URL bar etc.
+    const gameplayKeys = new Set([
+      "KeyZ", "KeyQ", "KeyS", "KeyD",
+      "ArrowUp", "ArrowLeft", "ArrowDown", "ArrowRight",
+      "Space", "ShiftLeft", "ShiftRight", "ControlLeft", "ControlRight",
+      "KeyA", "KeyW" // allow QWERTY fallback
+    ]);
+    if (!gameplayKeys.has(e.code)) return;
+
+    renderer.domElement.requestPointerLock?.();
   });
+
+    document.addEventListener("pointerlockchange", () => {
+      const locked = (document.pointerLockElement === renderer.domElement);
+      const wasLocked = Input.pointerLocked;
+      Input.pointerLocked = locked;
+
+      // If we just lost pointer lock (ESC typically does this), open pause reliably.
+      if (wasLocked && !locked && !PAUSED) {
+        setPaused(true);
+      }
+    });
 
   // Touch joysticks
   const touchUI = $("#touchUI");
@@ -620,7 +646,7 @@
     // Show/hide touch UI depending
     applyAutoTouchUI();
 
-    $("#hudHint").textContent = v ? "Pause (menu ouvert)" : "Clique / touche l’écran pour contrôler la caméra";
+    $("#hudHint").textContent = v ? "Pause (menu ouvert)" : "Appuie sur Z/Q/S/D ou clique pour contrôler la caméra";
   }
 
   function teleportSpawn() {
