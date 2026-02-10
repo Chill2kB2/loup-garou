@@ -4,2085 +4,532 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
   <meta name="theme-color" content="#07090d" />
-  <title>Hub 3D — Loup-Garou (controls v3)</title>
-
+  <title>Hub 3D — Loup-Garou</title>
   <link rel="icon" href="data:," />
 
   <style>
     :root{
       --bg:#07090d;
-      --panel: rgba(10,14,22,.66);
+      --panel: rgba(10,14,22,.72);
       --panel2: rgba(255,255,255,.06);
-      --bd: rgba(255,255,255,.12);
+      --bd: rgba(255,255,255,.14);
       --txt: rgba(235,242,255,.92);
-      --mut: rgba(235,242,255,.68);
-      --acc: #7c5cff;
-      --ok:  #38d39f;
-      --bad: #ff5a7a;
-      --warn:#ffb020;
-      --r: 18px;
-      --shadow: 0 18px 70px rgba(0,0,0,.55);
+      --mut: rgba(235,242,255,.62);
+      --acc:#7c5cff;
+      --acc2:#34d399;
+      --danger:#ef4444;
+      --shadow: 0 18px 60px rgba(0,0,0,.55);
+      --radius: 18px;
+      --radius2: 14px;
+      --font: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
     }
-    *{ box-sizing:border-box; -webkit-tap-highlight-color: transparent; }
-    html,body{ margin:0; height:100%; background:var(--bg); overflow:hidden; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; color:var(--txt); }
-    body{ touch-action:none; }
-    canvas{ display:block; width:100%; height:100%; }
+    *{ box-sizing:border-box; }
+    html,body{ width:100%; height:100%; margin:0; background:var(--bg); color:var(--txt); font-family:var(--font); overflow:hidden; }
+    button, select, input{ font-family:inherit; }
 
-    /* HUD minimal (rien d’inutile) */
-    .hud{
-      position:fixed; inset:0; pointer-events:none;
-    }
-    .topbar{
-      position:absolute; left:14px; top:12px;
-      display:flex; gap:10px; align-items:center;
+    /* Canvas is injected by JS (renderer.domElement). Keep it fullscreen. */
+    canvas{ display:block; width:100vw; height:100vh; }
+
+    /* HUD */
+    .hudTop{ position:fixed; top:12px; left:12px; right:12px; display:flex; align-items:center; justify-content:space-between; gap:12px; pointer-events:none; z-index:20; }
+    .hudPill{
+      pointer-events:auto;
+      display:flex; align-items:center; gap:10px;
       padding:10px 12px;
       border:1px solid var(--bd);
+      background:linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.03));
       border-radius:999px;
-      background:linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
-      box-shadow: var(--shadow);
-      pointer-events:none;
+      box-shadow:var(--shadow);
       backdrop-filter: blur(10px);
     }
-    .pill{
-      display:inline-flex; gap:8px; align-items:center;
-      font-size:13px; letter-spacing:.2px; color:var(--mut);
+    .dot{ width:10px; height:10px; border-radius:999px; background:var(--acc2); box-shadow:0 0 0 3px rgba(52,211,153,.16); }
+    .dot.off{ background:var(--danger); box-shadow:0 0 0 3px rgba(239,68,68,.16); }
+    .hudTitle{ font-weight:700; }
+    .hudSub{ font-size:12px; color:var(--mut); }
+
+    #hudHint{
+      position:fixed; left:12px; bottom:12px;
+      padding:10px 12px;
+      border:1px solid var(--bd);
+      background:rgba(10,14,22,.55);
+      border-radius:999px;
+      backdrop-filter: blur(10px);
+      box-shadow:var(--shadow);
+      font-size:13px;
       pointer-events:none;
-    }
-    .dot{
-      width:10px; height:10px; border-radius:999px;
-      background: radial-gradient(circle at 30% 30%, rgba(255,255,255,.9), rgba(255,255,255,.15));
-      border:1px solid rgba(255,255,255,.22);
-    }
-    .name{
-      color:var(--txt); font-weight:700; font-size:13px;
-      pointer-events:none;
+      z-index:20;
     }
 
+    /* Buttons */
     .btn{
-      pointer-events:auto;
-      border:1px solid var(--bd);
-      background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.03));
-      color:var(--txt);
-      border-radius:999px;
+      display:inline-flex; align-items:center; justify-content:center;
+      gap:8px;
       padding:10px 12px;
-      font-weight:700;
+      border-radius:12px;
+      border:1px solid var(--bd);
+      background:rgba(255,255,255,.06);
+      color:var(--txt);
       cursor:pointer;
       user-select:none;
-      display:inline-flex;
-      align-items:center;
-      gap:8px;
-      box-shadow: 0 12px 40px rgba(0,0,0,.35);
-      backdrop-filter: blur(10px);
+      transition: transform .06s ease, background .15s ease, border-color .15s ease;
     }
+    .btn:hover{ background:rgba(255,255,255,.09); border-color:rgba(255,255,255,.20); }
     .btn:active{ transform: translateY(1px); }
-    .btn.small{ padding:9px 11px; font-weight:800; }
-    .btn.acc{ border-color: rgba(124,92,255,.55); box-shadow: 0 16px 55px rgba(124,92,255,.18), 0 12px 40px rgba(0,0,0,.35); }
-    .btn.ghost{ background: rgba(255,255,255,.03); }
-    .btn.danger{ border-color: rgba(255,90,122,.45); }
-    .btnrow{
-      position:absolute;
-      right:12px; top:12px;
-      display:flex; gap:10px; align-items:center;
-      pointer-events:auto;
-    }
+    .btn--primary{ background:rgba(124,92,255,.18); border-color:rgba(124,92,255,.55); }
+    .btn--primary:hover{ background:rgba(124,92,255,.24); }
+    .btn--ghost{ background:transparent; }
+    .btnSmall{ padding:8px 10px; border-radius:10px; font-size:13px; }
 
-    .toast{
-      position:absolute; left:50%; bottom:18px; transform:translateX(-50%);
-      background: rgba(0,0,0,.42);
-      border:1px solid var(--bd);
-      border-radius:999px;
-      padding:10px 14px;
-      font-size:13px; color:var(--txt);
-      box-shadow: var(--shadow);
-      opacity:0; transition: opacity .2s ease, transform .2s ease;
-      pointer-events:none;
-      backdrop-filter: blur(10px);
-    }
-    .toast.show{ opacity:1; transform:translateX(-50%) translateY(-2px); }
-
-    /* Pause overlay */
+    /* Overlay base */
     .overlay{
       position:fixed; inset:0;
-      background: radial-gradient(1200px 600px at 20% 0%, rgba(124,92,255,.20), transparent 60%),
-                  radial-gradient(900px 500px at 80% 20%, rgba(56,211,159,.10), transparent 60%),
-                  rgba(0,0,0,.52);
-      display:none;
-      pointer-events:auto;
+      display:flex; align-items:center; justify-content:center;
+      background:rgba(0,0,0,.55);
       backdrop-filter: blur(10px);
+      z-index:50;
+      padding:18px;
     }
-    .overlay.show{ display:block; }
+    .hidden{ display:none !important; }
 
-    .pauseWrap{
-      position:absolute; inset:0;
-      display:grid;
-      place-items:center;
-      padding:18px;
-    }
     .panel{
-      width:min(1080px, calc(100vw - 28px));
-      height:min(700px, calc(100vh - 28px));
-      border:1px solid var(--bd);
-      border-radius: 22px;
-      background: linear-gradient(180deg, rgba(10,14,22,.74), rgba(10,14,22,.60));
-      box-shadow: var(--shadow);
+      width:min(980px, 96vw);
+      max-height: min(720px, 92vh);
       overflow:hidden;
-      display:grid;
-      grid-template-columns: 270px 1fr;
-    }
-    .sidebar{
-      border-right: 1px solid var(--bd);
-      background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
-      padding:16px;
-      display:flex; flex-direction:column; gap:10px;
-    }
-    .title{
-      display:flex; flex-direction:column; gap:4px;
-      padding:4px 4px 10px 4px;
-    }
-    .title h1{ margin:0; font-size:18px; letter-spacing:.3px; }
-    .title .sub{ color:var(--mut); font-size:13px; line-height:1.25; }
-    .nav{
-      display:flex; flex-direction:column; gap:10px;
-      margin-top:6px;
-    }
-    .navBtn{
-      width:100%;
-      border-radius: 16px;
-      padding:12px 12px;
+      border-radius:var(--radius);
       border:1px solid var(--bd);
-      background: rgba(255,255,255,.03);
-      color:var(--txt);
-      display:flex; align-items:center; justify-content:space-between;
-      cursor:pointer;
-      user-select:none;
-      font-weight:800;
+      background:linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.03));
+      box-shadow:var(--shadow);
+      display:flex;
+      flex-direction:column;
     }
-    .navBtn.active{
-      border-color: rgba(124,92,255,.55);
-      background: rgba(124,92,255,.12);
-      box-shadow: 0 18px 60px rgba(124,92,255,.12);
+    .panelHeader{
+      padding:14px 16px;
+      display:flex; align-items:center; justify-content:space-between; gap:12px;
+      border-bottom:1px solid rgba(255,255,255,.08);
+      background:rgba(0,0,0,.22);
     }
-    .navBtn .hint{ color:var(--mut); font-weight:700; font-size:12px; }
-    .sideFooter{
-      margin-top:auto;
-      display:flex; gap:10px;
-    }
-    .sideFooter .btn{ width:100%; justify-content:center; }
-    .content{
-      padding:18px;
+    .panelHeader h2{ margin:0; font-size:16px; letter-spacing:.2px; }
+    .panelBody{ display:flex; flex:1; min-height:0; }
+    .side{
+      width:260px;
+      padding:12px;
+      border-right:1px solid rgba(255,255,255,.08);
+      background:rgba(0,0,0,.12);
       overflow:auto;
     }
-    .sectionTitle{
-      font-size:16px; font-weight:900;
-      margin:0 0 10px 0;
-      letter-spacing:.2px;
-    }
-    .card{
-      border:1px solid var(--bd);
-      border-radius: 18px;
-      background: rgba(255,255,255,.03);
+    .main{
+      flex:1;
       padding:14px;
-      margin-bottom:12px;
-    }
-    .row{
-      display:grid;
-      grid-template-columns: 1fr 1fr;
-      gap:12px;
-    }
-    @media (max-width: 860px){
-      .panel{ grid-template-columns: 1fr; height:min(760px, calc(100vh - 28px)); }
-      .sidebar{ flex-direction:row; align-items:stretch; border-right:none; border-bottom:1px solid var(--bd); overflow:auto; }
-      .title{ min-width:240px; }
-      .nav{ flex-direction:row; }
-      .navBtn{ min-width:170px; }
-      .sideFooter{ display:none; }
-      .row{ grid-template-columns: 1fr; }
+      overflow:auto;
     }
 
-    label{ display:block; font-size:13px; color:var(--mut); margin-bottom:6px; }
-    input[type="range"], select, input[type="text"], input[type="number"]{
-      width:100%;
-      border:1px solid var(--bd);
-      border-radius: 14px;
-      padding:10px 12px;
-      background: rgba(0,0,0,.22);
-      color:var(--txt);
-      outline:none;
-    }
-    input[type="range"]{ padding:0; height: 36px; }
-    .kgrid{
-      display:grid;
-      grid-template-columns: 1fr auto auto;
-      gap:10px;
-      align-items:center;
-    }
-    .kgrid .act{ font-weight:800; }
-    .keycap{
-      display:inline-flex; align-items:center; justify-content:center;
-      min-width:88px;
-      padding:9px 10px;
-      border-radius: 14px;
-      border:1px solid var(--bd);
-      background: rgba(255,255,255,.03);
-      font-weight:900;
-      font-size:12px;
-      cursor:pointer;
-      user-select:none;
-    }
-    .keycap.wait{ border-color: rgba(255,176,32,.55); background: rgba(255,176,32,.10); }
-    .tiny{ font-size:12px; color:var(--mut); line-height:1.35; }
-
-    /* Mobile joysticks */
-    .joyLayer{
-      position:absolute; inset:0;
-      pointer-events:none;
-    }
-    .joy{
-      position:absolute;
-      width:160px; height:160px;
+    .tabRow{ display:flex; gap:10px; flex-wrap:wrap; }
+    .tabBtn{
+      pointer-events:auto;
       border-radius:999px;
-      border:1px solid rgba(255,255,255,.16);
-      background: radial-gradient(circle at 30% 30%, rgba(255,255,255,.09), rgba(255,255,255,.03));
-      box-shadow: 0 20px 70px rgba(0,0,0,.40);
-      backdrop-filter: blur(10px);
+      padding:10px 12px;
+      border:1px solid var(--bd);
+      background:rgba(255,255,255,.06);
+      color:var(--txt);
+      cursor:pointer;
+      font-weight:650;
+      font-size:13px;
+    }
+    .tabBtn.active{ background:rgba(124,92,255,.20); border-color:rgba(124,92,255,.55); }
+
+    .sectionTitle{ margin:12px 0 8px; color:var(--mut); font-size:12px; text-transform:uppercase; letter-spacing:.12em; }
+    .kv{
+      display:flex; align-items:flex-start; justify-content:space-between; gap:12px;
+      padding:10px 12px;
+      border:1px solid rgba(255,255,255,.09);
+      border-radius:14px;
+      background:rgba(0,0,0,.18);
+      margin-bottom:10px;
+    }
+    .k{ font-weight:650; }
+    .v{ display:flex; align-items:center; gap:10px; justify-content:flex-end; flex-wrap:wrap; }
+    .smallNote{ color:var(--mut); font-size:12px; }
+
+    select, input[type="range"], input[type="number"], input[type="color"]{
+      background:rgba(255,255,255,.06);
+      color:var(--txt);
+      border:1px solid rgba(255,255,255,.14);
+      border-radius:12px;
+      padding:9px 10px;
+      outline:none;
+      min-width: 160px;
+    }
+    input[type="range"]{ min-width: 220px; padding:0; }
+
+    .footerRow{
+      display:flex; justify-content:flex-end; gap:10px;
+      padding:12px 16px;
+      border-top:1px solid rgba(255,255,255,.08);
+      background:rgba(0,0,0,.18);
+    }
+
+    /* Rebind panel */
+    .panelSm{
+      width:min(720px, 96vw);
+      max-height:min(720px, 92vh);
+    }
+
+    /* Touch UI */
+    #touchUI{
+      position:fixed; inset:0;
+      pointer-events:none;
+      z-index:30;
+    }
+    .stick{
+      position:absolute;
+      width:150px; height:150px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,.14);
+      background:rgba(255,255,255,.04);
+      box-shadow:0 10px 30px rgba(0,0,0,.45);
+      backdrop-filter: blur(8px);
       pointer-events:auto;
       touch-action:none;
-      display:none;
     }
-    .joy .stick{
-      position:absolute; left:50%; top:50%;
-      width:74px; height:74px;
+    .stick .knob{
+      position:absolute;
+      left:50%; top:50%;
+      width:64px; height:64px;
       border-radius:999px;
       transform: translate(-50%,-50%);
-      background: radial-gradient(circle at 30% 30%, rgba(255,255,255,.22), rgba(255,255,255,.08));
-      border:1px solid rgba(255,255,255,.22);
-      box-shadow: 0 16px 50px rgba(0,0,0,.35);
+      background:rgba(124,92,255,.18);
+      border:1px solid rgba(124,92,255,.55);
     }
-    .joy.left{ left:14px; bottom:16px; }
-    .joy.right{ right:14px; bottom:16px; }
-    .joy.show{ display:block; }
+    #stickMove{ left:18px; bottom:18px; }
+    #stickLook{ right:18px; bottom:18px; }
 
-    /* “icône” pause mobile */
-    .icon{
-      width:18px; height:18px; display:inline-block;
-      border-radius:6px;
-      background: linear-gradient(180deg, rgba(255,255,255,.22), rgba(255,255,255,.06));
-      border:1px solid rgba(255,255,255,.22);
+    .touchBtns{
+      position:absolute; right:18px; bottom:188px;
+      display:flex; flex-direction:column; gap:10px;
+      pointer-events:auto;
+    }
+
+    /* Toast */
+    #toast{
+      position:fixed; left:50%; bottom:22px;
+      transform: translateX(-50%);
+      padding:10px 14px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,.14);
+      background:rgba(10,14,22,.70);
+      backdrop-filter: blur(10px);
+      box-shadow:var(--shadow);
+      color:var(--txt);
+      font-size:13px;
+      opacity:0;
+      pointer-events:none;
+      transition: opacity .18s ease, transform .18s ease;
+      z-index:60;
+    }
+    #toast.show{ opacity:1; transform: translateX(-50%) translateY(-2px); }
+
+    /* Mobile hint: show touch UI only when JS wants it */
+    @media (pointer:coarse){
+      #hudHint{ left:12px; right:12px; width:fit-content; max-width: calc(100% - 24px); }
     }
   </style>
 </head>
 
 <body>
-  <div id="hud" class="hud">
-    <div class="topbar">
-      <span class="dot"></span>
-      <span class="pill">Hub 3D</span>
-      <span class="pill">·</span>
-      <span id="playerName" class="name">Joueur</span>
-      <span class="pill">·</span>
-      <span id="onlineCount" class="pill">En ligne: 1</span>
-    </div>
 
-    <div class="btnrow">
-      <button id="btnJoy" class="btn small ghost" title="Afficher/Masquer les joysticks (raccourci: J)">Joystick</button>
-      <button id="btnPause" class="btn small acc" title="Pause (Échap)">≡</button>
-    </div>
-
-    <div id="toast" class="toast">—</div>
-
-    <div class="joyLayer">
-      <div id="joyLeft" class="joy left">
-        <div class="stick"></div>
+  <!-- HUD top -->
+  <div class="hudTop">
+    <div class="hudPill">
+      <div class="dot" id="netDot" aria-hidden="true"></div>
+      <div>
+        <div class="hudTitle">Hub 3D — <span id="hudName">Joueur</span></div>
+        <div class="hudSub" id="hudStatus">Caméra: clique pour contrôler</div>
       </div>
-      <div id="joyRight" class="joy right">
-        <div class="stick"></div>
+    </div>
+
+    <div class="hudPill" style="gap:10px">
+      <button class="btn btnSmall" id="btnJoystick" type="button">Joystick</button>
+      <button class="btn btnSmall btn--primary" id="btnPause" type="button">Menu</button>
+    </div>
+  </div>
+
+  <div id="hudHint">Clique / touche l’écran pour contrôler la caméra</div>
+
+  <!-- Touch UI -->
+  <div id="touchUI" class="hidden" aria-hidden="true">
+    <div id="stickMove" class="stick"><div class="knob"></div></div>
+    <div id="stickLook" class="stick"><div class="knob"></div></div>
+
+    <div class="touchBtns">
+      <button class="btn btn--primary" id="btnJump" type="button">Saut</button>
+    </div>
+  </div>
+
+  <!-- Pause overlay -->
+  <div id="pauseOverlay" class="overlay hidden" role="dialog" aria-modal="true" aria-label="Menu Pause">
+    <div class="panel">
+      <div class="panelHeader">
+        <h2>Loup-Garou — Hub</h2>
+        <button class="btn btnSmall btn--ghost" id="btnClosePause" type="button">✕</button>
+      </div>
+
+      <div class="panelBody">
+        <div class="side">
+          <div class="tabRow" style="flex-direction:column;">
+            <button class="tabBtn active" data-tab="resume" type="button">Reprendre</button>
+            <button class="tabBtn" data-tab="options" type="button">Options</button>
+            <button class="tabBtn" data-tab="skins" type="button">Skins</button>
+            <button class="tabBtn" data-tab="home" type="button">Accueil</button>
+          </div>
+
+          <div class="sectionTitle">Raccourcis</div>
+          <div class="smallNote">Échap: menu • Clique: caméra</div>
+        </div>
+
+        <div class="main">
+          <!-- TAB: resume -->
+          <div id="tab_resume">
+            <div class="sectionTitle">Session</div>
+
+            <div class="kv">
+              <div class="k">Reprendre</div>
+              <div class="v">
+                <button class="btn btn--primary" id="btnResume" type="button">Reprendre</button>
+              </div>
+            </div>
+
+            <div class="kv">
+              <div class="k">Touches</div>
+              <div class="v">
+                <button class="btn" id="btnRebind" type="button">Personnaliser</button>
+                <button class="btn" id="btnResetBinds" type="button">Réinitialiser</button>
+              </div>
+            </div>
+
+            <div class="kv">
+              <div class="k">Position</div>
+              <div class="v">
+                <button class="btn" id="btnResetPos" type="button">Reset position</button>
+              </div>
+            </div>
+
+            <div class="kv">
+              <div class="k">Quitter</div>
+              <div class="v">
+                <button class="btn" id="btnStay" type="button">Rester</button>
+                <button class="btn" id="btnGoHome" type="button">Retour accueil</button>
+              </div>
+            </div>
+
+            <div class="smallNote">Astuce: si les touches sont inversées après des essais, réinitialise + reload.</div>
+          </div>
+
+          <!-- TAB: options -->
+          <div id="tab_options" class="hidden">
+            <div class="sectionTitle">Catégories</div>
+            <div class="tabRow" style="margin-bottom:12px;">
+              <button class="tabBtn active" data-subtab="graphics" type="button">Graphiques</button>
+              <button class="tabBtn" data-subtab="controls" type="button">Contrôles</button>
+              <button class="tabBtn" data-subtab="audio" type="button">Audio</button>
+              <button class="tabBtn" data-subtab="gameplay" type="button">Gameplay</button>
+            </div>
+
+            <div id="sub_graphics">
+              <div class="kv">
+                <div class="k">Qualité</div>
+                <div class="v">
+                  <select id="optQuality">
+                    <option value="low">Low</option>
+                    <option value="med">Medium</option>
+                    <option value="high">High</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="kv">
+                <div class="k">Ombres</div>
+                <div class="v">
+                  <button class="btn" id="optShadows" type="button">ON</button>
+                </div>
+              </div>
+
+              <div class="kv">
+                <div class="k">FOV</div>
+                <div class="v">
+                  <input id="optFov" type="range" min="45" max="85" step="1" value="66" />
+                </div>
+              </div>
+
+              <div class="kv">
+                <div class="k">Pixel Ratio</div>
+                <div class="v">
+                  <select id="optPixelRatio">
+                    <option value="auto">Auto</option>
+                    <option value="1">1.0</option>
+                    <option value="1.5">1.5</option>
+                    <option value="2">2.0</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <div id="sub_controls" class="hidden">
+              <div class="kv">
+                <div class="k">Sensibilité</div>
+                <div class="v">
+                  <input id="optSens" type="range" min="0.3" max="3" step="0.05" value="1.2" />
+                </div>
+              </div>
+
+              <div class="kv">
+                <div class="k">Inverser Y</div>
+                <div class="v">
+                  <button class="btn" id="optInvertY" type="button">OFF</button>
+                </div>
+              </div>
+
+              <div class="kv">
+                <div class="k">Mode souris</div>
+                <div class="v">
+                  <select id="optMouseMode">
+                    <option value="lock">Pointer Lock</option>
+                    <option value="drag">Drag (clic)</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <div id="sub_audio" class="hidden">
+              <div class="kv">
+                <div class="k">Volume global</div>
+                <div class="v">
+                  <input id="optVolMaster" type="range" min="0" max="1" step="0.01" value="0.9" />
+                </div>
+              </div>
+              <div class="kv">
+                <div class="k">Ambiance</div>
+                <div class="v">
+                  <input id="optVolAmb" type="range" min="0" max="1" step="0.01" value="0.6" />
+                </div>
+              </div>
+              <div class="kv">
+                <div class="k">SFX</div>
+                <div class="v">
+                  <input id="optVolSfx" type="range" min="0" max="1" step="0.01" value="0.8" />
+                </div>
+              </div>
+              <div class="smallNote">Note: ton projet peut choisir de ne pas jouer de son, c’est ok.</div>
+            </div>
+
+            <div id="sub_gameplay" class="hidden">
+              <div class="kv">
+                <div class="k">Déplacement relatif caméra</div>
+                <div class="v">
+                  <button class="btn" id="optMoveRel" type="button">ON</button>
+                </div>
+              </div>
+
+              <div class="kv">
+                <div class="k">Sprint</div>
+                <div class="v">
+                  <select id="optSprintMode">
+                    <option value="hold">Hold</option>
+                    <option value="toggle">Toggle</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="kv">
+                <div class="k">Dash</div>
+                <div class="v">
+                  <button class="btn" id="optDash" type="button">ON</button>
+                </div>
+              </div>
+
+              <div class="kv">
+                <div class="k">Auto Joystick (mobile)</div>
+                <div class="v">
+                  <button class="btn" id="optAutoJoy" type="button">ON</button>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- TAB: skins -->
+          <div id="tab_skins" class="hidden">
+            <div class="sectionTitle">Skins</div>
+
+            <div class="kv">
+              <div class="k">Échelle</div>
+              <div class="v">
+                <input id="optScale" type="range" min="0.8" max="1.2" step="0.01" value="1.0" />
+              </div>
+            </div>
+
+            <div class="kv">
+              <div class="k">Couleur</div>
+              <div class="v">
+                <input id="optColor" type="color" value="#7c5cff" />
+              </div>
+            </div>
+
+            <div id="skinsGrid"></div>
+          </div>
+
+          <!-- TAB: home -->
+          <div id="tab_home" class="hidden">
+            <div class="sectionTitle">Accueil</div>
+            <div class="kv">
+              <div class="k">Retour menu</div>
+              <div class="v">
+                <button class="btn" id="btnGoHome" type="button">Aller à l’accueil</button>
+              </div>
+            </div>
+
+            <div class="smallNote">
+              Si tu veux “multi” : le Hub doit être connecté à ton serveur WS. Le HTML ici est prêt; c’est le JS qui gère la connexion.
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <div class="footerRow">
+        <button class="btn" id="btnStay" type="button">Fermer</button>
+        <button class="btn btn--primary" id="btnResume" type="button">Reprendre</button>
       </div>
     </div>
   </div>
 
-  <!-- Pause menu -->
-  <div id="overlay" class="overlay" aria-hidden="true">
-    <div class="pauseWrap">
-      <div class="panel" role="dialog" aria-modal="true" aria-label="Menu pause">
-        <div class="sidebar">
-          <div class="title">
-            <h1>Pause</h1>
-            <div class="sub">Échap pour fermer. Sur mobile: bouton ≡.</div>
-          </div>
-
-          <div class="nav">
-            <button class="navBtn active" data-page="resume">
-              Reprendre <span class="hint">⏎</span>
-            </button>
-            <button class="navBtn" data-page="options">
-              Options <span class="hint">⚙</span>
-            </button>
-            <button class="navBtn" data-page="skins">
-              Skins <span class="hint">🎭</span>
-            </button>
-            <button class="navBtn" data-page="home">
-              Accueil <span class="hint">↩</span>
-            </button>
-          </div>
-
-          <div class="sideFooter">
-            <button id="btnResumeSide" class="btn acc">Reprendre</button>
-            <button id="btnHomeSide" class="btn danger">Accueil</button>
-          </div>
+  <!-- Rebind overlay -->
+  <div id="rebindPanel" class="overlay hidden" role="dialog" aria-modal="true" aria-label="Touches">
+    <div class="panel panelSm">
+      <div class="panelHeader">
+        <h2>Touches</h2>
+        <button class="btn btnSmall btn--ghost" id="btnCloseRebind" type="button">✕</button>
+      </div>
+      <div class="main">
+        <div class="smallNote" style="margin-bottom:10px">
+          Clique sur “Changer”, puis appuie sur la touche. (Escape est réservé au menu.)
         </div>
-
-        <div class="content">
-          <!-- Reprendre -->
-          <div class="page" data-page="resume">
-            <h2 class="sectionTitle">Reprendre</h2>
-            <div class="card">
-              <div class="row">
-                <div>
-                  <label>Astuce</label>
-                  <div class="tiny">
-                    Déplacement relatif caméra (ZQSD). Caméra: souris (glisser) / joystick droit.
-                    Sprint = Shift (rapide), Accroupi = Ctrl, Saut = Espace, Dash = Alt.
-                  </div>
-                </div>
-                <div>
-                  <label>Actions rapides</label>
-                  <div style="display:flex; gap:10px; flex-wrap:wrap;">
-                    <button id="btnResume" class="btn acc">Reprendre</button>
-                    <button id="btnTeleport" class="btn ghost">Téléporter au spawn</button>
-                    <button id="btnTogglePointer" class="btn ghost">Mode souris (PC)</button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Options -->
-          <div class="page" data-page="options" style="display:none;">
-            <h2 class="sectionTitle">Options</h2>
-
-            <div class="card">
-              <div style="display:flex; gap:10px; flex-wrap:wrap;">
-                <button class="btn ghost optTab" data-tab="gfx">Graphiques</button>
-                <button class="btn ghost optTab" data-tab="controls">Commandes</button>
-                <button class="btn ghost optTab" data-tab="audio">Audio</button>
-                <button class="btn ghost optTab" data-tab="gameplay">Jouabilité</button>
-              </div>
-              <div class="tiny" style="margin-top:10px;">
-                Tout est sauvegardé localement (navigateur). Les réglages “Auto” sont conseillés sur mobile.
-              </div>
-            </div>
-
-            <!-- GFX -->
-            <div class="card optPane" data-tab="gfx">
-              <div class="row">
-                <div>
-                  <label>Qualité</label>
-                  <select id="gfxQuality">
-                    <option value="auto">Auto</option>
-                    <option value="low">Basse</option>
-                    <option value="med">Moyenne</option>
-                    <option value="high">Haute</option>
-                  </select>
-                </div>
-                <div>
-                  <label>Ombres</label>
-                  <select id="gfxShadows">
-                    <option value="on">ON</option>
-                    <option value="off">OFF</option>
-                  </select>
-                </div>
-              </div>
-
-              <div class="row">
-                <div>
-                  <label>FOV caméra</label>
-                  <input id="gfxFov" type="range" min="55" max="85" step="1" />
-                  <div class="tiny">Ajuste le champ de vision (confort / vitesse ressentie).</div>
-                </div>
-                <div>
-                  <label>Render scale</label>
-                  <input id="gfxScale" type="range" min="0.7" max="1.25" step="0.01" />
-                  <div class="tiny">Baisse si ça lag (mobile), monte si ton PC est à l’aise.</div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Controls -->
-            <div class="card optPane" data-tab="controls" style="display:none;">
-              <div class="row">
-                <div>
-                  <label>Sensibilité caméra</label>
-                  <input id="ctlSense" type="range" min="0.4" max="2.2" step="0.01" />
-                </div>
-                <div>
-                  <label>Inverser Y</label>
-                  <select id="ctlInvertY">
-                    <option value="off">OFF</option>
-                    <option value="on">ON</option>
-                  </select>
-                </div>
-              </div>
-
-              <div class="card" style="margin-top:12px;">
-                <div class="tiny" style="margin-bottom:10px;">
-                  Personnalisation des touches: clique sur une touche, puis appuie sur la nouvelle.
-                  Échap annule. (Sur mobile, tu joues surtout joystick.)
-                </div>
-
-                <div id="keyList" class="kgrid"></div>
-
-                <div style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;">
-                  <button id="btnKeysReset" class="btn ghost">Réinitialiser</button>
-                  <button id="btnKeysClear2" class="btn ghost">Effacer secondaires</button>
-                </div>
-              </div>
-            </div>
-
-            <!-- Audio -->
-            <div class="card optPane" data-tab="audio" style="display:none;">
-              <div class="row">
-                <div>
-                  <label>Volume global</label>
-                  <input id="audMaster" type="range" min="0" max="1" step="0.01" />
-                </div>
-                <div>
-                  <label>Ambiance</label>
-                  <input id="audAmb" type="range" min="0" max="1" step="0.01" />
-                </div>
-              </div>
-              <div class="row">
-                <div>
-                  <label>Effets</label>
-                  <input id="audSfx" type="range" min="0" max="1" step="0.01" />
-                </div>
-                <div>
-                  <label>Voix</label>
-                  <input id="audVoice" type="range" min="0" max="1" step="0.01" />
-                </div>
-              </div>
-              <div class="tiny">Audio “réel” (sons + voix) sera branché plus tard. Pour l’instant on garde les réglages.</div>
-            </div>
-
-            <!-- Gameplay -->
-            <div class="card optPane" data-tab="gameplay" style="display:none;">
-              <div class="row">
-                <div>
-                  <label>Distance caméra</label>
-                  <input id="gpCamDist" type="range" min="2.2" max="6.5" step="0.05" />
-                </div>
-                <div>
-                  <label>Hauteur caméra</label>
-                  <input id="gpCamHeight" type="range" min="1.2" max="2.4" step="0.02" />
-                </div>
-              </div>
-
-              <div class="row">
-                <div>
-                  <label>Sprint</label>
-                  <select id="gpSprintMode">
-                    <option value="hold">Maintenir</option>
-                    <option value="toggle">Toggle</option>
-                  </select>
-                </div>
-                <div>
-                  <label>Joysticks (mobile)</label>
-                  <select id="gpJoyVisible">
-                    <option value="on">ON</option>
-                    <option value="off">OFF</option>
-                  </select>
-                </div>
-              </div>
-
-              <div class="tiny">
-                Dash = petit boost court (cooldown). Sprint est significatif (vitesse clairement plus élevée).
-              </div>
-            </div>
-          </div>
-
-          <!-- Skins -->
-          <div class="page" data-page="skins" style="display:none;">
-            <h2 class="sectionTitle">Skins</h2>
-            <div class="card">
-              <div class="row">
-                <div>
-                  <label>Modèle</label>
-                  <select id="skinModel"></select>
-                  <div class="tiny">Choisis un modèle (GLB si dispo), sinon placeholder propre.</div>
-                </div>
-                <div>
-                  <label>Taille</label>
-                  <input id="skinScale" type="range" min="0.85" max="1.25" step="0.01" />
-                  <div class="tiny">Reste raisonnable pour ne pas “casser” la caméra.</div>
-                </div>
-              </div>
-            </div>
-
-            <div class="card">
-              <div class="row">
-                <div>
-                  <label>Couleur cheveux</label>
-                  <input id="skinHair" type="range" min="0" max="360" step="1" />
-                </div>
-                <div>
-                  <label>Couleur yeux</label>
-                  <input id="skinEyes" type="range" min="0" max="360" step="1" />
-                </div>
-              </div>
-              <div class="tiny">Sur placeholder: fonctionne. Sur certains GLB: si des meshes “Hair/Eye” existent, on les recolore.</div>
-            </div>
-
-            <div class="card">
-              <div style="display:flex; gap:10px; flex-wrap:wrap;">
-                <button id="btnApplySkin" class="btn acc">Appliquer</button>
-                <button id="btnSkinReset" class="btn ghost">Réinitialiser</button>
-              </div>
-            </div>
-          </div>
-
-          <!-- Home -->
-          <div class="page" data-page="home" style="display:none;">
-            <h2 class="sectionTitle">Retour accueil</h2>
-            <div class="card">
-              <div class="tiny">
-                Tu vas quitter le Hub et revenir à l’accueil.
-              </div>
-              <div style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;">
-                <button id="btnHome" class="btn danger">Retour accueil</button>
-                <button id="btnStay" class="btn ghost">Rester</button>
-              </div>
-            </div>
-          </div>
-
-        </div><!-- content -->
-      </div><!-- panel -->
-    </div><!-- pauseWrap -->
-  </div><!-- overlay -->
-
-  <!-- Dépendances (globals) -->
-  <script src="three.min.js"></script>
-  <script src="GLTFLoader.js"></script>
-
-  <script>
-    /***********************
-     * Utilitaires + stockage
-     ************************/
-    const $ = (q)=>document.querySelector(q);
-    const $$ = (q)=>Array.from(document.querySelectorAll(q));
-
-    const LS_KEY = "hub3d_settings_v1";
-
-    const DEFAULTS = {
-      name: "Joueur",
-      gfx: { quality:"auto", shadows:"on", fov: 66, scale: 1.0 },
-      controls: { sens: 1.0, invertY:"on" },
-      audio: { master: 0.9, amb: 0.6, sfx: 0.8, voice: 0.8 },
-      gameplay: { camDist: 3.6, camHeight: 1.65, sprintMode:"hold", joyVisible:"on" },
-      keys: {
-        // 2 binds par action: primary + secondary
-        forward:  ["KeyW","ArrowUp"],
-        back:     ["KeyS","ArrowDown"],
-        left:     ["KeyA","ArrowLeft"],
-        right:    ["KeyD","ArrowRight"],
-        sprint:   ["ShiftLeft","ShiftRight"],
-        crouch:   ["ControlLeft","KeyC"],
-        jump:     ["Space",""],
-        dash:     ["AltLeft","AltRight"],
-        pause:    ["Escape",""],
-        toggleJoy:["KeyJ",""]
-      },
-      skin: { model:"humanoid_placeholder", scale: 1.0, hairHue: 0, eyeHue: 200 }
-    };
-
-    function loadSettings(){
-      try{
-        const raw = localStorage.getItem(LS_KEY);
-        if(!raw) return structuredClone(DEFAULTS);
-        const parsed = JSON.parse(raw);
-        // merge shallow + nested
-        const out = structuredClone(DEFAULTS);
-        deepMerge(out, parsed);
-
-        // migration AZERTY (ancien défaut KeyZ/KeyQ) -> codes physiques KeyW/KeyA
-        try{
-          const k = out.keys || {};
-          const looksOldDefault =
-            (k.forward?.[0]==="KeyZ" && k.forward?.[1]==="KeyW") &&
-            (k.left?.[0]==="KeyQ" && k.left?.[1]==="ArrowLeft") &&
-            (k.right?.[0]==="KeyD" && k.right?.[1]==="ArrowRight") &&
-            (k.back?.[0]==="KeyS" && k.back?.[1]==="ArrowDown");
-          if(looksOldDefault){
-            out.keys.forward = ["KeyW","ArrowUp"];
-            out.keys.left = ["KeyA","ArrowLeft"];
-          }
-        }catch(e){}
-
-        return out;
-      }catch(e){
-        return structuredClone(DEFAULTS);
-      }
-    }
-    function deepMerge(dst, src){
-      for(const k in src){
-        if(src[k] && typeof src[k]==="object" && !Array.isArray(src[k])){
-          if(!dst[k] || typeof dst[k]!=="object") dst[k]={};
-          deepMerge(dst[k], src[k]);
-        }else{
-          dst[k]=src[k];
-        }
-      }
-    }
-    function saveSettings(){
-      localStorage.setItem(LS_KEY, JSON.stringify(SET));
-    }
-
-    function clamp(v,a,b){ return Math.max(a, Math.min(b, v)); }
-    function lerp(a,b,t){ return a + (b-a)*t; }
-
-    // HSV->RGB (simple) pour teinter cheveux/yeux
-    function hsvToRgb(h,s,v){
-      h = ((h%360)+360)%360;
-      const c = v*s;
-      const x = c*(1-Math.abs(((h/60)%2)-1));
-      const m = v-c;
-      let r=0,g=0,b=0;
-      if(h<60){ r=c; g=x; b=0; }
-      else if(h<120){ r=x; g=c; b=0; }
-      else if(h<180){ r=0; g=c; b=x; }
-      else if(h<240){ r=0; g=x; b=c; }
-      else if(h<300){ r=x; g=0; b=c; }
-      else { r=c; g=0; b=x; }
-      return { r:r+m, g:g+m, b:b+m };
-    }
-
-    function toast(msg, ms=1600){
-      const t = $("#toast");
-      t.textContent = msg;
-      t.classList.add("show");
-      clearTimeout(toast._tm);
-      toast._tm = setTimeout(()=>t.classList.remove("show"), ms);
-    }
-
-    /***********************
-     * Lecture URL (pseudo)
-     ************************/
-    const params = new URLSearchParams(location.search);
-    const WS_DEFAULT = "wss://loup-garou-ws.onrender.com/ws";
-    const WS_URL = (params.get("ws")||"").trim() || localStorage.getItem("lg_ws_url") || WS_DEFAULT;
-    const urlName = (params.get("name")||"").trim();
-    const SET = loadSettings();
-    if(urlName) SET.name = urlName;
-    $("#playerName").textContent = SET.name || "Joueur";
-    saveSettings();
-
-    /***********************
-     * Input & Keybinds
-     ************************/
-    const input = {
-      keysDown: new Set(),
-      // état logique
-      moveX: 0,
-      moveZ: 0,
-      lookX: 0,
-      lookY: 0,
-      jump: false,
-      dash: false,
-      crouch: false,
-      sprint: false,
-    };
-
-    const ACTIONS = [
-      ["forward",  "Avancer"],
-      ["back",     "Reculer"],
-      ["left",     "Gauche"],
-      ["right",    "Droite"],
-      ["sprint",   "Sprint"],
-      ["crouch",   "Accroupi"],
-      ["jump",     "Saut"],
-      ["dash",     "Dash"],
-      ["pause",    "Pause"],
-      ["toggleJoy","Joysticks"]
-    ];
-
-    function keyName(code){
-      if(!code) return "—";
-      // rendu plus lisible
-      const map = {
-        "KeyZ":"W","KeyQ":"A","KeyS":"S","KeyD":"D","KeyW":"Z","KeyA":"Q","KeyC":"C","KeyJ":"J",
-        "Space":"Espace","Escape":"Échap",
-        "ShiftLeft":"Shift","ShiftRight":"Shift",
-        "ControlLeft":"Ctrl","ControlRight":"Ctrl",
-        "AltLeft":"Alt","AltRight":"Alt",
-        "ArrowUp":"↑","ArrowDown":"↓","ArrowLeft":"←","ArrowRight":"→"
-      };
-      return map[code] || code;
-    }
-    function isActionPressed(action){
-      const binds = SET.keys[action] || [];
-      return binds.some(c => c && input.keysDown.has(c));
-    }
-
-    // remap UI
-    let remap = null; // {action, slot}
-    function buildKeyUI(){
-      const wrap = $("#keyList");
-      wrap.innerHTML = "";
-      for(const [act,label] of ACTIONS){
-        const a = document.createElement("div");
-        a.className = "act";
-        a.textContent = label;
-
-        const k1 = document.createElement("div");
-        k1.className = "keycap";
-        k1.textContent = keyName(SET.keys[act]?.[0] || "");
-        k1.title = "Clique pour changer (primary)";
-
-        const k2 = document.createElement("div");
-        k2.className = "keycap";
-        k2.textContent = keyName(SET.keys[act]?.[1] || "");
-        k2.title = "Clique pour changer (secondary)";
-
-        k1.addEventListener("click", ()=>{
-          remap = { action: act, slot: 0 };
-          k1.classList.add("wait");
-          toast("Appuie sur une touche… (Échap annule)");
-        });
-        k2.addEventListener("click", ()=>{
-          remap = { action: act, slot: 1 };
-          k2.classList.add("wait");
-          toast("Appuie sur une touche… (Échap annule)");
-        });
-
-        wrap.appendChild(a);
-        wrap.appendChild(k1);
-        wrap.appendChild(k2);
-      }
-    }
-
-    window.addEventListener("keydown", (e)=>{
-      // remap en pause
-      if(remap){
-        e.preventDefault();
-        e.stopPropagation();
-        if(e.code === "Escape"){
-          remap = null;
-          buildKeyUI();
-          toast("Annulé");
-          return;
-        }
-        // refuse quelques touches “dangereuses”
-        const forbidden = ["F5","F11"];
-        if(forbidden.includes(e.code)) return;
-
-        // assign + dédoublonnage simple
-        const {action, slot} = remap;
-        if(!SET.keys[action]) SET.keys[action] = ["",""];
-        SET.keys[action][slot] = e.code;
-
-        // évite doublon exact sur la même action
-        if(SET.keys[action][0] && SET.keys[action][0] === SET.keys[action][1]){
-          if(slot === 0) SET.keys[action][1] = "";
-          else SET.keys[action][0] = "";
-        }
-        remap = null;
-        saveSettings();
-        buildKeyUI();
-        toast("Touche enregistrée");
-        return;
-      }
-
-      input.keysDown.add(e.code);
-
-      // pause global (même hors focus canvas)
-      if(e.code === (SET.keys.pause?.[0] || "Escape") || e.code === (SET.keys.pause?.[1] || "")){
-        togglePause(true);
-      }
-      // toggle joystick
-      if(e.code === (SET.keys.toggleJoy?.[0] || "KeyJ") || e.code === (SET.keys.toggleJoy?.[1] || "")){
-        toggleJoysticks();
-      }
-    });
-
-    window.addEventListener("keyup", (e)=>{
-      input.keysDown.delete(e.code);
-    });
-
-    /***********************
-     * Three.js setup
-     ************************/
-    if(!window.THREE){
-      alert("THREE introuvable. Vérifie three.min.js à côté de ce fichier.");
-    }
-
-    const renderer = new THREE.WebGLRenderer({ antialias:true });
-    renderer.setSize(innerWidth, innerHeight);
-    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-    renderer.outputColorSpace = THREE.SRGBColorSpace;
-    renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    document.body.appendChild(renderer.domElement);
-
-    const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x07090d);
-
-    const camera = new THREE.PerspectiveCamera(SET.gfx.fov, innerWidth/innerHeight, 0.05, 900);
-    camera.position.set(0, 1.7, 3.6);
-
-    // lights
-    const hemi = new THREE.HemisphereLight(0xbfd7ff, 0x0b0d12, 0.80);
-    scene.add(hemi);
-
-    const sun = new THREE.DirectionalLight(0xffffff, 1.05);
-    sun.position.set(10, 16, 8);
-    sun.castShadow = true;
-    sun.shadow.mapSize.set(1024, 1024);
-    sun.shadow.camera.near = 1;
-    sun.shadow.camera.far  = 80;
-    sun.shadow.camera.left = -22;
-    sun.shadow.camera.right= 22;
-    sun.shadow.camera.top  = 22;
-    sun.shadow.camera.bottom = -22;
-    scene.add(sun);
-
-    // ground (texture si dispo)
-    const groundGeo = new THREE.PlaneGeometry(220, 220, 1, 1);
-    const groundMat = new THREE.MeshStandardMaterial({ color: 0x3a4452, roughness: 0.95, metalness: 0.0 });
-    const ground = new THREE.Mesh(groundGeo, groundMat);
-    ground.rotation.x = -Math.PI/2;
-    ground.receiveShadow = true;
-    scene.add(ground);
-
-    (function tryGroundTextures(){
-      const tl = new THREE.TextureLoader();
-      const base = "assets/textures/ground/";
-      const albedo = base + "albedo.jpg";
-      const normal = base + "normal.jpg";
-      const rough  = base + "roughness.jpg";
-      const ao     = base + "ao.jpg";
-
-      function ok(tex){
-        tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-        tex.repeat.set(14,14);
-        tex.colorSpace = THREE.SRGBColorSpace;
-        return tex;
-      }
-      // albedo
-      tl.load(albedo, (t)=>{
-        groundMat.map = ok(t);
-        groundMat.needsUpdate = true;
-      }, undefined, ()=>{});
-      // normal
-      tl.load(normal, (t)=>{
-        t.wrapS = t.wrapT = THREE.RepeatWrapping;
-        t.repeat.set(14,14);
-        groundMat.normalMap = t;
-        groundMat.normalScale.set(0.75,0.75);
-        groundMat.needsUpdate = true;
-      }, undefined, ()=>{});
-      // roughness
-      tl.load(rough, (t)=>{
-        t.wrapS = t.wrapT = THREE.RepeatWrapping;
-        t.repeat.set(14,14);
-        groundMat.roughnessMap = t;
-        groundMat.needsUpdate = true;
-      }, undefined, ()=>{});
-      // ao
-      tl.load(ao, (t)=>{
-        t.wrapS = t.wrapT = THREE.RepeatWrapping;
-        t.repeat.set(14,14);
-        groundMat.aoMap = t;
-        groundMat.aoMapIntensity = 0.65;
-        // note: aoMap nécessite uv2; on le met si possible
-        if(groundGeo.attributes.uv){
-          groundGeo.setAttribute("uv2", groundGeo.attributes.uv);
-        }
-        groundMat.needsUpdate = true;
-      }, undefined, ()=>{});
-    })();
-
-    // quelques POI simples (à embellir plus tard)
-    function addPOI(x,z, sx=2, sy=2, sz=2, c=0x2b3340){
-      const m = new THREE.MeshStandardMaterial({ color:c, roughness:0.9 });
-      const b = new THREE.Mesh(new THREE.BoxGeometry(sx,sy,sz), m);
-      b.position.set(x, sy/2, z);
-      b.castShadow = true;
-      b.receiveShadow = true;
-      scene.add(b);
-    }
-    addPOI(6, 4, 3, 3, 2, 0x242b36);
-    addPOI(-7, -2, 4, 2.5, 4, 0x1f2430);
-    addPOI(0, -10, 8, 1.2, 3.6, 0x202634);
-
-    /***********************
-     * Avatar (placeholder + GLB option)
-     ************************/
-    const AVATARS = [
-      { id:"humanoid_placeholder", label:"Humanoïde (placeholder)", type:"placeholder" },
-      { id:"fox_glb", label:"Fox (GLB)", type:"glb", url:"assets/models/test/Fox.glb" }
-    ];
-
-    let avatarRoot = new THREE.Group();
-    avatarRoot.name = "AvatarRoot";
-    scene.add(avatarRoot);
-
-    // pivot caméra attaché à l’avatar
-    const camPivot = new THREE.Object3D();
-    camPivot.position.set(0, SET.gameplay.camHeight, 0);
-    avatarRoot.add(camPivot);
-
-    // placeholders materials (cheveux/yeux)
-    const matBody = new THREE.MeshStandardMaterial({ color: 0x7c5cff, roughness:0.75 });
-    const matSkin = new THREE.MeshStandardMaterial({ color: 0xd7c2a4, roughness:0.9 });
-    const matHair = new THREE.MeshStandardMaterial({ color: 0x222222, roughness:0.95 });
-    const matEyes = new THREE.MeshStandardMaterial({ color: 0x3aa0ff, roughness:0.35, metalness:0.05 });
-
-    function buildHumanoidPlaceholder(){
-      const g = new THREE.Group();
-      g.name = "HumanoidPlaceholder";
-
-      const torso = new THREE.Mesh(new THREE.CapsuleGeometry(0.28, 0.62, 8, 16), matBody);
-      torso.castShadow = true;
-      torso.position.set(0, 0.95, 0);
-      g.add(torso);
-
-      const head = new THREE.Mesh(new THREE.SphereGeometry(0.20, 18, 14), matSkin);
-      head.castShadow = true;
-      head.position.set(0, 1.45, 0);
-      head.name = "Head";
-      g.add(head);
-
-      const hair = new THREE.Mesh(new THREE.SphereGeometry(0.205, 18, 14, 0, Math.PI*2, 0, Math.PI*0.65), matHair);
-      hair.castShadow = true;
-      hair.position.set(0, 1.52, 0);
-      hair.name = "Hair";
-      g.add(hair);
-
-      const eyeL = new THREE.Mesh(new THREE.SphereGeometry(0.03, 10, 8), matEyes);
-      const eyeR = eyeL.clone();
-      eyeL.position.set(-0.07, 1.46, 0.17);
-      eyeR.position.set( 0.07, 1.46, 0.17);
-      eyeL.name = "Eye"; eyeR.name = "Eye";
-      g.add(eyeL, eyeR);
-
-      const nose = new THREE.Mesh(new THREE.SphereGeometry(0.02, 10, 8), matSkin);
-      nose.position.set(0, 1.41, 0.19);
-      nose.name = "Nose";
-      g.add(nose);
-
-      function limb(x,y,z, rx, rz){
-        const m = new THREE.Mesh(new THREE.CapsuleGeometry(0.08, 0.38, 8, 12), matBody);
-        m.castShadow = true;
-        m.position.set(x,y,z);
-        m.rotation.x = rx || 0;
-        m.rotation.z = rz || 0;
-        return m;
-      }
-      // bras
-      g.add(limb(-0.35, 1.05, 0, 0,  0.2));
-      g.add(limb( 0.35, 1.05, 0, 0, -0.2));
-
-      // jambes
-      const legL = new THREE.Mesh(new THREE.CapsuleGeometry(0.09, 0.52, 8, 12), matBody);
-      const legR = legL.clone();
-      legL.castShadow = legR.castShadow = true;
-      legL.position.set(-0.14, 0.45, 0);
-      legR.position.set( 0.14, 0.45, 0);
-      g.add(legL, legR);
-
-      // pieds
-      const footGeo = new THREE.BoxGeometry(0.12, 0.06, 0.22);
-      const footMat = new THREE.MeshStandardMaterial({ color:0x141820, roughness:0.9 });
-      const fL = new THREE.Mesh(footGeo, footMat);
-      const fR = new THREE.Mesh(footGeo, footMat);
-      fL.castShadow = fR.castShadow = true;
-      fL.position.set(-0.14, 0.12, 0.06);
-      fR.position.set( 0.14, 0.12, 0.06);
-      g.add(fL, fR);
-
-      return g;
-    }
-
-    let gltfLoader = null;
-    function ensureLoader(){
-      if(gltfLoader) return gltfLoader;
-      if(!THREE.GLTFLoader){
-        toast("GLTFLoader.js introuvable");
-        return null;
-      }
-      gltfLoader = new THREE.GLTFLoader();
-      return gltfLoader;
-    }
-
-    let currentAvatar = null;
-    let currentMixer = null;
-    function clearAvatar(){
-      if(currentMixer){ currentMixer.stopAllAction(); currentMixer = null; }
-      if(currentAvatar){
-        avatarRoot.remove(currentAvatar);
-        currentAvatar.traverse(o=>{
-          if(o.isMesh){
-            o.geometry?.dispose?.();
-            if(Array.isArray(o.material)) o.material.forEach(m=>m.dispose?.());
-            else o.material?.dispose?.();
-          }
-        });
-        currentAvatar = null;
-      }
-    }
-
-    function applyHairEyesToModel(root){
-      // recolore “Hair” / “Eye” si trouvés
-      const hairRGB = hsvToRgb(SET.skin.hairHue, 0.55, 0.25);
-      const eyeRGB  = hsvToRgb(SET.skin.eyeHue,  0.75, 0.85);
-
-      root.traverse(o=>{
-        if(!o.isMesh) return;
-        const n = (o.name||"").toLowerCase();
-        const m = o.material;
-        if(!m) return;
-
-        // helper: setColor
-        function setCol(mat, rgb){
-          if(!mat.color) return;
-          mat.color.setRGB(rgb.r, rgb.g, rgb.b);
-          mat.needsUpdate = true;
-        }
-
-        if(n.includes("hair")){
-          if(Array.isArray(m)) m.forEach(mm=>setCol(mm, hairRGB));
-          else setCol(m, hairRGB);
-        }
-        if(n.includes("eye")){
-          if(Array.isArray(m)) m.forEach(mm=>setCol(mm, eyeRGB));
-          else setCol(m, eyeRGB);
-        }
-      });
-
-      // placeholder mats
-      matHair.color.setRGB(hairRGB.r, hairRGB.g, hairRGB.b);
-      matEyes.color.setRGB(eyeRGB.r, eyeRGB.g, eyeRGB.b);
-    }
-
-    async function setAvatarModel(modelId){
-      const def = AVATARS.find(a=>a.id===modelId) || AVATARS[0];
-      clearAvatar();
-
-      if(def.type === "placeholder"){
-        currentAvatar = buildHumanoidPlaceholder();
-        currentAvatar.traverse(o=>{
-          if(o.isMesh){
-            o.castShadow = true;
-            o.receiveShadow = false;
-          }
-        });
-        avatarRoot.add(currentAvatar);
-        applyHairEyesToModel(currentAvatar);
-        setAvatarScale(SET.skin.scale);
-        toast("Skin chargé: Humanoïde");
-        return;
-      }
-
-      if(def.type === "glb"){
-        const L = ensureLoader();
-        if(!L){
-          currentAvatar = buildHumanoidPlaceholder();
-          avatarRoot.add(currentAvatar);
-          applyHairEyesToModel(currentAvatar);
-          setAvatarScale(SET.skin.scale);
-          return;
-        }
-        toast("Chargement du GLB…");
-        L.load(def.url, (gltf)=>{
-          currentAvatar = gltf.scene || gltf.scenes?.[0];
-          if(!currentAvatar){
-            toast("GLB invalide, fallback");
-            currentAvatar = buildHumanoidPlaceholder();
-            avatarRoot.add(currentAvatar);
-            applyHairEyesToModel(currentAvatar);
-            setAvatarScale(SET.skin.scale);
-            return;
-          }
-          currentAvatar.traverse(o=>{
-            if(o.isMesh){
-              o.castShadow = true;
-              o.receiveShadow = true;
-              // meilleure compat sRGB
-              if(o.material && o.material.map){
-                o.material.map.colorSpace = THREE.SRGBColorSpace;
-              }
-            }
-          });
-
-          // recentrer au sol
-          const box = new THREE.Box3().setFromObject(currentAvatar);
-          const size = new THREE.Vector3(); box.getSize(size);
-          const center = new THREE.Vector3(); box.getCenter(center);
-          currentAvatar.position.x -= center.x;
-          currentAvatar.position.z -= center.z;
-          currentAvatar.position.y -= box.min.y; // au sol
-
-          // auto-normalisation taille (Fox.glb est souvent énorme)
-          // Objectif: ~1.65m de haut (caméra cohérente) puis scale user via SET.skin.scale.
-          {
-            const desiredH = 1.65;
-            let b2 = new THREE.Box3().setFromObject(currentAvatar);
-            const s2 = new THREE.Vector3(); b2.getSize(s2);
-            if(s2.y > 1e-4){
-              const auto = desiredH / s2.y;
-              currentAvatar.scale.setScalar(auto);
-              // réaligner après scaling
-              b2 = new THREE.Box3().setFromObject(currentAvatar);
-              const c2 = new THREE.Vector3(); b2.getCenter(c2);
-              currentAvatar.position.x -= c2.x;
-              currentAvatar.position.z -= c2.z;
-              currentAvatar.position.y -= b2.min.y;
-            }
-          }
-
-          avatarRoot.add(currentAvatar);
-
-          // animations (si dispo)
-          if(gltf.animations && gltf.animations.length){
-            currentMixer = new THREE.AnimationMixer(currentAvatar);
-            const clip = gltf.animations[0];
-            currentMixer.clipAction(clip).play();
-          }
-
-          applyHairEyesToModel(currentAvatar);
-          setAvatarScale(SET.skin.scale);
-          toast("Skin chargé: Fox (GLB)");
-        }, undefined, ()=>{
-          toast("Impossible de charger le GLB (404?)");
-          currentAvatar = buildHumanoidPlaceholder();
-          avatarRoot.add(currentAvatar);
-          applyHairEyesToModel(currentAvatar);
-          setAvatarScale(SET.skin.scale);
-        });
-      }
-    }
-
-    function setAvatarScale(s){
-      SET.skin.scale = s;
-      avatarRoot.scale.setScalar(s);
-      saveSettings();
-    }
-
-
-    /***********************
-     * Multiplayer (Hub)
-     * - synchro position/orientation (sans gameplay)
-     * - affichage des autres joueurs dans la scène
-     ************************/
-    const NET = {
-      ws: null,
-      id: null,
-      connected: false,
-      room: "hub",
-      remotes: new Map(), // id -> remote
-      sendHz: 15,
-      acc: 0,
-      wsUrl: WS_URL,
-    };
-
-    const _glbPrepared = new Map(); // url -> Promise<Object3D>
-
-    function netOnlineCount(){
-      const el = $("#onlineCount");
-      if(!el) return;
-      if(!NET.connected) { el.textContent = "Hors-ligne"; return; }
-      el.textContent = `En ligne: ${1 + NET.remotes.size}`;
-    }
-
-    function netSend(obj){
-      if(!NET.ws || NET.ws.readyState !== 1) return;
-      NET.ws.send(JSON.stringify(obj));
-    }
-
-    function cloneMaterialsDeep(obj){
-      obj.traverse(o=>{
-        if(!o.isMesh) return;
-        const m = o.material;
-        if(!m) return;
-        if(Array.isArray(m)) o.material = m.map(mm=>mm.clone());
-        else o.material = m.clone();
-      });
-      return obj;
-    }
-
-    function netLerpAngle(a,b,t){
-      const da = ((b - a + Math.PI) % (Math.PI*2)) - Math.PI;
-      return a + da * t;
-    }
-
-    function netCenterGround(obj){
-      const box = new THREE.Box3().setFromObject(obj);
-      const center = new THREE.Vector3(); box.getCenter(center);
-      obj.position.x -= center.x;
-      obj.position.z -= center.z;
-      obj.position.y -= box.min.y;
-      return box;
-    }
-
-    function netNormalizeToHeight(obj, desiredH=1.65){
-      let box = netCenterGround(obj);
-      const size = new THREE.Vector3(); box.getSize(size);
-      if(size.y > 1e-4){
-        const auto = desiredH / size.y;
-        obj.scale.setScalar(auto);
-        netCenterGround(obj); // réaligner après scaling
-      }
-    }
-
-    async function netGetPreparedModel(def){
-      if(def.type === "placeholder"){
-        const m = buildHumanoidPlaceholder();
-        cloneMaterialsDeep(m);
-        // petit tint pour différencier les joueurs
-        const hue = (Math.random()*360)|0;
-        const col = new THREE.Color(`hsl(${hue}, 55%, 55%)`);
-        m.traverse(o=>{
-          if(!o.isMesh) return;
-          if(!o.material || !o.material.color) return;
-          // tint seulement sur le corps (capsule)
-          if((o.geometry && o.geometry.type && o.geometry.type.includes("Capsule")) || (o.name||"").toLowerCase().includes("torso")){
-            o.material.color.copy(col);
-          }
-        });
-        return m;
-      }
-
-      if(def.type === "glb"){
-        const url = def.url;
-        if(!_glbPrepared.has(url)){
-          _glbPrepared.set(url, new Promise((resolve, reject)=>{
-            const L = ensureLoader();
-            if(!L) return reject(new Error("GLTFLoader indisponible"));
-            L.load(url, (gltf)=>{
-              let base = gltf.scene || gltf.scenes?.[0];
-              if(!base) return reject(new Error("GLB invalide"));
-              base = base.clone(true);
-              base.traverse(o=>{
-                if(o.isMesh){
-                  o.castShadow = true;
-                  o.receiveShadow = true;
-                  if(o.material && o.material.map){
-                    o.material.map.colorSpace = THREE.SRGBColorSpace;
-                  }
-                }
-              });
-              netNormalizeToHeight(base, 1.65);
-              resolve(base);
-            }, undefined, (err)=>reject(err));
-          }));
-        }
-        const base = await _glbPrepared.get(url);
-        const inst = cloneMaterialsDeep(base.clone(true));
-        return inst;
-      }
-
-      const fb = buildHumanoidPlaceholder();
-      cloneMaterialsDeep(fb);
-      return fb;
-    }
-
-    async function netSpawnRemote(p){
-      if(!p || p.id == null) return;
-      if(p.id === NET.id) return;
-      if(NET.remotes.has(p.id)) return;
-
-      const root = new THREE.Group();
-      root.name = `Remote_${p.id}`;
-      const st = p.st || {};
-      root.position.set(st.x||0, st.y||0, st.z||0);
-      root.rotation.y = (typeof st.yaw === "number") ? st.yaw : 0;
-
-      const def = AVATARS.find(a=>a.id === (p.skin?.model||"")) || AVATARS[0];
-      let model;
-      try{
-        model = await netGetPreparedModel(def);
-      }catch(e){
-        model = buildHumanoidPlaceholder();
-        cloneMaterialsDeep(model);
-      }
-      root.add(model);
-
-      // scale user
-      const sc = Number(p.skin?.scale ?? 1.0);
-      root.scale.setScalar(sc);
-
-      scene.add(root);
-
-      const r = {
-        id: p.id,
-        name: p.name || "Joueur",
-        root,
-        targetPos: new THREE.Vector3(root.position.x, root.position.y, root.position.z),
-        targetYaw: root.rotation.y,
-        lastSeen: performance.now(),
-      };
-
-      NET.remotes.set(p.id, r);
-      netOnlineCount();
-      toast(`${r.name} a rejoint`, 1200);
-    }
-
-    function netDespawnRemote(id){
-      const r = NET.remotes.get(id);
-      if(!r) return;
-      r.root.removeFromParent();
-      NET.remotes.delete(id);
-      netOnlineCount();
-    }
-
-    function netHandle(msg){
-      if(!msg || typeof msg !== "object") return;
-
-      if(msg.t === "welcome"){
-        NET.id = msg.id;
-        return;
-      }
-
-      if(msg.t === "hub_snapshot"){
-        (msg.players || []).forEach(p=>netSpawnRemote(p));
-        netOnlineCount();
-        return;
-      }
-
-      if(msg.t === "hub_join"){
-        netSpawnRemote(msg.p);
-        return;
-      }
-
-      if(msg.t === "hub_leave"){
-        netDespawnRemote(msg.id);
-        return;
-      }
-
-      if(msg.t === "hub_state"){
-        const r = NET.remotes.get(msg.id);
-        if(!r) return;
-        const st = msg.st || {};
-        r.targetPos.set(st.x||0, st.y||0, st.z||0);
-        if(typeof st.yaw === "number") r.targetYaw = st.yaw;
-        r.lastSeen = performance.now();
-        return;
-      }
-
-      if(msg.t === "hub_skin"){
-        // re-spawn rapide (modèle/scale)
-        // Supporte 2 formats :
-        //  - nouveau: {t:"hub_skin", p:{id,name,skin,st}}
-        //  - ancien : {t:"hub_skin", id:<int>, skin:{...}}
-        const p = msg.p ? msg.p : { id: msg.id, skin: msg.skin };
-        if(p.id == null) return;
-        if(p.id === NET.id) return;
-
-        const old = NET.remotes.get(p.id);
-        const name = (p.name != null) ? p.name : (old ? old.name : "Joueur");
-        const st = old ? { x: old.targetPos.x, y: old.targetPos.y, z: old.targetPos.z, yaw: old.targetYaw } : (p.st||{});
-
-        netDespawnRemote(p.id);
-        netSpawnRemote({ ...p, name, st });
-        return;
-      }
-    }
-
-    function netConnect(){
-      try{
-        NET.ws = new WebSocket(NET.wsUrl);
-      }catch(e){
-        toast("WS invalide", 1800);
-        return;
-      }
-
-      NET.ws.onopen = ()=>{
-        NET.connected = true;
-        netOnlineCount();
-        toast("Connecté au Hub", 1000);
-        netSend({ t:"join", room:"hub", name: SET.name, skin: SET.skin, st:{ x: player.pos.x, y: player.pos.y, z: player.pos.z, yaw: player.yaw } });
-      };
-
-      NET.ws.onmessage = (ev)=>{
-        try{ netHandle(JSON.parse(ev.data)); }catch(e){}
-      };
-
-      NET.ws.onclose = ()=>{
-        NET.connected = false;
-        NET.id = null;
-        for(const id of Array.from(NET.remotes.keys())) netDespawnRemote(id);
-        netOnlineCount();
-        toast("Hub hors-ligne", 1400);
-      };
-    }
-
-    function netTick(dt, paused){
-      // interpolate remote always (même en pause)
-      const alpha = 1 - Math.pow(0.001, dt*10);
-      const now = performance.now();
-      for(const [id,r] of NET.remotes){
-        if(now - r.lastSeen > 15000){
-          netDespawnRemote(id);
-          continue;
-        }
-        r.root.position.lerp(r.targetPos, alpha);
-        r.root.rotation.y = netLerpAngle(r.root.rotation.y, r.targetYaw, alpha);
-      }
-
-      if(paused) return;
-      if(!NET.connected || !NET.ws || NET.ws.readyState !== 1 || NET.id == null) return;
-
-      NET.acc += dt;
-      const step = 1 / NET.sendHz;
-      if(NET.acc < step) return;
-      NET.acc = 0;
-
-      // état minimal
-      netSend({ t:"hub_state", st:{ x: player.pos.x, y: player.pos.y, z: player.pos.z, yaw: player.yaw } });
-    }
-
-    window.addEventListener("beforeunload", ()=>{
-      try{ netSend({ t:"leave" }); }catch(e){}
-    });
-
-    /***********************
-     * Controller + Camera (1A / 2A)
-     ************************/
-    // position et physique simple
-    const player = {
-      pos: new THREE.Vector3(0,0,0),
-      vel: new THREE.Vector3(0,0,0),
-      yaw: 0,   // direction du perso (radians)
-      onGround: true,
-      dashCd: 0,
-      sprintToggle: false,
-      crouch: false
-    };
-
-    // ----------------------------
-    // Spawn: éviter que tous les joueurs apparaissent au même endroit (0,0,0)
-    // => réduit le "clip" caméra dans les autres skins (ex: Fox) au spawn.
-    const HUB_SPAWNS = [
-      new THREE.Vector3( 0,0, 8),
-      new THREE.Vector3( 8,0, 0),
-      new THREE.Vector3( 0,0,-8),
-      new THREE.Vector3(-8,0, 0),
-      new THREE.Vector3( 6,0, 6),
-      new THREE.Vector3(-6,0, 6),
-      new THREE.Vector3(-6,0,-6),
-      new THREE.Vector3( 6,0,-6),
-    ];
-    function hashStr(s){
-      s = String(s||"");
-      let h = 2166136261;
-      for(let i=0;i<s.length;i++){
-        h ^= s.charCodeAt(i);
-        h = Math.imul(h, 16777619);
-      }
-      return (h>>>0);
-    }
-    // spawn déterministe par nom (pratique pour tests multi sans collisions)
-    {
-      const idx = hashStr(SET.name) % HUB_SPAWNS.length;
-      player.pos.copy(HUB_SPAWNS[idx]);
-      player.yaw = (idx / HUB_SPAWNS.length) * Math.PI * 2;
-    }
-
-
-    // camera orbit params
-    const camState = {
-      yaw: 0.0,
-      pitch: -0.18,
-      dist: SET.gameplay.camDist,
-      height: SET.gameplay.camHeight,
-      smoothPos: new THREE.Vector3(),
-      smoothLook: new THREE.Vector3(),
-      pointerLocked: false
-    };
-
-    function updateCamera(dt){
-      camState.dist = SET.gameplay.camDist;
-      camState.height = SET.gameplay.camHeight;
-
-      // pivot attaché avatar
-      camPivot.position.y = camState.height;
-
-      // position cible (pivot monde)
-      const pivotWorld = new THREE.Vector3();
-      camPivot.getWorldPosition(pivotWorld);
-
-      // calcul orbit
-      const cp = clamp(camState.pitch, -0.25, 1.52);
-      camState.pitch = cp;
-
-      const cy = camState.yaw + Math.PI;
-      const offset = new THREE.Vector3(
-        Math.sin(cy) * Math.cos(cp),
-        Math.sin(cp),
-        Math.cos(cy) * Math.cos(cp)
-      ).multiplyScalar(camState.dist);
-
-      // caméra derrière: on recule dans la direction orbit
-      const desiredPos = pivotWorld.clone().add(offset);
-      camState.smoothPos.lerp(desiredPos, 1 - Math.pow(0.0008, dt)); // smoothing stable
-
-      // lookAt pivot
-      camState.smoothLook.lerp(pivotWorld, 1 - Math.pow(0.0008, dt));
-
-      camera.position.copy(camState.smoothPos);
-      camera.lookAt(camState.smoothLook);
-    }
-
-    // mouvement relatif caméra (2A)
-    function updatePlayer(dt){
-      // actions
-      const f = isActionPressed("forward");
-      const b = isActionPressed("back");
-      const l = isActionPressed("left");
-      const r = isActionPressed("right");
-
-      // sprint hold/toggle
-      let sprint = isActionPressed("sprint");
-      if(SET.gameplay.sprintMode === "toggle"){
-        if(sprint && !updatePlayer._sprintLatch){
-          player.sprintToggle = !player.sprintToggle;
-        }
-        updatePlayer._sprintLatch = sprint;
-        sprint = player.sprintToggle;
-      }
-
-      const crouch = isActionPressed("crouch");
-      const jump = isActionPressed("jump");
-      const dash = isActionPressed("dash");
-
-      // joystick influence
-      let mx = input.moveX;
-      let mz = input.moveZ;
-
-      // clavier
-      let kx = (r?1:0) - (l?1:0);
-      let kz = (f?1:0) - (b?1:0);
-
-      // combine (joystick + clavier)
-      let x = kx + mx;
-      let z = kz + mz;
-
-      // normalize
-      const len = Math.hypot(x,z);
-      if(len > 1e-3){
-        x /= Math.max(1, len);
-        z /= Math.max(1, len);
-      } else {
-        x = 0; z = 0;
-      }
-
-      // direction relative camera yaw (projection sol)
-      const yaw = camState.yaw;
-      const forward = new THREE.Vector3(Math.sin(yaw), 0, Math.cos(yaw));
-      const right   = new THREE.Vector3(Math.sin(yaw + Math.PI/2), 0, Math.cos(yaw + Math.PI/2));
-      const wishDir = new THREE.Vector3()
-        .addScaledVector(right, x)
-        .addScaledVector(forward, z);
-
-      if(wishDir.lengthSq() > 0.0001){
-        wishDir.normalize();
-        // orienter le perso vers la direction de marche
-        player.yaw = Math.atan2(wishDir.x, wishDir.z);
-        avatarRoot.rotation.y = player.yaw;
-      }
-
-      // vitesses
-      let base = 4.2;
-      if(sprint) base = 7.6;          // significatif
-      if(crouch) base *= 0.55;
-
-      // dash
-      if(player.dashCd > 0) player.dashCd -= dt;
-      const wantDash = (dash || input.dash) && player.dashCd <= 0 && wishDir.lengthSq() > 0.0001;
-      if(wantDash){
-        player.vel.addScaledVector(wishDir, 8.5); // boost court
-        player.dashCd = 0.9;
-        input.dash = false;
-      }
-
-      // accélération / friction
-      const accel = 18.0;
-      const friction = 10.0;
-
-      // target vel on XZ
-      const target = wishDir.clone().multiplyScalar(base);
-      const vxz = new THREE.Vector3(player.vel.x, 0, player.vel.z);
-
-      // approach target
-      vxz.lerp(target, 1 - Math.pow(0.001, accel*dt));
-      // friction si pas d’input
-      if(wishDir.lengthSq() < 0.0001){
-        vxz.lerp(new THREE.Vector3(0,0,0), 1 - Math.pow(0.001, friction*dt));
-      }
-
-      player.vel.x = vxz.x;
-      player.vel.z = vxz.z;
-
-      // gravity + jump
-      const g = -18.5;
-      player.vel.y += g * dt;
-
-      if(player.onGround){
-        if(jump){
-          player.vel.y = 7.3;
-          player.onGround = false;
-        }else{
-          player.vel.y = Math.max(player.vel.y, -1.0);
-        }
-      }
-
-      // integrate
-      player.pos.addScaledVector(player.vel, dt);
-
-      // ground collide (y=0)
-      if(player.pos.y <= 0){
-        player.pos.y = 0;
-        player.vel.y = 0;
-        player.onGround = true;
-      }
-
-      // appliquer au modèle
-      avatarRoot.position.copy(player.pos);
-
-      // petit “crouch” visuel
-      const desiredScaleY = crouch ? 0.90 : 1.0;
-      avatarRoot.scale.y = lerp(avatarRoot.scale.y, desiredScaleY * SET.skin.scale, 1 - Math.pow(0.0008, dt));
-      avatarRoot.scale.x = SET.skin.scale;
-      avatarRoot.scale.z = SET.skin.scale;
-    }
-
-    /***********************
-     * Mouse + Touch camera
-     ************************/
-    let dragging = false;
-    let lastX=0, lastY=0;
-
-    function lookDelta(dx, dy){
-      const sens = SET.controls.sens;
-      const inv = (SET.controls.invertY === "on") ? -1 : 1;
-
-      camState.yaw   -= dx * 0.0023 * sens;
-      camState.pitch += dy * 0.0020 * sens * inv;
-      camState.pitch = clamp(camState.pitch, -0.25, 1.52);
-    }
-
-    renderer.domElement.addEventListener("mousedown", (e)=>{
-      if(isPaused()) return;
-      dragging = true;
-      lastX = e.clientX; lastY = e.clientY;
-    });
-    window.addEventListener("mouseup", ()=>dragging=false);
-    window.addEventListener("mousemove", (e)=>{
-      if(isPaused()) return;
-
-      if(camState.pointerLocked){
-        lookDelta(e.movementX, e.movementY);
-        return;
-      }
-      if(!dragging) return;
-      const dx = e.clientX - lastX;
-      const dy = e.clientY - lastY;
-      lastX = e.clientX; lastY = e.clientY;
-      lookDelta(dx, dy);
-    });
-
-    function setPointerLock(on){
-      if(on){
-        renderer.domElement.requestPointerLock?.();
-      }else{
-        document.exitPointerLock?.();
-      }
-    }
-    
-    // Auto-capture souris sur PC dès le premier déplacement (ZQSD / flèches)
-    const IS_DESKTOP = (matchMedia?.("(pointer:fine)")?.matches ?? true);
-
-    function isTypingTarget(el){
-      if(!el) return false;
-      const tag = (el.tagName||"").toLowerCase();
-      return tag === "input" || tag === "textarea" || el.isContentEditable;
-    }
-
-    window.addEventListener("keydown", (e)=>{
-      if(!IS_DESKTOP) return;
-      if(isPaused()) return;
-      if(isTypingTarget(document.activeElement)) return;
-      if(camState.pointerLocked) return;
-
-      const moveCodes = [
-        ...SET.keys.forward, ...SET.keys.back, ...SET.keys.left, ...SET.keys.right
-      ];
-      if(moveCodes.includes(e.code)){
-        setPointerLock(true);
-      }
-    }, { passive:true });
-
-document.addEventListener("pointerlockchange", ()=>{
-      camState.pointerLocked = (document.pointerLockElement === renderer.domElement);
-      toast(camState.pointerLocked ? "Mode souris: ON" : "Mode souris: OFF");
-    });
-
-    /***********************
-     * Mobile joysticks
-     ************************/
-    const joyLeft = $("#joyLeft");
-    const joyRight = $("#joyRight");
-
-    let joyVisible = (SET.gameplay.joyVisible === "on");
-    function refreshJoy(){
-      joyLeft.classList.toggle("show", joyVisible);
-      joyRight.classList.toggle("show", joyVisible);
-      $("#btnJoy").textContent = joyVisible ? "Joystick" : "Joystick";
-    }
-    refreshJoy();
-
-    function toggleJoysticks(){
-      joyVisible = !joyVisible;
-      SET.gameplay.joyVisible = joyVisible ? "on" : "off";
-      saveSettings();
-      refreshJoy();
-      toast(joyVisible ? "Joysticks: ON" : "Joysticks: OFF");
-    }
-
-    $("#btnJoy").addEventListener("click", toggleJoysticks);
-
-    function makeJoystick(el, onMove){
-      const stick = el.querySelector(".stick");
-      let active = false;
-      let pid = null;
-      let cx=0, cy=0;
-      const R = 62;
-
-      function setStick(x,y){
-        stick.style.transform = `translate(calc(-50% + ${x}px), calc(-50% + ${y}px))`;
-      }
-      function reset(){
-        setStick(0,0);
-        onMove(0,0);
-      }
-
-      el.addEventListener("pointerdown", (e)=>{
-        if(!joyVisible) return;
-        if(isPaused()) return;
-        active = true;
-        pid = e.pointerId;
-        el.setPointerCapture(pid);
-        const rect = el.getBoundingClientRect();
-        cx = rect.left + rect.width/2;
-        cy = rect.top + rect.height/2;
-        setStick(0,0);
-      });
-
-      el.addEventListener("pointermove", (e)=>{
-        if(!active || e.pointerId !== pid) return;
-        const dx = e.clientX - cx;
-        const dy = e.clientY - cy;
-        const len = Math.hypot(dx,dy);
-        const nx = (len>R) ? dx/len*R : dx;
-        const ny = (len>R) ? dy/len*R : dy;
-        setStick(nx, ny);
-        onMove(nx/R, ny/R);
-      });
-
-      el.addEventListener("pointerup", (e)=>{
-        if(e.pointerId !== pid) return;
-        active=false;
-        pid=null;
-        reset();
-      });
-      el.addEventListener("pointercancel", ()=>{
-        active=false; pid=null; reset();
-      });
-    }
-
-    makeJoystick(joyLeft, (x,y)=>{
-      // x: gauche/droite, y: haut/bas -> déplacement (z inversé)
-      input.moveX = x;
-      input.moveZ = -y;
-    });
-
-    makeJoystick(joyRight, (x,y)=>{
-      // caméra: x yaw, y pitch
-      if(Math.abs(x)<0.02 && Math.abs(y)<0.02) return;
-      const dx = x * 8.0; // vitesse
-      const dy = y * 8.0;
-      lookDelta(dx, dy);
-    });
-
-    /***********************
-     * Pause / UI navigation
-     ************************/
-    const overlay = $("#overlay");
-
-    function isPaused(){ return overlay.classList.contains("show"); }
-
-    function togglePause(forceOpen=null){
-      const open = (forceOpen===null) ? !isPaused() : !!forceOpen;
-      overlay.classList.toggle("show", open);
-      overlay.setAttribute("aria-hidden", open ? "false" : "true");
-
-      if(open){
-        dragging = false;
-        document.exitPointerLock?.();
-        // reset actions “one-shot”
-        input.dash = false;
-      }else{
-        // rien
-      }
-    }
-
-    $("#btnPause").addEventListener("click", ()=>togglePause(true));
-    $("#btnResume").addEventListener("click", ()=>togglePause(false));
-    $("#btnResumeSide").addEventListener("click", ()=>togglePause(false));
-    $("#btnStay").addEventListener("click", ()=>togglePause(false));
-    overlay.addEventListener("click", (e)=>{
-      // click en dehors du panel = rien (évite fermeture accidentelle sur mobile)
-      if(e.target === overlay) { /* no-op */ }
-    });
-
-    // pages
-    function setPage(page){
-      $$(".navBtn").forEach(b=>b.classList.toggle("active", b.dataset.page===page));
-      $$(".page").forEach(p=>{
-        p.style.display = (p.dataset.page===page) ? "" : "none";
-      });
-      if(page === "options"){
-        // focus tab courant (gfx)
-        setOptTab(currentOptTab);
-      }
-    }
-    $$(".navBtn").forEach(b=>b.addEventListener("click", ()=>setPage(b.dataset.page)));
-
-    // options tabs
-    let currentOptTab = "gfx";
-    function setOptTab(tab){
-      currentOptTab = tab;
-      $$(".optTab").forEach(t=>t.classList.toggle("acc", t.dataset.tab===tab));
-      $$(".optPane").forEach(p=>p.style.display = (p.dataset.tab===tab) ? "" : "none");
-    }
-    $$(".optTab").forEach(t=>t.addEventListener("click", ()=>setOptTab(t.dataset.tab)));
-
-    // home button
-    function goHome(){
-      // conserve name
-      const n = encodeURIComponent(SET.name || "");
-      location.href = "index.html" + (n ? `?name=${n}` : "");
-    }
-    $("#btnHome").addEventListener("click", goHome);
-    $("#btnHomeSide").addEventListener("click", goHome);
-
-    // teleport
-    $("#btnTeleport").addEventListener("click", ()=>{
-      player.pos.set(0,0,0);
-      player.vel.set(0,0,0);
-      toast("Téléporté au spawn");
-    });
-
-    // pointer lock toggle button
-    $("#btnTogglePointer").addEventListener("click", ()=>{
-      if(isPaused()) return;
-      setPointerLock(!camState.pointerLocked);
-    });
-
-    /***********************
-     * Settings binding UI
-     ************************/
-    // Graphiques
-    $("#gfxQuality").value = SET.gfx.quality;
-    $("#gfxShadows").value = SET.gfx.shadows;
-    $("#gfxFov").value = SET.gfx.fov;
-    $("#gfxScale").value = SET.gfx.scale;
-
-    $("#gfxQuality").addEventListener("change", (e)=>{ SET.gfx.quality = e.target.value; saveSettings(); applyGfx(); });
-    $("#gfxShadows").addEventListener("change", (e)=>{ SET.gfx.shadows = e.target.value; saveSettings(); applyGfx(); });
-    $("#gfxFov").addEventListener("input", (e)=>{ SET.gfx.fov = +e.target.value; saveSettings(); applyGfx(); });
-    $("#gfxScale").addEventListener("input", (e)=>{ SET.gfx.scale = +e.target.value; saveSettings(); applyGfx(); });
-
-    function applyGfx(){
-      camera.fov = SET.gfx.fov;
-      camera.updateProjectionMatrix();
-
-      // auto simple
-      let q = SET.gfx.quality;
-      if(q === "auto"){
-        const isMobile = matchMedia("(pointer:coarse)").matches || (Math.min(innerWidth, innerHeight) < 720);
-        q = isMobile ? "med" : "high";
-      }
-
-      // render scale
-      const scale = SET.gfx.scale;
-      renderer.setPixelRatio(Math.min(devicePixelRatio, 2) * scale);
-
-      // shadows
-      const shadows = (SET.gfx.shadows === "on");
-      renderer.shadowMap.enabled = shadows;
-      sun.castShadow = shadows;
-
-      // intensity per quality
-      if(q === "low"){
-        sun.intensity = 0.95;
-        sun.shadow.mapSize.set(512,512);
-      }else if(q === "med"){
-        sun.intensity = 1.02;
-        sun.shadow.mapSize.set(1024,1024);
-      }else{
-        sun.intensity = 1.05;
-        sun.shadow.mapSize.set(1536,1536);
-      }
-    }
-    applyGfx();
-
-    // Controls
-    $("#ctlSense").value = SET.controls.sens;
-    $("#ctlInvertY").value = SET.controls.invertY;
-    $("#ctlSense").addEventListener("input", (e)=>{ SET.controls.sens = +e.target.value; saveSettings(); });
-    $("#ctlInvertY").addEventListener("change", (e)=>{ SET.controls.invertY = e.target.value; saveSettings(); });
-
-    // Audio
-    $("#audMaster").value = SET.audio.master;
-    $("#audAmb").value = SET.audio.amb;
-    $("#audSfx").value = SET.audio.sfx;
-    $("#audVoice").value = SET.audio.voice;
-    $("#audMaster").addEventListener("input", (e)=>{ SET.audio.master = +e.target.value; saveSettings(); });
-    $("#audAmb").addEventListener("input", (e)=>{ SET.audio.amb = +e.target.value; saveSettings(); });
-    $("#audSfx").addEventListener("input", (e)=>{ SET.audio.sfx = +e.target.value; saveSettings(); });
-    $("#audVoice").addEventListener("input", (e)=>{ SET.audio.voice = +e.target.value; saveSettings(); });
-
-    // Gameplay
-    $("#gpCamDist").value = SET.gameplay.camDist;
-    $("#gpCamHeight").value = SET.gameplay.camHeight;
-    $("#gpSprintMode").value = SET.gameplay.sprintMode;
-    $("#gpJoyVisible").value = SET.gameplay.joyVisible;
-
-    $("#gpCamDist").addEventListener("input", (e)=>{ SET.gameplay.camDist = +e.target.value; saveSettings(); });
-    $("#gpCamHeight").addEventListener("input", (e)=>{ SET.gameplay.camHeight = +e.target.value; saveSettings(); });
-    $("#gpSprintMode").addEventListener("change", (e)=>{ SET.gameplay.sprintMode = e.target.value; saveSettings(); });
-    $("#gpJoyVisible").addEventListener("change", (e)=>{
-      SET.gameplay.joyVisible = e.target.value;
-      joyVisible = (SET.gameplay.joyVisible === "on");
-      saveSettings();
-      refreshJoy();
-    });
-
-    // Keys UI
-    buildKeyUI();
-    $("#btnKeysReset").addEventListener("click", ()=>{
-      SET.keys = structuredClone(DEFAULTS.keys);
-      remap = null;
-      saveSettings();
-      buildKeyUI();
-      toast("Touches réinitialisées");
-    });
-    $("#btnKeysClear2").addEventListener("click", ()=>{
-      for(const k in SET.keys){
-        SET.keys[k][1] = "";
-      }
-      saveSettings();
-      buildKeyUI();
-      toast("Secondaires effacées");
-    });
-
-    // Skins UI
-    function buildSkinList(){
-      const sel = $("#skinModel");
-      sel.innerHTML = "";
-      for(const a of AVATARS){
-        const o = document.createElement("option");
-        o.value = a.id;
-        o.textContent = a.label;
-        sel.appendChild(o);
-      }
-      sel.value = SET.skin.model;
-    }
-    buildSkinList();
-
-    $("#skinScale").value = SET.skin.scale;
-    $("#skinHair").value = SET.skin.hairHue;
-    $("#skinEyes").value = SET.skin.eyeHue;
-
-    $("#skinModel").addEventListener("change", (e)=>{ SET.skin.model = e.target.value; saveSettings(); });
-    $("#skinScale").addEventListener("input", (e)=>{ SET.skin.scale = +e.target.value; saveSettings(); });
-    $("#skinHair").addEventListener("input", (e)=>{ SET.skin.hairHue = +e.target.value; saveSettings(); });
-    $("#skinEyes").addEventListener("input", (e)=>{ SET.skin.eyeHue = +e.target.value; saveSettings(); });
-
-    $("#btnApplySkin").addEventListener("click", async ()=>{
-      await setAvatarModel(SET.skin.model);
-      applyHairEyesToModel(currentAvatar || avatarRoot);
-      setAvatarScale(SET.skin.scale);
-      // synchro skin sur le hub
-      if(NET.connected) netSend({ t:"hub_skin", skin: SET.skin });
-      toast("Skin appliqué");
-    });
-    $("#btnSkinReset").addEventListener("click", async ()=>{
-      SET.skin = structuredClone(DEFAULTS.skin);
-      saveSettings();
-      buildSkinList();
-      $("#skinScale").value = SET.skin.scale;
-      $("#skinHair").value = SET.skin.hairHue;
-      $("#skinEyes").value = SET.skin.eyeHue;
-      await setAvatarModel(SET.skin.model);
-      toast("Skin réinitialisé");
-    });
-
-    /***********************
-     * Resize
-     ************************/
-    window.addEventListener("resize", ()=>{
-      renderer.setSize(innerWidth, innerHeight);
-      camera.aspect = innerWidth/innerHeight;
-      camera.updateProjectionMatrix();
-    });
-
-    /***********************
-     * Boot avatar + main loop
-     ************************/
-    // init avatar
-    (async ()=>{
-      await setAvatarModel(SET.skin.model);
-      setAvatarScale(SET.skin.scale);
-      applyHairEyesToModel(currentAvatar || avatarRoot);
-      netConnect();
-    })();
-
-    const clock = new THREE.Clock();
-
-    function tick(){
-      const dt = Math.min(0.033, clock.getDelta());
-
-      const paused = isPaused();
-
-      // si pause: on freeze la simulation (mais on garde rendu)
-      if(!paused){
-        // camera input from keyboard (optionnel) – rien ici
-        updatePlayer(dt);
-        updateCamera(dt);
-
-        // animations
-        if(currentMixer) currentMixer.update(dt);
-      }
-
-      // réseau: remote interp + envoi état local
-      netTick(dt, paused);
-
-      renderer.render(scene, camera);
-      requestAnimationFrame(tick);
-    }
-    tick();
-
-    /***********************
-     * Pause by click outside? Non.
-     * Petite UX: ouvrir pause via bouton mobile déjà ok.
-     ************************/
-
-    // démarre avec joysticks si mobile
-    const autoMobile = matchMedia("(pointer:coarse)").matches;
-    if(autoMobile && SET.gameplay.joyVisible === "on"){
-      joyVisible = true;
-      refreshJoy();
-    }
-  </script>
+        <div id="rebindList"></div>
+      </div>
+      <div class="footerRow">
+        <button class="btn" id="btnResetBinds" type="button">Réinitialiser</button>
+        <button class="btn btn--primary" id="btnCloseRebind" type="button">Sauvegarder</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast">—</div>
+
+  <!-- Libs -->
+  <script src="./three.min.js"></script>
+  <script src="./GLTFLoader.js"></script>
+  <script src="./OrbitControls.js"></script>
+
+  <!-- Hub code (in hub_world.js) -->
+  <script src="./hub_world.js?v=2"></script>
 </body>
 </html>
