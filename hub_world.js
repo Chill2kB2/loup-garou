@@ -1,1033 +1,773 @@
-/* hub_world.js — Hub 3D (V4)
-   - HUD + menu pause cohérent
-   - Options précises (appliquées instantanément + sauvegarde)
-   - Pointer lock: mouvement souris = rotation caméra dans le même sens (gamer)
-   - Présence multi via WS (room "hub") + skins synchro temps réel
-*/
-
 (() => {
   "use strict";
 
-  /* ----------------------------- Config ----------------------------- */
-
-  const VERSION = "hub_v4";
-  const LS_SETTINGS_KEY = "lg_hub_settings_v4";
-  const LS_NAME_KEY = "lg_name";
-
-  const DEFAULT_WS = "wss://loup-garou-ws.onrender.com/ws";
-
-  const SKINS = [
-    {
-      id: "humanoid",
-      name: "Humanoïde",
-      desc: "Capsule simple (léger).",
-    },
-    {
-      id: "fox",
-      name: "Fox",
-      desc: "Modèle GLB (assets/models/test/Fox.glb).",
-    },
-  ];
-
-  const SETTINGS_DEFAULT = {
-    // Controls
-    sens: 0.25,
-    invertX: false,
-    invertY: false,
-    pointerLock: true,
-    camSmooth: 0.14, // 0..0.35
-
-    // Camera
-    camDist: 6.5,
-    camHeight: 1.15,
-    fov: 70,
-    lookH: 1.25,
-
-    // Graphics
-    quality: "med", // low/med/high
-    shadows: true,
-    pixelRatio: "auto", // auto/1/1.5/2
-
-    // Gameplay
-    speed: 3.6,
-    sprintMul: 1.55,
-    sprintToggle: false, // false=hold, true=toggle
-
-    // Network
-    sendHz: 12,
-    netLerp: 0.18,
-  };
-
-  /* ----------------------------- Utils ------------------------------ */
+  // ------------------------------------------------------------
+  // Helpers
+  // ------------------------------------------------------------
+  const $ = (id) => document.getElementById(id);
 
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   const lerp = (a, b, t) => a + (b - a) * t;
-  const now = () => performance.now();
 
-  function safeJsonParse(s, fallback) {
-    try { return JSON.parse(s); } catch { return fallback; }
+  const LS_KEY = "hubSettingsV5";
+
+  function safeJsonParse(s) {
+    try { return JSON.parse(s); } catch { return null; }
   }
 
-  function toast(msg, ms = 1800) {
-    const host = document.getElementById("toast");
-    if (!host) return;
-    const el = document.createElement("div");
-    el.className = "toastLine";
-    el.textContent = String(msg);
-    host.appendChild(el);
-    window.setTimeout(() => {
-      el.style.opacity = "0";
-      el.style.transition = "opacity 220ms ease";
-      window.setTimeout(() => el.remove(), 260);
-    }, ms);
+  function normalizeBindFromEvent(e) {
+    // We want AZERTY-friendly bindings: use e.key for characters.
+    // Space is special.
+    if (e.code === "Space") return "Space";
+    if (e.key && e.key.length === 1) return e.key.toLowerCase();
+    if (e.key) return e.key; // Escape, Shift, ArrowUp, etc.
+    return e.code || "";
   }
 
-  function getQuery() {
-    const u = new URL(window.location.href);
-    const q = {};
-    u.searchParams.forEach((v, k) => (q[k] = v));
-    return q;
+  function prettyBind(k) {
+    if (!k) return "—";
+    if (k === "Space") return "Espace";
+    if (k === "Escape") return "Échap";
+    if (k === "Shift") return "Shift";
+    if (k.startsWith("Arrow")) {
+      const m = { ArrowUp:"↑", ArrowDown:"↓", ArrowLeft:"←", ArrowRight:"→" };
+      return m[k] || k;
+    }
+    return k.length === 1 ? k.toUpperCase() : k;
   }
 
-  function isMobileLike() {
-    return matchMedia("(pointer:coarse)").matches || /Mobi/i.test(navigator.userAgent);
+  function hasAnyBindPressed(actionBinds, pressed) {
+    for (const b of actionBinds) if (pressed[b]) return true;
+    return false;
   }
 
-  /* ----------------------------- Settings --------------------------- */
+  function mergeDeep(base, patch) {
+    const out = Array.isArray(base) ? [...base] : { ...base };
+    if (!patch || typeof patch !== "object") return out;
 
-  let settings = loadSettings();
-
-  function loadSettings() {
-    const raw = localStorage.getItem(LS_SETTINGS_KEY);
-    const parsed = raw ? safeJsonParse(raw, null) : null;
-    const s = { ...SETTINGS_DEFAULT, ...(parsed && typeof parsed === "object" ? parsed : {}) };
-
-    // sanitize
-    s.sens = clamp(Number(s.sens) || SETTINGS_DEFAULT.sens, 0.05, 5);
-    s.camSmooth = clamp(Number(s.camSmooth) || SETTINGS_DEFAULT.camSmooth, 0, 0.35);
-    s.camDist = clamp(Number(s.camDist) || SETTINGS_DEFAULT.camDist, 2, 12);
-    s.camHeight = clamp(Number(s.camHeight) || SETTINGS_DEFAULT.camHeight, 0, 4);
-    s.fov = clamp(Number(s.fov) || SETTINGS_DEFAULT.fov, 40, 110);
-    s.lookH = clamp(Number(s.lookH) || SETTINGS_DEFAULT.lookH, 0.5, 2.2);
-    s.speed = clamp(Number(s.speed) || SETTINGS_DEFAULT.speed, 1, 10);
-    s.sprintMul = clamp(Number(s.sprintMul) || SETTINGS_DEFAULT.sprintMul, 1, 2.5);
-    s.sendHz = clamp(Math.round(Number(s.sendHz) || SETTINGS_DEFAULT.sendHz), 5, 30);
-    s.netLerp = clamp(Number(s.netLerp) || SETTINGS_DEFAULT.netLerp, 0.05, 0.5);
-
-    s.quality = ["low", "med", "high"].includes(s.quality) ? s.quality : SETTINGS_DEFAULT.quality;
-    s.pixelRatio = ["auto", "1", "1.5", "2"].includes(String(s.pixelRatio)) ? String(s.pixelRatio) : "auto";
-    s.shadows = Boolean(s.shadows);
-    s.pointerLock = Boolean(s.pointerLock);
-    s.invertX = Boolean(s.invertX);
-    s.invertY = Boolean(s.invertY);
-    s.sprintToggle = Boolean(s.sprintToggle);
-
-    return s;
+    for (const [k, v] of Object.entries(patch)) {
+      if (v && typeof v === "object" && !Array.isArray(v) && base[k] && typeof base[k] === "object" && !Array.isArray(base[k])) {
+        out[k] = mergeDeep(base[k], v);
+      } else {
+        out[k] = v;
+      }
+    }
+    return out;
   }
 
-  function commitSettings(rewireNet = false) {
-  localStorage.setItem(LS_SETTINGS_KEY, JSON.stringify(settings));
-  settings = loadSettings(); // sanitize + clamp
-  applySettingsToUI();
-  applySettingsRuntime(rewireNet);
-}
-
-function saveSettings() {
-  commitSettings(true);
-  toast("Réglages sauvegardés.");
-}
-
-function resetSettings() {
-  settings = { ...SETTINGS_DEFAULT };
-  commitSettings(true);
-  toast("Réglages reset.");
-}
-
-  /* ----------------------------- DOM/UI ----------------------------- */
-
-  const $ = (id) => document.getElementById(id);
-
-  const dom = {
-    btnPause: $("btnPause"),
-    btnClosePause: $("btnClosePause"),
-    btnResume: $("btnResume"),
-    btnResetPos: $("btnResetPos"),
-    btnGoHome: $("btnGoHome"),
-    btnStay: $("btnStay"),
-    overlay: $("pauseOverlay"),
-
-    pillWs: $("pillWs"),
-    pillPlayers: $("pillPlayers"),
-    pillSkin: $("pillSkin"),
-
-    // nav
-    navBtns: Array.from(document.querySelectorAll(".navBtn")),
-    views: {
-      resume: $("view_resume"),
-      options: $("view_options"),
-      skins: $("view_skins"),
-      home: $("view_home"),
+  // ------------------------------------------------------------
+  // Defaults (player-friendly)
+  // ------------------------------------------------------------
+  const DEFAULTS = {
+    mouseSens: 0.45,
+    invertY: false,
+    quality: "high",      // low | med | high
+    shadows: true,
+    camDist: 3.3,
+    binds: {
+      forward: ["z", "ArrowUp"],
+      back:    ["s", "ArrowDown"],
+      left:    ["q", "ArrowLeft"],
+      right:   ["d", "ArrowRight"],
+      jump:    ["Space"],
+      sprint:  ["Shift"],
+      pause:   ["Escape", "p"],
     },
-
-    // options inputs
-    optSens: $("optSens"),
-    optCamSmooth: $("optCamSmooth"),
-    optInvertX: $("optInvertX"),
-    optInvertY: $("optInvertY"),
-    optPointerLock: $("optPointerLock"),
-
-    optCamDist: $("optCamDist"),
-    optCamHeight: $("optCamHeight"),
-    optFov: $("optFov"),
-    optLookH: $("optLookH"),
-
-    optQuality: $("optQuality"),
-    optPixelRatio: $("optPixelRatio"),
-    optShadows: $("optShadows"),
-
-    optSpeed: $("optSpeed"),
-    optSprintMul: $("optSprintMul"),
-    optSprintToggle: $("optSprintToggle"),
-
-    optSendHz: $("optSendHz"),
-    optNetLerp: $("optNetLerp"),
-
-    btnSaveSettings: $("btnSaveSettings"),
-    btnResetSettings: $("btnResetSettings"),
-
-    skinsGrid: $("skinsGrid"),
+    skin: { id: "fox_brown", color: "#b97a56" },
   };
 
-  function setPill(el, text) {
-    if (!el) return;
-    const strong = el.querySelector("strong");
-    if (strong) strong.textContent = text;
+  let settings = DEFAULTS;
+  {
+    const saved = safeJsonParse(localStorage.getItem(LS_KEY) || "");
+    if (saved) settings = mergeDeep(DEFAULTS, saved);
+  }
+  function saveSettings() {
+    localStorage.setItem(LS_KEY, JSON.stringify(settings));
   }
 
-  function showView(name) {
-    dom.navBtns.forEach((b) => b.classList.toggle("active", b.dataset.view === name));
-    Object.entries(dom.views).forEach(([k, v]) => {
-      if (!v) return;
-      v.classList.toggle("hidden", k !== name);
-    });
+  // ------------------------------------------------------------
+  // UI / Pause pages
+  // ------------------------------------------------------------
+  const pauseOverlay = $("pauseOverlay");
+  const bindOverlay = $("bindOverlay");
+
+  const pages = {
+    main: $("pageMain"),
+    options: $("pageOptions"),
+    skins: $("pageSkins"),
+    home: $("pageHome"),
+  };
+
+  function showPage(name) {
+    for (const p of Object.values(pages)) p.classList.remove("active");
+    pages[name].classList.add("active");
   }
 
-  function setPaused(paused) {
-    PAUSED = !!paused;
-
-    if (PAUSED) {
-      dom.overlay?.classList.add("active");
-      dom.overlay?.setAttribute("aria-hidden", "false");
-      showView("resume");
-      // exit pointer lock if any
+  let paused = false;
+  function setPaused(v) {
+    paused = !!v;
+    if (paused) {
+      pauseOverlay.classList.add("active");
+      pauseOverlay.setAttribute("aria-hidden", "false");
+      showPage("main");
+      // Release pointer lock so player can use UI.
       if (document.pointerLockElement) document.exitPointerLock();
     } else {
-      dom.overlay?.classList.remove("active");
-      dom.overlay?.setAttribute("aria-hidden", "true");
-
-      if (!isMobileLike() && settings.pointerLock) {
-        requestPointerLockSafe();
-      }
+      pauseOverlay.classList.remove("active");
+      pauseOverlay.setAttribute("aria-hidden", "true");
     }
   }
 
-  // Bind pause buttons
-  dom.btnPause?.addEventListener("click", () => setPaused(true));
-  dom.btnClosePause?.addEventListener("click", () => setPaused(false));
-  dom.btnResume?.addEventListener("click", () => setPaused(false));
-  dom.btnStay?.addEventListener("click", () => showView("resume"));
-  dom.btnGoHome?.addEventListener("click", () => {
-    // Inform server politely
-    wsSend({ t: "leave" });
-    window.location.href = "./index.html";
-  });
+  $("btnMenu").addEventListener("click", () => setPaused(true));
+  $("btnClosePause").addEventListener("click", () => setPaused(false));
 
-  dom.navBtns.forEach((b) => b.addEventListener("click", () => showView(b.dataset.view || "resume")));
+  $("btnResume").addEventListener("click", () => setPaused(false));
+  $("btnOptions").addEventListener("click", () => showPage("options"));
+  $("btnSkins").addEventListener("click", () => showPage("skins"));
+  $("btnHome").addEventListener("click", () => showPage("home"));
 
-  // Options wiring
-  function applySettingsToUI() {
-    if (dom.optSens) dom.optSens.value = String(settings.sens);
-    if (dom.optCamSmooth) dom.optCamSmooth.value = String(settings.camSmooth);
-    if (dom.optCamDist) dom.optCamDist.value = String(settings.camDist);
-    if (dom.optCamHeight) dom.optCamHeight.value = String(settings.camHeight);
-    if (dom.optFov) dom.optFov.value = String(settings.fov);
-    if (dom.optLookH) dom.optLookH.value = String(settings.lookH);
+  $("btnBackFromOptions").addEventListener("click", () => showPage("main"));
+  $("btnBackFromSkins").addEventListener("click", () => showPage("main"));
+  $("btnBackFromHome").addEventListener("click", () => showPage("main"));
+  $("btnCancelHome").addEventListener("click", () => showPage("main"));
+  $("btnConfirmHome").addEventListener("click", () => (location.href = "index.html"));
 
-    if (dom.optQuality) dom.optQuality.value = settings.quality;
-    if (dom.optPixelRatio) dom.optPixelRatio.value = String(settings.pixelRatio);
-    if (dom.optShadows) dom.optShadows.textContent = `Ombres: ${settings.shadows ? "ON" : "OFF"}`;
+  // Bind UI (simple + visible)
+  const bindList = $("bindList");
+  const bindPrompt = $("bindPrompt");
+  let waitingAction = null;
 
-    if (dom.optInvertX) dom.optInvertX.textContent = `Invert X: ${settings.invertX ? "ON" : "OFF"}`;
-    if (dom.optInvertY) dom.optInvertY.textContent = `Invert Y: ${settings.invertY ? "ON" : "OFF"}`;
-    if (dom.optPointerLock) dom.optPointerLock.textContent = `Pointer lock: ${settings.pointerLock ? "ON" : "OFF"}`;
+  const ACTIONS = [
+    { key: "forward", label: "Avancer" },
+    { key: "back", label: "Reculer" },
+    { key: "left", label: "Gauche" },
+    { key: "right", label: "Droite" },
+    { key: "jump", label: "Saut" },
+    { key: "sprint", label: "Courir" },
+    { key: "pause", label: "Menu pause" },
+  ];
 
-    if (dom.optSpeed) dom.optSpeed.value = String(settings.speed);
-    if (dom.optSprintMul) dom.optSprintMul.value = String(settings.sprintMul);
-    if (dom.optSprintToggle) dom.optSprintToggle.textContent = `Sprint: ${settings.sprintToggle ? "TOGGLE" : "HOLD"}`;
+  function renderBindList() {
+    bindList.innerHTML = "";
+    for (const a of ACTIONS) {
+      const binds = settings.binds[a.key] || [];
+      const main = binds[0] || "";
+      const alt = binds[1] || "";
+      const row = document.createElement("div");
+      row.className = "bindRow";
+      row.innerHTML = `
+        <div>
+          <div class="a">${a.label}</div>
+          <div class="k">${prettyBind(main)}${alt ? " / " + prettyBind(alt) : ""}</div>
+        </div>
+        <div style="display:flex; gap:10px;">
+          <button class="btn" data-act="${a.key}">Changer</button>
+          ${a.key !== "pause" ? `<button class="btn" data-act-alt="${a.key}">Alt</button>` : ``}
+        </div>
+      `;
+      bindList.appendChild(row);
+    }
 
-    if (dom.optSendHz) dom.optSendHz.value = String(settings.sendHz);
-    if (dom.optNetLerp) dom.optNetLerp.value = String(settings.netLerp);
+    // Main bind change
+    bindList.querySelectorAll("button[data-act]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const act = btn.getAttribute("data-act");
+        waitingAction = { act, slot: 0 };
+        bindPrompt.textContent = `Appuie sur une touche pour: ${ACTIONS.find(x=>x.key===act).label}`;
+      });
+    });
+
+    // Alt bind change
+    bindList.querySelectorAll("button[data-act-alt]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const act = btn.getAttribute("data-act-alt");
+        waitingAction = { act, slot: 1 };
+        bindPrompt.textContent = `Appuie sur une touche (ALT) pour: ${ACTIONS.find(x=>x.key===act).label}`;
+      });
+    });
   }
 
-  function hookNumberInput(el, key) {
-  if (!el) return;
-  el.addEventListener("change", () => {
-    settings[key] = Number(el.value);
-    commitSettings(key === "sendHz");
+  function openBinds() {
+    renderBindList();
+    bindOverlay.classList.add("active");
+    bindOverlay.setAttribute("aria-hidden", "false");
+    waitingAction = null;
+    bindPrompt.textContent = "Aucune touche en attente.";
+  }
+  function closeBinds() {
+    bindOverlay.classList.remove("active");
+    bindOverlay.setAttribute("aria-hidden", "true");
+    waitingAction = null;
+    bindPrompt.textContent = "Aucune touche en attente.";
+  }
+  $("btnOpenBinds").addEventListener("click", openBinds);
+  $("btnCloseBinds").addEventListener("click", closeBinds);
+
+  // Options controls
+  const sensRange = $("optSens");
+  const sensLabel = $("sensLabel");
+  const invertBtn = $("optInvertY");
+  const qualitySel = $("optQuality");
+  const shadowsBtn = $("optShadows");
+  const camDistRange = $("optCamDist");
+  const camDistLabel = $("camDistLabel");
+
+  function applyOptionsToUI() {
+    sensRange.value = String(settings.mouseSens);
+    sensLabel.textContent = settings.mouseSens.toFixed(2);
+
+    invertBtn.textContent = settings.invertY ? "ON" : "OFF";
+    qualitySel.value = settings.quality || "high";
+    shadowsBtn.textContent = settings.shadows ? "ON" : "OFF";
+
+    camDistRange.value = String(settings.camDist);
+    camDistLabel.textContent = settings.camDist.toFixed(1);
+  }
+
+  sensRange.addEventListener("input", () => {
+    settings.mouseSens = parseFloat(sensRange.value);
+    sensLabel.textContent = settings.mouseSens.toFixed(2);
+    saveSettings();
   });
-}
 
-  function hookToggle(btn, key) {
-  if (!btn) return;
-  btn.addEventListener("click", () => {
-    settings[key] = !settings[key];
-    commitSettings(key === "sendHz");
-  });
-}
-
-  // Wire inputs
-  applySettingsToUI();
-
-  // Numbers
-  hookNumberInput(dom.optSens, "sens");
-  hookNumberInput(dom.optCamSmooth, "camSmooth");
-  hookNumberInput(dom.optCamDist, "camDist");
-  hookNumberInput(dom.optCamHeight, "camHeight");
-  hookNumberInput(dom.optFov, "fov");
-  hookNumberInput(dom.optLookH, "lookH");
-  hookNumberInput(dom.optSpeed, "speed");
-  hookNumberInput(dom.optSprintMul, "sprintMul");
-  hookNumberInput(dom.optSendHz, "sendHz");
-  hookNumberInput(dom.optNetLerp, "netLerp");
-
-  // Selects
-  dom.optQuality?.addEventListener("change", () => {
-    settings.quality = dom.optQuality.value;
-    commitSettings(false);
-  });
-  dom.optPixelRatio?.addEventListener("change", () => {
-    settings.pixelRatio = dom.optPixelRatio.value;
-    commitSettings(false);
+  invertBtn.addEventListener("click", () => {
+    settings.invertY = !settings.invertY;
+    invertBtn.textContent = settings.invertY ? "ON" : "OFF";
+    saveSettings();
   });
 
-  // Toggles
-  hookToggle(dom.optInvertX, "invertX");
-  hookToggle(dom.optInvertY, "invertY");
-  hookToggle(dom.optPointerLock, "pointerLock");
-  dom.optShadows?.addEventListener("click", () => {
+  qualitySel.addEventListener("change", () => {
+    settings.quality = qualitySel.value;
+    applyQuality();
+    saveSettings();
+  });
+
+  shadowsBtn.addEventListener("click", () => {
     settings.shadows = !settings.shadows;
-    commitSettings(false);
-  });
-  dom.optSprintToggle?.addEventListener("click", () => {
-    settings.sprintToggle = !settings.sprintToggle;
-    commitSettings(false);
+    shadowsBtn.textContent = settings.shadows ? "ON" : "OFF";
+    applyShadows();
+    saveSettings();
   });
 
-  // Save/reset
-  dom.btnSaveSettings?.addEventListener("click", () => saveSettings());
-  dom.btnResetSettings?.addEventListener("click", () => resetSettings());
+  camDistRange.addEventListener("input", () => {
+    settings.camDist = parseFloat(camDistRange.value);
+    camDistLabel.textContent = settings.camDist.toFixed(1);
+    saveSettings();
+  });
 
-  /* ----------------------------- Three.js --------------------------- */
+  applyOptionsToUI();
 
-  let renderer, scene, camera;
-  const loader = new THREE.GLTFLoader();
+  // ------------------------------------------------------------
+  // Scene / Three.js
+  // ------------------------------------------------------------
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x07090d);
 
-  const clock = new THREE.Clock();
+  const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.05, 250);
+  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  document.body.appendChild(renderer.domElement);
 
-  // world
-  const world = {
-    ground: null,
-    dirLight: null,
-    hemi: null,
-  };
+  // Lights
+  const hemi = new THREE.HemisphereLight(0xffffff, 0x223344, 0.85);
+  scene.add(hemi);
+  const dir = new THREE.DirectionalLight(0xffffff, 1.0);
+  dir.position.set(6, 12, 4);
+  dir.castShadow = true;
+  scene.add(dir);
 
-  // Player root + avatar
+  // Ground (simple + visible)
+  const groundGeo = new THREE.PlaneGeometry(140, 140, 1, 1);
+  const groundMat = new THREE.MeshStandardMaterial({ color: 0x1b2230, roughness: 0.95, metalness: 0.0 });
+  const ground = new THREE.Mesh(groundGeo, groundMat);
+  ground.rotation.x = -Math.PI / 2;
+  ground.receiveShadow = true;
+  scene.add(ground);
+
+  // Player root
   const player = {
-    root: new THREE.Group(),
-    avatar: null,
-    skinId: "humanoid",
-    yaw: 0,
-    pitch: -0.25, // look slightly up
+    id: null,
+    root: new THREE.Object3D(),
+    model: null,
     velY: 0,
     onGround: true,
+    camTargetY: 1.0,   // computed after model load
+    modelYaw: 0,
   };
+  scene.add(player.root);
+  player.root.position.set(0, 0, 0);
 
-  // Camera smoothing
-  const cam = {
-    pos: new THREE.Vector3(0, 2, 6),
-    targetPos: new THREE.Vector3(0, 2, 6),
-    lookAt: new THREE.Vector3(0, 1.2, 0),
-  };
-
-  // Remotes
-  const remotes = new Map(); // id -> entity
-  // entity: { id, name, root, avatar, skinId, st, stTarget }
-
-  function initThree() {
-    scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x07090d);
-    scene.fog = new THREE.Fog(0x07090d, 20, 120);
-
-    camera = new THREE.PerspectiveCamera(settings.fov, window.innerWidth / window.innerHeight, 0.05, 220);
-    camera.position.copy(cam.pos);
-
-    renderer = new THREE.WebGLRenderer({ antialias: true });
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setPixelRatio(getPixelRatio());
-    renderer.shadowMap.enabled = !!settings.shadows;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-
-    document.body.appendChild(renderer.domElement);
-
-    // lights
-    world.hemi = new THREE.HemisphereLight(0xb7c7ff, 0x1c2333, 0.9);
-    scene.add(world.hemi);
-
-    world.dirLight = new THREE.DirectionalLight(0xffffff, 1.0);
-    world.dirLight.position.set(10, 18, 12);
-    world.dirLight.castShadow = true;
-    world.dirLight.shadow.mapSize.set(1024, 1024);
-    world.dirLight.shadow.camera.near = 1;
-    world.dirLight.shadow.camera.far = 60;
-    world.dirLight.shadow.camera.left = -18;
-    world.dirLight.shadow.camera.right = 18;
-    world.dirLight.shadow.camera.top = 18;
-    world.dirLight.shadow.camera.bottom = -18;
-    scene.add(world.dirLight);
-
-    // ground
-    const tex = new THREE.TextureLoader().load("./assets/textures/ground/albedo.jpg");
-    tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-    tex.repeat.set(16, 16);
-    tex.anisotropy = 4;
-
-    const groundMat = new THREE.MeshStandardMaterial({ map: tex, roughness: 1.0, metalness: 0.0 });
-    const groundGeo = new THREE.PlaneGeometry(240, 240, 1, 1);
-    world.ground = new THREE.Mesh(groundGeo, groundMat);
-    world.ground.rotation.x = -Math.PI / 2;
-    world.ground.receiveShadow = true;
-    scene.add(world.ground);
-
-    // player
-    player.root.position.set(0, 0, 0);
-    scene.add(player.root);
-
-    // pick initial skin
-    const q = getQuery();
-    const wantedSkin = String(q.skin || "") || localStorage.getItem("lg_skin") || "humanoid";
-    setSkin(wantedSkin);
-
-    // initial camera target
-    updateCamera(0, true);
-
-    // events
-    window.addEventListener("resize", onResize);
-
-    // pointer lock / input
-    initInput();
-
-    // Start loop
-    requestAnimationFrame(tick);
+  // Simple fallback player mesh (capsule)
+  function makeFallbackBody(colorHex = settings.skin.color) {
+    const grp = new THREE.Group();
+    const mat = new THREE.MeshStandardMaterial({ color: new THREE.Color(colorHex), roughness: 0.65, metalness: 0.05 });
+    const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.32, 0.75, 6, 12), mat);
+    body.castShadow = true;
+    body.position.y = 0.8;
+    grp.add(body);
+    return grp;
   }
 
-  function getPixelRatio() {
-    if (String(settings.pixelRatio) === "auto") return Math.min(window.devicePixelRatio || 1, 2);
-    return Number(settings.pixelRatio) || 1;
-  }
-
-  function applySettingsRuntime(forceRewireNet = false) {
-    // camera
-    if (camera) {
-      camera.fov = settings.fov;
-      camera.updateProjectionMatrix();
-    }
-    if (renderer) {
-      renderer.setPixelRatio(getPixelRatio());
-      renderer.shadowMap.enabled = !!settings.shadows;
-    }
-
-    // quality presets (simple + safe)
-    if (world.dirLight) {
-      if (settings.quality === "low") {
-        world.dirLight.shadow.mapSize.set(512, 512);
-        scene.fog.far = 90;
-      } else if (settings.quality === "high") {
-        world.dirLight.shadow.mapSize.set(2048, 2048);
-        scene.fog.far = 150;
-      } else {
-        world.dirLight.shadow.mapSize.set(1024, 1024);
-        scene.fog.far = 120;
+  function applyColorToModel(obj3d, colorHex) {
+    if (!obj3d) return;
+    const c = new THREE.Color(colorHex);
+    obj3d.traverse((o) => {
+      if (!o.isMesh) return;
+      if (Array.isArray(o.material)) {
+        o.material = o.material.map((m) => m.clone());
+        for (const m of o.material) {
+          if (m && m.color) m.color.copy(c);
+        }
+      } else if (o.material) {
+        o.material = o.material.clone();
+        if (o.material.color) o.material.color.copy(c);
       }
-      world.dirLight.shadow.needsUpdate = true;
-    }
-
-    // pointer lock
-    if (isMobileLike()) settings.pointerLock = false;
-    applySettingsToUI();
-
-    // network (send rate can change)
-    if (forceRewireNet) {
-      restartSendLoop();
-    } else {
-      // if sendHz changed by UI, restart
-      restartSendLoop();
-    }
+      o.castShadow = true;
+      o.receiveShadow = false;
+    });
   }
 
-  function onResize() {
-    if (!camera || !renderer) return;
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
+  function fitModelToGround(obj3d) {
+    // Important: scale first (if needed), then recenter, then put on ground (y=0).
+    const box = new THREE.Box3().setFromObject(obj3d);
+    const size = new THREE.Vector3();
+    box.getSize(size);
+    const height = Math.max(0.001, size.y);
+
+    // Normalize to a usable in-game height (fox ~1.1)
+    const targetHeight = 1.1;
+    const s = targetHeight / height;
+    obj3d.scale.setScalar(s);
+
+    const box2 = new THREE.Box3().setFromObject(obj3d);
+    const center = new THREE.Vector3();
+    box2.getCenter(center);
+    obj3d.position.sub(center);
+
+    const box3 = new THREE.Box3().setFromObject(obj3d);
+    const min = box3.min.y;
+    obj3d.position.y -= min;
+
+    const box4 = new THREE.Box3().setFromObject(obj3d);
+    const size2 = new THREE.Vector3();
+    box4.getSize(size2);
+
+    // Camera target height: slightly above "head line".
+    player.camTargetY = clamp(size2.y * 0.70, 0.8, 1.6);
   }
 
-  /* ----------------------------- Avatars / Skins -------------------- */
-
-  const skinCache = new Map(); // skinId -> Promise<Object3D>
-  skinCache.set("humanoid", Promise.resolve(createHumanoidPrototype()));
-
-  function createHumanoidPrototype() {
-    const g = new THREE.Group();
-
-    const bodyMat = new THREE.MeshStandardMaterial({ color: 0xcfd7ff, roughness: 0.95, metalness: 0.0 });
-
-    const cyl = new THREE.Mesh(new THREE.CapsuleGeometry(0.33, 0.72, 6, 12), bodyMat);
-    cyl.castShadow = true;
-    cyl.receiveShadow = false;
-
-    // Ensure feet on ground (CapsuleGeometry is centered)
-    cyl.position.y = 0.33 + 0.72 / 2;
-
-    g.add(cyl);
-    return g;
-  }
-
-  function loadFoxPrototype() {
-    if (skinCache.has("fox")) return skinCache.get("fox");
-
-    const p = new Promise((resolve) => {
+  async function loadFox() {
+    const loader = new THREE.GLTFLoader();
+    return new Promise((resolve, reject) => {
       loader.load(
-        "./assets/models/test/Fox.glb",
-        (gltf) => {
-          const obj = gltf.scene || gltf.scenes?.[0];
-          if (!obj) {
-            resolve(createHumanoidPrototype());
-            return;
-          }
-          obj.traverse((n) => {
-            if (n.isMesh) {
-              n.castShadow = true;
-              n.receiveShadow = false;
-            }
-          });
-
-          // normalize to a target height
-          const targetH = 0.85;
-          const box = new THREE.Box3().setFromObject(obj);
-          const size = new THREE.Vector3();
-          box.getSize(size);
-          const h = Math.max(0.0001, size.y);
-          const s = targetH / h;
-          obj.scale.setScalar(s);
-
-          // recompute after scale and put feet on ground
-          const box2 = new THREE.Box3().setFromObject(obj);
-          const min = box2.min.clone();
-          obj.position.y += -min.y;
-
-          resolve(obj);
-        },
+        "assets/models/test/Fox.glb",
+        (gltf) => resolve(gltf.scene),
         undefined,
-        () => resolve(createHumanoidPrototype())
+        (err) => reject(err)
       );
     });
-
-    skinCache.set("fox", p);
-    return p;
   }
 
-  function getSkinPrototype(skinId) {
-    if (skinId === "fox") return loadFoxPrototype();
-    if (skinCache.has("humanoid")) return skinCache.get("humanoid");
-    const p = Promise.resolve(createHumanoidPrototype());
-    skinCache.set("humanoid", p);
-    return p;
-  }
-
-  function cloneDeep(obj) {
-    // For simple scenes: clone(true) is enough.
-    return obj.clone(true);
-  }
-
-  async function attachAvatar(entityRoot, skinId) {
-    const proto = await getSkinPrototype(skinId);
-    const clone = cloneDeep(proto);
-
-    // Clean previous
-    const old = entityRoot.userData.avatar;
-    if (old) entityRoot.remove(old);
-
-    entityRoot.add(clone);
-    entityRoot.userData.avatar = clone;
-    entityRoot.userData.skinId = skinId;
-
-    // slight scale differences
-    if (skinId === "fox") {
-      clone.scale.multiplyScalar(1.0);
+  async function initPlayerModel() {
+    // clear previous
+    if (player.model) {
+      player.root.remove(player.model);
+      player.model = null;
     }
 
-    return clone;
-  }
+    try {
+      const fox = await loadFox();
+      fitModelToGround(fox);
 
-  async function setSkin(skinId) {
-    if (!SKINS.some((s) => s.id === skinId)) skinId = "humanoid";
-    player.skinId = skinId;
-    localStorage.setItem("lg_skin", skinId);
+      // A subtle scale bump so the fox feels readable at distance
+      fox.scale.multiplyScalar(1.05);
 
-    await attachAvatar(player.root, skinId);
-    setPill(dom.pillSkin, skinId);
-
-    // push to server for realtime sync
-    wsSend({ t: "hub_skin", skin: { id: skinId } });
-
-    // refresh skins UI highlight
-    renderSkinsUI();
-  }
-
-  function renderSkinsUI() {
-    if (!dom.skinsGrid) return;
-    dom.skinsGrid.innerHTML = "";
-
-    for (const s of SKINS) {
-      const tile = document.createElement("div");
-      tile.className = "skinTile" + (s.id === player.skinId ? " active" : "");
-      tile.innerHTML = `
-        <div class="skinName">${s.name}</div>
-        <div class="skinMeta">${s.desc}</div>
-        <div class="skinMeta"><strong>ID:</strong> ${s.id}</div>
-      `;
-      tile.addEventListener("click", () => setSkin(s.id));
-      dom.skinsGrid.appendChild(tile);
+      applyColorToModel(fox, settings.skin.color);
+      player.model = fox;
+      player.root.add(fox);
+    } catch {
+      const fallback = makeFallbackBody(settings.skin.color);
+      player.camTargetY = 1.15;
+      player.model = fallback;
+      player.root.add(fallback);
     }
   }
 
-  /* ----------------------------- Input ------------------------------ */
+  // ------------------------------------------------------------
+  // Camera (third-person, "gamer")
+  // ------------------------------------------------------------
+  const cam = {
+    yaw: 0,
+    pitch: 0.20,
+    dist: settings.camDist,
+    yawVel: 0,
+    pitchVel: 0,
+  };
 
-  const keys = new Set();
+  function updateCamera(dt) {
+    cam.dist = settings.camDist;
 
-  let POINTER_LOCK_EL = null;
-  let pointerLocked = false;
-  let PAUSED = false;
-
-  // sprint toggle state
-  let sprintOn = false;
-
-  function requestPointerLockSafe() {
-    if (!settings.pointerLock) return;
-    if (!POINTER_LOCK_EL) return;
-    if (PAUSED) return;
-    if (pointerLocked) return;
-
-    try { POINTER_LOCK_EL.requestPointerLock(); } catch {}
-  }
-
-  function initInput() {
-    POINTER_LOCK_EL = renderer.domElement;
-
-    // pointer lock gate: allow click OR first keydown
-    POINTER_LOCK_EL.addEventListener("pointerdown", () => {
-      if (!PAUSED && settings.pointerLock) requestPointerLockSafe();
-    });
-
-    window.addEventListener("keydown", (e) => {
-      // Always store key
-      keys.add(e.code);
-
-      // open pause
-      if (e.code === "KeyP") {
-        e.preventDefault();
-        setPaused(!PAUSED);
-        return;
-      }
-
-      // movement key should enable pointer lock (no need to click)
-      const movementKeys = new Set(["KeyZ", "KeyQ", "KeyS", "KeyD", "ArrowUp", "ArrowLeft", "ArrowDown", "ArrowRight", "ShiftLeft", "ShiftRight", "Space"]);
-      if (!PAUSED && settings.pointerLock && movementKeys.has(e.code)) {
-        requestPointerLockSafe();
-      }
-
-      // sprint toggle
-      if (!PAUSED && settings.sprintToggle) {
-        if (e.code === "ShiftLeft" || e.code === "ShiftRight") {
-          sprintOn = !sprintOn;
-        }
-      }
-
-      // prevent scroll with arrows/space
-      if (["ArrowUp", "ArrowLeft", "ArrowDown", "ArrowRight", "Space"].includes(e.code)) {
-        e.preventDefault();
-      }
-    });
-
-    window.addEventListener("keyup", (e) => {
-      keys.delete(e.code);
-    });
-
-    document.addEventListener("pointerlockchange", () => {
-      const locked = (document.pointerLockElement === POINTER_LOCK_EL);
-      // if we lost lock while in game, open menu reliably
-      const was = pointerLocked;
-      pointerLocked = locked;
-      if (was && !locked && !PAUSED) {
-        setPaused(true);
-      }
-    });
-
-    document.addEventListener("mousemove", (e) => {
-      if (PAUSED) return;
-      if (!settings.pointerLock) return;
-      if (!pointerLocked) return;
-
-      let dx = e.movementX || 0;
-      let dy = e.movementY || 0;
-
-      if (settings.invertX) dx = -dx;
-      if (settings.invertY) dy = -dy;
-
-      // Gamer mapping:
-      // - mouse right (dx>0) => camera turns right  => yaw decreases
-      // - mouse left  (dx<0) => camera turns left   => yaw increases
-      const sens = settings.sens * 0.01; // scale down
-      player.yaw -= dx * sens;
-
-      // mouse up (dy<0) => look up => pitch decreases
-      // mouse down (dy>0) => look down => pitch increases
-      player.pitch += dy * sens;
-
-      player.pitch = clamp(player.pitch, -1.10, 0.70);
-    });
-
-    // Pause click outside card closes
-    dom.overlay?.addEventListener("click", (e) => {
-      if (e.target === dom.overlay) setPaused(false);
-    });
-
-    // Reset pos
-    dom.btnResetPos?.addEventListener("click", () => {
-      player.root.position.set(0, 0, 0);
-      player.velY = 0;
-      wsSendState(true);
-      toast("Position reset.");
-    });
-
-    // disable pointer lock on mobile-like
-    if (isMobileLike()) {
-      settings.pointerLock = false;
-      applySettingsToUI();
-    }
-
-    // skins UI
-    renderSkinsUI();
-  }
-
-  /* ----------------------------- Movement / Physics ----------------- */
-
-  function getMoveVector() {
-    // AZERTY ZQSD + arrows
-    const fwd = (keys.has("KeyZ") || keys.has("ArrowUp")) ? 1 : 0;
-    const back = (keys.has("KeyS") || keys.has("ArrowDown")) ? 1 : 0;
-    const left = (keys.has("KeyQ") || keys.has("ArrowLeft")) ? 1 : 0;
-    const right = (keys.has("KeyD") || keys.has("ArrowRight")) ? 1 : 0;
-
-    const x = (right - left);
-    const z = (fwd - back);
-    if (x === 0 && z === 0) return null;
-
-    // camera-relative movement using yaw
-    const yaw = player.yaw;
-    const forward = new THREE.Vector3(-Math.sin(yaw), 0, -Math.cos(yaw));
-    const side = new THREE.Vector3(Math.cos(yaw), 0, -Math.sin(yaw));
-
-    const v = new THREE.Vector3();
-    v.addScaledVector(side, x);
-    v.addScaledVector(forward, z);
-    v.normalize();
-    return v;
-  }
-
-  function isSprinting() {
-    if (PAUSED) return false;
-    if (settings.sprintToggle) return sprintOn;
-    return keys.has("ShiftLeft") || keys.has("ShiftRight");
-  }
-
-  function stepPlayer(dt) {
-    // gravity & ground
-    const g = -16.0;
-    const jump = keys.has("Space");
-
-    if (player.onGround) {
-      player.velY = 0;
-      if (jump) {
-        player.velY = 6.0;
-        player.onGround = false;
-      }
-    } else {
-      player.velY += g * dt;
-    }
-
-    const mv = getMoveVector();
-    let speed = settings.speed;
-    if (isSprinting()) speed *= settings.sprintMul;
-
-    if (mv) {
-      player.root.position.addScaledVector(mv, speed * dt);
-
-      // orient player to movement direction (optional)
-      const ang = Math.atan2(-mv.x, -mv.z);
-      player.root.rotation.y = lerpAngle(player.root.rotation.y, ang, clamp(dt * 10, 0, 1));
-    }
-
-    // integrate vertical
-    player.root.position.y += player.velY * dt;
-
-    // simple ground at y=0
-    if (player.root.position.y <= 0) {
-      player.root.position.y = 0;
-      player.onGround = true;
-    }
-  }
-
-  function lerpAngle(a, b, t) {
-    // shortest path
-    let d = (b - a) % (Math.PI * 2);
-    if (d > Math.PI) d -= Math.PI * 2;
-    if (d < -Math.PI) d += Math.PI * 2;
-    return a + d * t;
-  }
-
-  /* ----------------------------- Camera ----------------------------- */
-
-  function updateCamera(dt, snap = false) {
-    // skin profile adjustment
-    let dist = settings.camDist;
-    let height = settings.camHeight;
-    let lookH = settings.lookH;
-
-    if (player.skinId === "fox") {
-      dist *= 0.90;
-      height *= 0.85;
-      lookH *= 0.75;
-    }
-
-    const yaw = player.yaw;
-    const pitch = player.pitch;
-
-    // spherical offset around player
-    const horiz = Math.cos(pitch) * dist;
-    const offX = Math.sin(yaw) * horiz;
-    const offZ = Math.cos(yaw) * horiz;
-    const offY = height + Math.sin(pitch) * dist;
-
-    cam.targetPos.set(
-      player.root.position.x + offX,
-      player.root.position.y + offY,
-      player.root.position.z + offZ
-    );
-
-    cam.lookAt.set(
+    const target = new THREE.Vector3(
       player.root.position.x,
-      player.root.position.y + lookH,
+      player.root.position.y + player.camTargetY,
       player.root.position.z
     );
 
-    if (snap || settings.camSmooth <= 0.0001) {
-      cam.pos.copy(cam.targetPos);
-    } else {
-      // convert "camSmooth" to a time constant
-      const tau = settings.camSmooth * 0.35 + 0.02;
-      const alpha = 1 - Math.exp(-dt / tau);
-      cam.pos.lerp(cam.targetPos, alpha);
-    }
+    // Clamp pitch to avoid flipping.
+    cam.pitch = clamp(cam.pitch, -0.55, 1.05);
 
-    camera.position.copy(cam.pos);
-    camera.lookAt(cam.lookAt);
+    const horiz = cam.dist * Math.cos(cam.pitch);
+    const yOff = cam.dist * Math.sin(cam.pitch);
+
+    // Behind-the-player orbit
+    const cx = target.x + (-Math.sin(cam.yaw) * horiz);
+    const cz = target.z + (-Math.cos(cam.yaw) * horiz);
+    const cy = target.y + yOff;
+
+    camera.position.set(cx, cy, cz);
+    camera.lookAt(target);
   }
 
-  /* ----------------------------- Network (WS hub) ------------------- */
+  // ------------------------------------------------------------
+  // Input
+  // ------------------------------------------------------------
+  const pressed = Object.create(null);
+  let pointerLocked = false;
 
-  const q = getQuery();
-  const WS_URL = String(q.ws || DEFAULT_WS);
-
-  let ws = null;
-  let wsReady = false;
-  let myId = null;
-
-  const nameFromParam = String(q.name || "").trim();
-  let myName = nameFromParam || localStorage.getItem(LS_NAME_KEY) || `Player${Math.floor(Math.random() * 900 + 100)}`;
-  myName = myName.slice(0, 32);
-  localStorage.setItem(LS_NAME_KEY, myName);
-
-  let sendTimer = null;
-
-  function wsSend(obj) {
-    if (!ws || ws.readyState !== 1) return;
-    try { ws.send(JSON.stringify(obj)); } catch {}
+  // Request pointer lock with an activation: click OR movement key press.
+  function tryLockPointer() {
+    if (paused) return;
+    if (document.pointerLockElement === renderer.domElement) return;
+    renderer.domElement.requestPointerLock?.();
   }
 
-  function setWsPill(state) {
-    setPill(dom.pillWs, state);
-  }
+  renderer.domElement.addEventListener("click", () => tryLockPointer());
 
-  function connectWS() {
-    try {
-      ws = new WebSocket(WS_URL);
-    } catch {
-      setWsPill("erreur");
+  document.addEventListener("pointerlockchange", () => {
+    pointerLocked = (document.pointerLockElement === renderer.domElement);
+    // If the player exits pointer lock (often via ESC), open pause reliably.
+    if (!pointerLocked && !paused) setPaused(true);
+  });
+
+  document.addEventListener("mousemove", (e) => {
+    if (!pointerLocked || paused) return;
+
+    // movementX > 0 => mouse right => look right (gamer expectation)
+    const k = settings.mouseSens * 0.0026;
+    cam.yaw += e.movementX * k;
+
+    // movementY < 0 (mouse up) => look up. Default: pitch -= movementY*k
+    const mult = settings.invertY ? -1 : 1;
+    cam.pitch -= e.movementY * k * mult;
+  });
+
+  document.addEventListener("keydown", (e) => {
+    const b = normalizeBindFromEvent(e);
+    if (b) pressed[b] = true;
+
+    // Keybind capture modal
+    if (bindOverlay.classList.contains("active") && waitingAction) {
+      e.preventDefault();
+      const act = waitingAction.act;
+      const slot = waitingAction.slot;
+
+      // Avoid binding "Escape" on movement by mistake; allow for pause only.
+      const newBind = b;
+
+      const arr = settings.binds[act] ? [...settings.binds[act]] : [];
+      arr[slot] = newBind;
+
+      // Ensure binds are unique inside same action slots (avoid duplicates like "z/z")
+      if (arr[0] && arr[1] && arr[0] === arr[1]) arr[1] = "";
+
+      // For "pause", keep Escape as a safe fallback (player-friendly)
+      if (act === "pause" && !arr.includes("Escape")) arr[0] = "Escape";
+
+      settings.binds[act] = arr.filter(Boolean);
+      saveSettings();
+
+      waitingAction = null;
+      bindPrompt.textContent = "Aucune touche en attente.";
+      renderBindList();
       return;
     }
 
-    setWsPill("connexion…");
-    wsReady = false;
+    // Open pause with dedicated bind (P by default)
+    if (hasAnyBindPressed(settings.binds.pause, pressed) && !paused) {
+      // If pointer locked, we rely on pointerlockchange for Escape,
+      // but this still allows P to work immediately.
+      setPaused(true);
+      return;
+    }
 
-    ws.addEventListener("open", () => {
-      wsReady = true;
-      setWsPill("connecté");
-      // join hub
-      wsSend({
-        t: "join",
-        room: "hub",
-        name: myName,
-        skin: { id: player.skinId },
-        st: { x: player.root.position.x, y: player.root.position.y, z: player.root.position.z, yaw: player.yaw }
-      });
-      toast("WS connecté.");
-      restartSendLoop();
-    });
+    // Auto-lock pointer on first movement key (no need to click)
+    const moveKeys = [...settings.binds.forward, ...settings.binds.back, ...settings.binds.left, ...settings.binds.right];
+    if (!paused && moveKeys.includes(b)) {
+      tryLockPointer();
+    }
+  });
 
-    ws.addEventListener("close", () => {
-      setWsPill("hors-ligne");
-      wsReady = false;
-      stopSendLoop();
-      // mark remotes as gone
-      // we keep them for a moment? simplest: clear
-      clearRemotes();
-      setPill(dom.pillPlayers, "1");
-      window.setTimeout(connectWS, 1100);
-    });
+  document.addEventListener("keyup", (e) => {
+    const b = normalizeBindFromEvent(e);
+    if (b) pressed[b] = false;
+  });
 
-    ws.addEventListener("error", () => {
-      setWsPill("erreur");
-    });
+  // ------------------------------------------------------------
+  // Movement (ZQSD, simple, solid feel)
+  // ------------------------------------------------------------
+  const GRAV = 18.0;
+  const JUMP = 6.8;
+  const SPEED = 4.4;
+  const SPRINT = 6.8;
 
-    ws.addEventListener("message", (ev) => {
-      const data = safeJsonParse(ev.data, null);
-      if (!data || typeof data !== "object") return;
+  function updatePlayer(dt) {
+    // Basic grounded check (flat ground at y=0)
+    if (player.root.position.y <= 0) {
+      player.root.position.y = 0;
+      player.velY = 0;
+      player.onGround = true;
+    } else {
+      player.onGround = false;
+    }
 
-      const t = String(data.t || "");
-      if (!t) return;
+    // Jump
+    if (player.onGround && hasAnyBindPressed(settings.binds.jump, pressed)) {
+      player.velY = JUMP;
+      player.onGround = false;
+    }
 
-      if (t === "hello") {
-        myId = data.id ?? myId;
-      }
+    // Gravity
+    player.velY -= GRAV * dt;
+    player.root.position.y += player.velY * dt;
 
-      if (t === "hub_snapshot") {
-        const players = Array.isArray(data.players) ? data.players : [];
-        for (const p of players) {
-          if (!p || typeof p !== "object") continue;
-          const id = Number(p.id);
-          if (!id || id === myId) continue;
-          const ent = ensureRemote(id, String(p.name || `Player${id}`));
-          // state
-          if (p.st && typeof p.st === "object") {
-            ent.stTarget.x = Number(p.st.x) || 0;
-            ent.stTarget.y = Number(p.st.y) || 0;
-            ent.stTarget.z = Number(p.st.z) || 0;
-            ent.stTarget.yaw = Number(p.st.yaw) || 0;
-            ent.root.position.set(ent.stTarget.x, ent.stTarget.y, ent.stTarget.z);
-            ent.root.rotation.y = ent.stTarget.yaw;
-          }
-          // skin
-          const skinId = (p.skin && typeof p.skin === "object" && p.skin.id) ? String(p.skin.id) : "humanoid";
-          applyRemoteSkin(ent, skinId);
-        }
-        updatePlayersPill();
-      }
+    // Movement direction relative to camera yaw
+    const f = (hasAnyBindPressed(settings.binds.forward, pressed) ? 1 : 0) - (hasAnyBindPressed(settings.binds.back, pressed) ? 1 : 0);
+    const r = (hasAnyBindPressed(settings.binds.right, pressed) ? 1 : 0) - (hasAnyBindPressed(settings.binds.left, pressed) ? 1 : 0);
 
-      if (t === "hub_join") {
-        const p = data.p || {};
-        const id = Number(p.id);
-        if (!id || id === myId) return;
-        const ent = ensureRemote(id, String(p.name || `Player${id}`));
-        if (p.st && typeof p.st === "object") {
-          ent.stTarget.x = Number(p.st.x) || 0;
-          ent.stTarget.y = Number(p.st.y) || 0;
-          ent.stTarget.z = Number(p.st.z) || 0;
-          ent.stTarget.yaw = Number(p.st.yaw) || 0;
-          ent.root.position.set(ent.stTarget.x, ent.stTarget.y, ent.stTarget.z);
-          ent.root.rotation.y = ent.stTarget.yaw;
-        }
-        const skinId = (p.skin && typeof p.skin === "object" && p.skin.id) ? String(p.skin.id) : "humanoid";
-        applyRemoteSkin(ent, skinId);
-        toast(`${ent.name} a rejoint le hub.`);
-        updatePlayersPill();
-      }
+    const moving = (f !== 0 || r !== 0);
+    const sp = hasAnyBindPressed(settings.binds.sprint, pressed) ? SPRINT : SPEED;
 
-      if (t === "hub_leave") {
-        const id = Number(data.id);
-        if (!id) return;
-        const ent = remotes.get(id);
-        if (ent) toast(`${ent.name} a quitté.`);
-        removeRemote(id);
-        updatePlayersPill();
-      }
+    if (moving) {
+      const forward = new THREE.Vector3(Math.sin(cam.yaw), 0, Math.cos(cam.yaw));
+      const right = new THREE.Vector3(Math.cos(cam.yaw), 0, -Math.sin(cam.yaw));
+      const v = new THREE.Vector3();
+      v.addScaledVector(forward, f);
+      v.addScaledVector(right, r);
+      v.normalize().multiplyScalar(sp * dt);
 
-      if (t === "hub_state") {
-        const id = Number(data.id);
-        if (!id || id === myId) return;
-        const ent = remotes.get(id);
-        if (!ent) return;
-        const st = data.st;
-        if (!st || typeof st !== "object") return;
-        ent.stTarget.x = Number(st.x) || ent.stTarget.x;
-        ent.stTarget.y = Number(st.y) || ent.stTarget.y;
-        ent.stTarget.z = Number(st.z) || ent.stTarget.z;
-        ent.stTarget.yaw = Number(st.yaw) || ent.stTarget.yaw;
-      }
+      player.root.position.add(v);
 
-      if (t === "hub_skin") {
-        const p = data.p || {};
-        const id = Number(p.id);
-        if (!id || id === myId) return;
-        const ent = ensureRemote(id, String(p.name || `Player${id}`));
-        const skinId = (p.skin && typeof p.skin === "object" && p.skin.id) ? String(p.skin.id) : "humanoid";
-        applyRemoteSkin(ent, skinId);
-        updatePlayersPill();
-      }
-    });
-  }
-
-  function updatePlayersPill() {
-    // +1 for me
-    setPill(dom.pillPlayers, String(remotes.size + 1));
-  }
-
-  function stopSendLoop() {
-    if (sendTimer) {
-      clearInterval(sendTimer);
-      sendTimer = null;
+      // Face movement direction
+      const desiredYaw = Math.atan2(v.x, v.z);
+      player.modelYaw = lerp(player.modelYaw, desiredYaw, clamp(dt * 10.5, 0, 1));
+      player.root.rotation.y = player.modelYaw;
     }
   }
 
-  function restartSendLoop() {
-    stopSendLoop();
-    if (!wsReady) return;
-    sendTimer = setInterval(() => wsSendState(false), Math.round(1000 / settings.sendHz));
+  // ------------------------------------------------------------
+  // WebSocket hub presence + skins sync (server protocol verified)
+  // ------------------------------------------------------------
+  const wsBadge = $("wsBadge");
+  const urlParams = new URLSearchParams(location.search);
+  const WS_URL = urlParams.get("ws") || "wss://loup-garou-ws.onrender.com/ws";
+  const NAME = (urlParams.get("name") || "").slice(0, 32) || ("Player" + Math.floor(Math.random() * 999));
+
+  let ws = null;
+  let wsConnected = false;
+  let reconnectTimer = null;
+
+  const remotes = new Map(); // id -> {root, mesh, label, st, lastSt}
+
+  function makeNameSprite(text) {
+    const cvs = document.createElement("canvas");
+    const ctx = cvs.getContext("2d");
+    const pad = 10;
+    ctx.font = "bold 18px system-ui, -apple-system, Segoe UI, Arial";
+    const w = Math.ceil(ctx.measureText(text).width) + pad * 2;
+    const h = 34;
+    cvs.width = w;
+    cvs.height = h;
+
+    ctx.fillStyle = "rgba(0,0,0,0.45)";
+    ctx.fillRect(0, 0, w, h);
+    ctx.fillStyle = "rgba(255,255,255,0.92)";
+    ctx.textBaseline = "middle";
+    ctx.fillText(text, pad, h / 2);
+
+    const tex = new THREE.CanvasTexture(cvs);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    const mat = new THREE.SpriteMaterial({ map: tex, transparent: true });
+    const spr = new THREE.Sprite(mat);
+    spr.scale.set(w / 140, h / 140, 1);
+    return spr;
   }
 
-  function wsSendState(force) {
-    if (!wsReady) return;
-    if (PAUSED && !force) return;
+  function ensureRemote(p) {
+    if (!p || typeof p.id !== "number") return;
+    if (remotes.has(p.id)) return;
+
+    const root = new THREE.Object3D();
+    const col = (p.skin && p.skin.color) ? p.skin.color : "#77aaff";
+    const mesh = makeFallbackBody(col);
+    root.add(mesh);
+
+    const label = makeNameSprite(p.name || ("P" + p.id));
+    label.position.set(0, 1.9, 0);
+    root.add(label);
+
+    scene.add(root);
+    remotes.set(p.id, {
+      root, mesh, label,
+      st: { x: 0, y: 0, z: 0, yaw: 0 },
+      lastSt: { x: 0, y: 0, z: 0, yaw: 0 },
+      skin: { color: col },
+    });
+  }
+
+  function removeRemote(id) {
+    const r = remotes.get(id);
+    if (!r) return;
+    scene.remove(r.root);
+    remotes.delete(id);
+  }
+
+  function applyRemoteSkin(id, skin) {
+    const r = remotes.get(id);
+    if (!r) return;
+    const col = (skin && skin.color) ? skin.color : "#77aaff";
+    r.skin = { ...skin, color: col };
+    // recolor capsule fallback
+    r.root.traverse((o) => {
+      if (o.isMesh && o.material && o.material.color) {
+        o.material.color.set(col);
+      }
+    });
+  }
+
+  function wsSend(obj) {
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    ws.send(JSON.stringify(obj));
+  }
+
+  function updateWsBadge() {
+    const n = remotes.size + 1; // + self
+    wsBadge.textContent = wsConnected ? `WS: connecté • Joueurs: ${n}` : "WS: hors-ligne";
+  }
+
+  function connectWS() {
+    try { if (ws) ws.close(); } catch {}
+    ws = null;
+    wsConnected = false;
+    updateWsBadge();
+
+    ws = new WebSocket(WS_URL);
+
+    ws.addEventListener("open", () => {
+      wsConnected = true;
+      updateWsBadge();
+      wsSend({
+        t: "join",
+        room: "hub",
+        name: NAME,
+        skin: settings.skin,
+        st: { x: player.root.position.x, y: player.root.position.y, z: player.root.position.z, yaw: cam.yaw },
+      });
+    });
+
+    ws.addEventListener("message", (ev) => {
+      const msg = safeJsonParse(ev.data);
+      if (!msg || !msg.t) return;
+
+      if (msg.t === "welcome" || msg.t === "hub_welcome") {
+        if (typeof msg.id === "number") player.id = msg.id;
+        updateWsBadge();
+        return;
+      }
+
+      if (msg.t === "hub_snapshot" && Array.isArray(msg.players)) {
+        for (const p of msg.players) {
+          if (p.id === player.id) continue;
+          ensureRemote(p);
+          if (p.skin) applyRemoteSkin(p.id, p.skin);
+          if (p.st) {
+            const r = remotes.get(p.id);
+            if (r) {
+              r.st = { ...r.st, ...p.st };
+              r.lastSt = { ...r.lastSt, ...p.st };
+              r.root.position.set(r.st.x || 0, r.st.y || 0, r.st.z || 0);
+              r.root.rotation.y = r.st.yaw || 0;
+            }
+          }
+        }
+        updateWsBadge();
+        return;
+      }
+
+      if (msg.t === "hub_join" && msg.p) {
+        if (msg.p.id === player.id) return;
+        ensureRemote(msg.p);
+        if (msg.p.skin) applyRemoteSkin(msg.p.id, msg.p.skin);
+        if (msg.p.st) {
+          const r = remotes.get(msg.p.id);
+          if (r) {
+            r.st = { ...r.st, ...msg.p.st };
+            r.lastSt = { ...r.lastSt, ...msg.p.st };
+            r.root.position.set(r.st.x || 0, r.st.y || 0, r.st.z || 0);
+            r.root.rotation.y = r.st.yaw || 0;
+          }
+        }
+        updateWsBadge();
+        return;
+      }
+
+      if (msg.t === "hub_state" && typeof msg.id === "number" && msg.st) {
+        if (msg.id === player.id) return;
+        ensureRemote({ id: msg.id, name: "Player" + msg.id });
+        const r = remotes.get(msg.id);
+        if (r) {
+          r.lastSt = { ...r.st };
+          r.st = { ...r.st, ...msg.st };
+        }
+        return;
+      }
+
+      if (msg.t === "hub_skin" && msg.p && typeof msg.p.id === "number") {
+        if (msg.p.id === player.id) return;
+        ensureRemote(msg.p);
+        applyRemoteSkin(msg.p.id, msg.p.skin || {});
+        updateWsBadge();
+        return;
+      }
+
+      if (msg.t === "hub_leave") {
+        if (typeof msg.id === "number") removeRemote(msg.id);
+        updateWsBadge();
+        return;
+      }
+    });
+
+    ws.addEventListener("close", () => {
+      wsConnected = false;
+      updateWsBadge();
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+      reconnectTimer = setTimeout(connectWS, 1500);
+    });
+
+    ws.addEventListener("error", () => {
+      // handled by close / reconnect
+    });
+  }
+
+  // Send state 12 Hz
+  let netAcc = 0;
+  function netTick(dt) {
+    if (!wsConnected || player.id == null) return;
+    netAcc += dt;
+    const period = 1 / 12;
+    if (netAcc < period) return;
+    netAcc = 0;
 
     wsSend({
       t: "hub_state",
@@ -1035,192 +775,134 @@ function resetSettings() {
         x: +player.root.position.x.toFixed(3),
         y: +player.root.position.y.toFixed(3),
         z: +player.root.position.z.toFixed(3),
-        yaw: +player.root.rotation.y.toFixed(4),
+        yaw: +player.root.rotation.y.toFixed(3),
       },
     });
   }
 
-  /* ----------------------------- Remotes ---------------------------- */
+  // ------------------------------------------------------------
+  // Skins UI (simple + synced)
+  // ------------------------------------------------------------
+  const SKINS = [
+    { id: "fox_brown", label: "Renard brun", color: "#b97a56" },
+    { id: "fox_grey",  label: "Renard gris", color: "#8f98a6" },
+    { id: "fox_black", label: "Renard noir", color: "#2d2f36" },
+    { id: "fox_white", label: "Renard blanc", color: "#d6dbe6" },
+  ];
 
-  function makeNameSprite(text) {
-    const canvas = document.createElement("canvas");
-    const ctx = canvas.getContext("2d");
-    canvas.width = 256;
-    canvas.height = 64;
-
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = "rgba(0,0,0,0.55)";
-    roundRect(ctx, 8, 10, 240, 44, 12, true, false);
-    ctx.fillStyle = "rgba(234,240,255,0.96)";
-    ctx.font = "700 22px system-ui, -apple-system, Segoe UI, Roboto, Arial";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText(text.slice(0, 16), 128, 33);
-
-    const tex = new THREE.CanvasTexture(canvas);
-    tex.minFilter = THREE.LinearFilter;
-    tex.magFilter = THREE.LinearFilter;
-
-    const mat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: true });
-    const sp = new THREE.Sprite(mat);
-    sp.scale.set(2.2, 0.55, 1);
-    sp.position.y = 1.9;
-    sp.renderOrder = 999;
-
-    sp.userData._canvas = canvas;
-    sp.userData._ctx = ctx;
-    sp.userData._tex = tex;
-
-    return sp;
-  }
-
-  function roundRect(ctx, x, y, w, h, r, fill, stroke) {
-    if (w < 2 * r) r = w / 2;
-    if (h < 2 * r) r = h / 2;
-    ctx.beginPath();
-    ctx.moveTo(x + r, y);
-    ctx.arcTo(x + w, y, x + w, y + h, r);
-    ctx.arcTo(x + w, y + h, x, y + h, r);
-    ctx.arcTo(x, y + h, x, y, r);
-    ctx.arcTo(x, y, x + w, y, r);
-    ctx.closePath();
-    if (fill) ctx.fill();
-    if (stroke) ctx.stroke();
-  }
-
-  function ensureRemote(id, name) {
-    if (remotes.has(id)) {
-      const ent = remotes.get(id);
-      if (name && ent.name !== name) {
-        ent.name = name;
-        // (simple) not updating sprite text live here
-      }
-      return ent;
+  function renderSkins() {
+    const grid = $("skinsGrid");
+    grid.innerHTML = "";
+    for (const s of SKINS) {
+      const btn = document.createElement("button");
+      btn.className = "skinBtn";
+      btn.innerHTML = `<span class="swatch" style="background:${s.color}"></span>${s.label}`;
+      btn.addEventListener("click", () => {
+        settings.skin = { id: s.id, color: s.color };
+        saveSettings();
+        applyColorToModel(player.model, settings.skin.color);
+        // Sync to others
+        wsSend({ t: "hub_skin", skin: settings.skin });
+      });
+      grid.appendChild(btn);
     }
+  }
+  renderSkins();
 
-    const root = new THREE.Group();
-    root.position.set(0, 0, 0);
-    scene.add(root);
-
-    const nameSprite = makeNameSprite(name);
-    root.add(nameSprite);
-
-    // placeholder avatar
-    const placeholder = new THREE.Mesh(
-      new THREE.CapsuleGeometry(0.3, 0.6, 6, 10),
-      new THREE.MeshStandardMaterial({ color: 0x7c5cff, roughness: 0.9 })
-    );
-    placeholder.castShadow = true;
-    placeholder.position.y = 0.6;
-    root.add(placeholder);
-
-    const ent = {
-      id,
-      name,
-      root,
-      avatar: placeholder,
-      skinId: "humanoid",
-      stTarget: { x: 0, y: 0, z: 0, yaw: 0 },
-    };
-
-    remotes.set(id, ent);
-    return ent;
+  // ------------------------------------------------------------
+  // Quality / shadows (simple)
+  // ------------------------------------------------------------
+  function applyQuality() {
+    const q = settings.quality || "high";
+    if (q === "low") {
+      renderer.setPixelRatio(1);
+      renderer.antialias = false;
+      dir.intensity = 0.9;
+    } else if (q === "med") {
+      renderer.setPixelRatio(Math.min(1.5, window.devicePixelRatio || 1));
+      dir.intensity = 1.0;
+    } else {
+      renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+      dir.intensity = 1.1;
+    }
+    applyShadows();
   }
 
-  async function applyRemoteSkin(ent, skinId) {
-    if (!ent) return;
-    if (!SKINS.some((s) => s.id === skinId)) skinId = "humanoid";
-    if (ent.skinId === skinId) return;
-
-    ent.skinId = skinId;
-
-    // Remove old avatar mesh/object (not name sprite)
-    if (ent.avatar) ent.root.remove(ent.avatar);
-
-    // Attach new avatar
-    const proto = await getSkinPrototype(skinId);
-    const clone = cloneDeep(proto);
-
-    ent.root.add(clone);
-    ent.avatar = clone;
-
-    if (skinId === "fox") {
-      // place a bit closer to ground / correct pivot already normalized
-      clone.position.y = 0;
+  function applyShadows() {
+    renderer.shadowMap.enabled = !!settings.shadows;
+    if (renderer.shadowMap.enabled) {
+      dir.castShadow = true;
+      dir.shadow.mapSize.set(1024, 1024);
+      dir.shadow.camera.near = 1;
+      dir.shadow.camera.far = 45;
+      dir.shadow.camera.left = -18;
+      dir.shadow.camera.right = 18;
+      dir.shadow.camera.top = 18;
+      dir.shadow.camera.bottom = -18;
+    } else {
+      dir.castShadow = false;
     }
   }
 
-  function removeRemote(id) {
-    const ent = remotes.get(id);
-    if (!ent) return;
-    scene.remove(ent.root);
-    // dispose textures for sprite
-    ent.root.traverse((n) => {
-      if (n.isSprite && n.material && n.material.map) n.material.map.dispose();
-      if (n.material) n.material.dispose?.();
-      if (n.geometry) n.geometry.dispose?.();
-    });
-    remotes.delete(id);
-  }
+  applyQuality();
+  applyShadows();
 
-  function clearRemotes() {
-    for (const id of Array.from(remotes.keys())) removeRemote(id);
-  }
+  // ------------------------------------------------------------
+  // Resize
+  // ------------------------------------------------------------
+  window.addEventListener("resize", () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    applyQuality();
+  });
 
-  function stepRemotes(dt) {
-    const t = clamp(settings.netLerp, 0.05, 0.5);
-    const alpha = 1 - Math.exp(-dt / t);
-    for (const ent of remotes.values()) {
-      ent.root.position.x = lerp(ent.root.position.x, ent.stTarget.x, alpha);
-      ent.root.position.y = lerp(ent.root.position.y, ent.stTarget.y, alpha);
-      ent.root.position.z = lerp(ent.root.position.z, ent.stTarget.z, alpha);
-      ent.root.rotation.y = lerpAngle(ent.root.rotation.y, ent.stTarget.yaw, alpha);
-    }
-  }
+  // Close binds overlay if clicked outside card
+  bindOverlay.addEventListener("click", (e) => {
+    if (e.target === bindOverlay) closeBinds();
+  });
 
-  /* ----------------------------- Main loop -------------------------- */
+  // Prevent clicking behind overlays
+  pauseOverlay.addEventListener("click", (e) => {
+    // click outside card: do nothing (avoid accidental close)
+  });
 
-  let lastSendAt = 0;
-
-  function tick() {
-    const dt = Math.min(0.05, clock.getDelta());
-
-    if (!PAUSED) {
-      stepPlayer(dt);
-      stepRemotes(dt);
-
-      // send state opportunistically even if interval misses
-      const t = now();
-      if (wsReady && t - lastSendAt > (1000 / settings.sendHz) * 1.5) {
-        wsSendState(false);
-        lastSendAt = t;
-      }
-    }
-
-    updateCamera(dt, false);
-
-    renderer.render(scene, camera);
-    requestAnimationFrame(tick);
-  }
-
-  /* ----------------------------- Boot ------------------------------- */
-
-  // Apply settings runtime once, then init.
-  applySettingsRuntime(true);
-  setPill(dom.pillWs, "…");
-  setPill(dom.pillPlayers, "1");
-  setPill(dom.pillSkin, "…");
-
-  // Delay init until DOM is ready (safe on fast loads)
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", () => {
-      initThree();
-      connectWS();
-      updatePlayersPill();
-    });
-  } else {
-    initThree();
+  // ------------------------------------------------------------
+  // Boot
+  // ------------------------------------------------------------
+  let last = performance.now();
+  async function boot() {
+    await initPlayerModel();
     connectWS();
-    updatePlayersPill();
+    updateWsBadge();
+
+    function frame(now) {
+      const dt = clamp((now - last) / 1000, 0, 0.05);
+      last = now;
+
+      if (!paused) updatePlayer(dt);
+      updateCamera(dt);
+
+      // Remote smoothing
+      for (const [id, r] of remotes) {
+        // simple lerp smoothing
+        const t = clamp(dt * 10.0, 0, 1);
+        const x = lerp(r.lastSt.x || 0, r.st.x || 0, t);
+        const y = lerp(r.lastSt.y || 0, r.st.y || 0, t);
+        const z = lerp(r.lastSt.z || 0, r.st.z || 0, t);
+        const yaw = lerp(r.lastSt.yaw || 0, r.st.yaw || 0, t);
+        r.root.position.set(x, y, z);
+        r.root.rotation.y = yaw;
+        r.lastSt = { x, y, z, yaw };
+      }
+
+      netTick(dt);
+
+      renderer.render(scene, camera);
+      requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
   }
+
+  boot();
 })();
