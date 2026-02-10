@@ -39,6 +39,7 @@ from dataclasses import dataclass, field
 from typing import Dict, Optional, Any
 
 import websockets
+from http import HTTPStatus
 from websockets.server import WebSocketServerProtocol
 
 PORT = int(os.getenv("PORT", "8080"))
@@ -350,9 +351,25 @@ async def handler(ws: WebSocketServerProtocol):
     finally:
         await handle_disconnect(ws)
 
+async def process_request(path, request_headers):
+    """Render health check support.
+    Render hits http://<service>:<port>/health expecting 200.
+    websockets can serve plain HTTP responses via process_request.
+    """
+    if path == "/health" or path == "/":
+        body = b"ok"
+        headers = [
+            ("Content-Type", "text/plain; charset=utf-8"),
+            ("Content-Length", str(len(body))),
+            ("Cache-Control", "no-store"),
+        ]
+        return HTTPStatus.OK, headers, body
+    return None
+
+
 async def main():
     print(f"WS server on ws://{HOST}:{PORT}/ws")
-    async with websockets.serve(handler, HOST, PORT, ping_interval=20, ping_timeout=20, max_size=2_000_000):
+    async with websockets.serve(handler, HOST, PORT, process_request=process_request, ping_interval=20, ping_timeout=20, max_size=2_000_000):
         await asyncio.Future()
 
 if __name__ == "__main__":
