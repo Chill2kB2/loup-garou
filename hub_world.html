@@ -12,15 +12,16 @@
       --ink:#eaf0ff;
       --muted:rgba(234,240,255,.72);
       --panel:rgba(10,12,18,.78);
+      --panel2:rgba(12,14,22,.55);
       --bd:rgba(255,255,255,.12);
-      --accent:rgba(124,92,255,.55);
+      --accent:rgba(124,92,255,.65);
       --r:18px;
     }
     html,body{ height:100%; margin:0; background:var(--bg); color:var(--ink); overflow:hidden; font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial; }
     canvas{ position:fixed; inset:0; z-index:0; display:block; }
 
-    /* HUD top */
-    #hudTop{
+    /* HUD bar */
+    #hudBar{
       position:fixed; top:12px; left:12px; right:12px;
       z-index:10; display:flex; gap:10px; align-items:center;
       pointer-events:none;
@@ -31,20 +32,21 @@
       border:1px solid var(--bd); background:rgba(12,14,22,.55); color:var(--ink);
       cursor:pointer;
     }
-    #hudHint{
-      pointer-events:none;
-      font-size:13px; color:var(--muted);
-      padding:10px 12px; border-radius:14px; border:1px solid var(--bd);
+    #hudPills{ display:flex; gap:8px; flex-wrap:wrap; pointer-events:none; }
+    .pill{
+      font-size:12px; color:var(--muted);
+      padding:9px 10px; border-radius:14px; border:1px solid var(--bd);
       background:rgba(12,14,22,.35);
-      max-width:min(760px, 72vw);
+      user-select:none;
     }
-    #hudNet{
-      pointer-events:none;
-      font-size:13px; color:var(--muted);
-      padding:10px 12px; border-radius:14px; border:1px solid var(--bd);
-      background:rgba(12,14,22,.35);
+    .pill strong{ color:var(--ink); font-weight:650; }
+    #hudHint{
       margin-left:auto;
-      white-space:nowrap;
+      font-size:12px; color:var(--muted);
+      padding:9px 10px; border-radius:14px; border:1px solid var(--bd);
+      background:rgba(12,14,22,.35);
+      pointer-events:none;
+      max-width:min(540px, 55vw);
     }
 
     /* Toast */
@@ -52,7 +54,6 @@
       position:fixed; bottom:14px; left:50%; transform:translateX(-50%);
       z-index:20; display:flex; flex-direction:column; gap:8px;
       pointer-events:none;
-      width:min(720px, 92vw);
     }
     .toastLine{
       background:rgba(10,12,18,.75); border:1px solid var(--bd);
@@ -63,94 +64,129 @@
     #pauseOverlay{
       position:fixed; inset:0; z-index:30;
       display:none; align-items:center; justify-content:center;
-      background:rgba(0,0,0,.55);
+      background:rgba(0,0,0,.60);
       padding:18px;
     }
     #pauseOverlay.active{ display:flex; }
     .pauseCard{
-      width:min(980px, 96vw); height:min(720px, 92vh);
+      width:min(1040px, 96vw); height:min(760px, 92vh);
       background:var(--panel); border:1px solid var(--bd); border-radius:22px;
       box-shadow:0 20px 70px rgba(0,0,0,.55);
       display:flex; flex-direction:column; overflow:hidden;
-      backdrop-filter: blur(10px);
     }
     .pauseHeader{
       display:flex; align-items:center; justify-content:space-between;
       padding:14px 16px; border-bottom:1px solid var(--bd);
+      background:rgba(10,12,18,.35);
     }
-    .pauseHeader .title{ font-weight:700; letter-spacing:.2px; }
+    .pauseHeader .title{ font-weight:800; letter-spacing:.2px; }
     #btnClosePause{
       height:38px; padding:0 12px; border-radius:12px;
       border:1px solid var(--bd); background:rgba(12,14,22,.45); color:var(--ink);
       cursor:pointer;
     }
 
-    .tabs, .subtabs{
-      display:flex; gap:10px; padding:12px 14px; border-bottom:1px solid var(--bd);
-      flex-wrap:wrap;
+    .pauseBody{ flex:1; display:flex; min-height:0; }
+
+    /* Left 4 buttons */
+    .pauseNav{
+      width:240px; border-right:1px solid var(--bd);
+      padding:14px; display:flex; flex-direction:column; gap:10px;
+      background:rgba(10,12,18,.22);
     }
-    .tabBtn{
-      height:38px; padding:0 12px; border-radius:12px;
-      border:1px solid var(--bd); background:rgba(12,14,22,.35); color:var(--ink);
+    .navBtn{
+      height:44px; width:100%;
+      border-radius:14px;
+      border:1px solid var(--bd);
+      background:rgba(12,14,22,.35);
+      color:var(--ink);
       cursor:pointer;
+      text-align:left;
+      padding:0 14px;
+      display:flex; align-items:center; justify-content:space-between;
+      gap:10px;
     }
-    .tabBtn.active{ background:rgba(124,92,255,.22); border-color:var(--accent); }
+    .navBtn.active{
+      background:rgba(124,92,255,.20);
+      border-color:rgba(124,92,255,.55);
+    }
+    .navBtn small{ color:var(--muted); font-size:12px; font-weight:600; }
 
-    .page{ flex:1; overflow:auto; padding:14px; }
-    .hidden{ display:none !important; }
-
-    .row{ display:flex; gap:12px; flex-wrap:wrap; }
+    /* Right content */
+    .pauseContent{ flex:1; padding:14px; overflow:auto; }
+    .sectionTitle{
+      margin:0 0 10px; font-size:14px; color:var(--muted); font-weight:800; letter-spacing:.2px;
+      text-transform:uppercase;
+    }
+    .grid{ display:grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap:12px; }
+    @media (max-width: 900px){
+      .pauseNav{ width:200px; }
+      .grid{ grid-template-columns: 1fr; }
+    }
     .card{
       background:rgba(12,14,22,.35);
       border:1px solid var(--bd); border-radius:18px; padding:14px;
-      min-width:280px; flex:1;
     }
-    .label{ font-size:12px; color:var(--muted); margin-bottom:6px; }
+    .row{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+    .label{ font-size:12px; color:var(--muted); margin-bottom:6px; font-weight:700; }
+    .help{ font-size:12px; color:var(--muted); margin-top:8px; line-height:1.35; }
     input, select{
-      width:100%; height:38px; border-radius:12px;
+      width:100%; height:40px; border-radius:12px;
       border:1px solid var(--bd); background:rgba(8,10,16,.55); color:var(--ink);
       padding:0 10px;
       outline:none;
     }
-
+    input[type="range"]{ padding:0; height:38px; }
     .btn{
-      height:38px; padding:0 12px; border-radius:12px;
+      height:40px; padding:0 12px; border-radius:12px;
       border:1px solid var(--bd); background:rgba(12,14,22,.45); color:var(--ink);
       cursor:pointer;
     }
-    .btn--primary{
+    .btnPrimary{
       background:rgba(124,92,255,.22);
-      border-color:var(--accent);
-    }
-    .smallNote{
-      margin-left:10px;
-      font-size:12px;
-      color:var(--muted);
-      white-space:nowrap;
+      border-color:rgba(124,92,255,.55);
     }
 
-    .kv{
-      display:flex;
+    .hidden{ display:none !important; }
+
+    /* Skins */
+    .skinsGrid{
+      display:grid;
+      grid-template-columns: repeat(3, minmax(0,1fr));
       gap:12px;
-      align-items:center;
-      justify-content:space-between;
-      padding:10px 12px;
-      border:1px solid var(--bd);
-      border-radius:14px;
-      background:rgba(8,10,16,.35);
-      margin-bottom:10px;
     }
-    .kv .k{ font-size:13px; color:var(--ink); }
-    .kv .v{ display:flex; align-items:center; gap:10px; justify-content:flex-end; flex-wrap:wrap; }
+    @media (max-width: 900px){
+      .skinsGrid{ grid-template-columns: repeat(2, minmax(0,1fr)); }
+    }
+    @media (max-width: 540px){
+      .skinsGrid{ grid-template-columns: 1fr; }
+    }
+    .skinTile{
+      border:1px solid var(--bd);
+      background:rgba(12,14,22,.30);
+      border-radius:18px;
+      padding:14px;
+      cursor:pointer;
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+      min-height:120px;
+    }
+    .skinTile.active{
+      border-color:rgba(124,92,255,.75);
+      box-shadow:0 0 0 2px rgba(124,92,255,.15) inset;
+      background:rgba(124,92,255,.10);
+    }
+    .skinName{ font-weight:850; }
+    .skinMeta{ color:var(--muted); font-size:12px; line-height:1.35; }
 
-    /* Touch UI (mobile) */
+    /* Mobile touch UI (optional) */
     #touchUI{ position:fixed; inset:0; z-index:25; pointer-events:none; }
     #touchUI.hidden{ display:none; }
     .stick{
       position:absolute; width:150px; height:150px; border-radius:999px;
       border:1px solid var(--bd); background:rgba(12,14,22,.22);
       pointer-events:auto;
-      touch-action:none;
     }
     .stick .knob{
       position:absolute; left:50%; top:50%;
@@ -166,37 +202,18 @@
       border:1px solid var(--bd); background:rgba(255,255,255,.06); color:var(--ink);
       pointer-events:auto;
     }
-
-    /* Rebind panel */
-    #rebindPanel{
-      position:fixed; inset:0; z-index:40;
-      display:flex; align-items:center; justify-content:center;
-      background:rgba(0,0,0,.62);
-      padding:18px;
-    }
-    #rebindPanel.hidden{ display:none; }
-    .rebindCard{
-      width:min(760px, 96vw); height:min(640px, 92vh);
-      background:var(--panel); border:1px solid var(--bd); border-radius:22px;
-      display:flex; flex-direction:column; overflow:hidden;
-      backdrop-filter: blur(10px);
-    }
-    .rebindHeader{
-      padding:14px 16px; border-bottom:1px solid var(--bd);
-      display:flex; justify-content:space-between; align-items:center;
-    }
-    #rebindList{ padding:14px; overflow:auto; }
-    .rebindFooter{
-      padding:14px; border-top:1px solid var(--bd);
-      display:flex; gap:10px; justify-content:flex-end; flex-wrap:wrap;
-    }
   </style>
 </head>
 
 <body>
-  <div id="hudTop">
+  <div id="hudBar">
     <button id="btnPause">Menu</button>
-    <div id="hudHint">Appuie sur Z/Q/S/D ou clique pour contrôler la caméra</div>
+    <div id="hudPills">
+      <div class="pill" id="pillWs">WS: <strong>…</strong></div>
+      <div class="pill" id="pillPlayers">Joueurs: <strong>…</strong></div>
+      <div class="pill" id="pillSkin">Skin: <strong>…</strong></div>
+    </div>
+    <div id="hudHint">Déplacement ZQSD • Souris = caméra • Échap ou P = pause</div>
   </div>
 
   <div id="toast"></div>
@@ -204,161 +221,199 @@
   <div id="touchUI" class="hidden">
     <div id="stickMove" class="stick"><div class="knob"></div></div>
     <div id="stickLook" class="stick"><div class="knob"></div></div>
-    <button id="btnJump" class="btn">⤒</button>
+    <button id="btnJump">⤒</button>
   </div>
 
   <div id="pauseOverlay" aria-hidden="true">
     <div class="pauseCard">
       <div class="pauseHeader">
         <div class="title">Pause</div>
-        <button id="btnClosePause" class="btn">✕</button>
+        <button id="btnClosePause">✕</button>
       </div>
 
-      <div class="tabs">
-        <button class="tabBtn active" data-tab="resume">Reprendre</button>
-        <button class="tabBtn" data-tab="options">Options</button>
-        <button class="tabBtn" data-tab="skins">Skins</button>
-        <button class="tabBtn" data-tab="home">Accueil</button>
-      </div>
+      <div class="pauseBody">
+        <div class="pauseNav">
+          <button class="navBtn active" data-view="resume">
+            <span>Reprendre</span><small>Retour jeu</small>
+          </button>
+          <button class="navBtn" data-view="options">
+            <span>Options</span><small>Réglages</small>
+          </button>
+          <button class="navBtn" data-view="skins">
+            <span>Skins</span><small>Synchro live</small>
+          </button>
+          <button class="navBtn" data-view="home">
+            <span>Accueil</span><small>Quitter hub</small>
+          </button>
 
-      <div class="page" id="tab_resume">
-        <div class="row">
-          <div class="card">
-            <div class="label">Actions</div>
-            <div class="row">
-              <button class="btn btn--primary" id="btnResume">Reprendre</button>
-              <button class="btn" id="btnResetPos">Reset position</button>
-              <button class="btn" id="btnJoystick">Joysticks</button>
-              <button class="btn" id="btnRebind">Rebind touches</button>
-            </div>
-            <div style="margin-top:10px;color:var(--muted);font-size:13px">
-              Astuce PC: Échap sort du lock souris. Avec ce build, la perte du lock ouvre le menu automatiquement. (Pause aussi sur P)
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="page hidden" id="tab_options">
-        <div class="subtabs">
-          <button class="tabBtn active" data-subtab="graphics">Graphiques</button>
-          <button class="tabBtn" data-subtab="controls">Contrôles</button>
-          <button class="tabBtn" data-subtab="audio">Audio</button>
-          <button class="tabBtn" data-subtab="gameplay">Gameplay</button>
-        </div>
-
-        <div id="sub_graphics">
-          <div class="row">
-            <div class="card">
-              <div class="label">Qualité</div>
-              <select id="optQuality">
-                <option value="low">Basse</option>
-                <option value="med">Moyenne</option>
-                <option value="high">Haute</option>
-              </select>
-            </div>
-            <div class="card">
-              <div class="label">Ombres</div>
-              <button class="btn" id="optShadows">ON</button>
-            </div>
-            <div class="card">
-              <div class="label">FOV</div>
-              <input id="optFov" type="number" min="40" max="100" step="1" />
-            </div>
-            <div class="card">
-              <div class="label">Pixel Ratio</div>
-              <select id="optPixelRatio">
-                <option value="auto">Auto</option>
-                <option value="1">1</option>
-                <option value="1.5">1.5</option>
-                <option value="2">2</option>
-              </select>
-            </div>
+          <div style="margin-top:auto;color:var(--muted);font-size:12px;line-height:1.35">
+            Astuce : en pointer lock, Échap libère la souris. Ici, la perte du lock ouvre automatiquement le menu.
           </div>
         </div>
 
-        <div id="sub_controls" class="hidden">
-          <div class="row">
-            <div class="card">
-              <div class="label">Sensibilité</div>
-              <input id="optSens" type="number" step="0.05" min="0.1" max="5" />
-            </div>
-            <div class="card">
-              <div class="label">Invert Y</div>
-              <button class="btn" id="optInvertY">OFF</button>
-            </div>
-            <div class="card">
-              <div class="label">Mode souris</div>
-              <select id="optMouseMode">
-                <option value="lock">Pointer lock</option>
-                <option value="drag">Drag</option>
-              </select>
-            </div>
-          </div>
-        </div>
-
-        <div id="sub_audio" class="hidden">
-          <div class="row">
-            <div class="card"><div class="label">Master</div><input id="optVolMaster" type="range" min="0" max="100" /></div>
-            <div class="card"><div class="label">Ambiance</div><input id="optVolAmb" type="range" min="0" max="100" /></div>
-            <div class="card"><div class="label">SFX</div><input id="optVolSfx" type="range" min="0" max="100" /></div>
-          </div>
-        </div>
-
-        <div id="sub_gameplay" class="hidden">
-          <div class="row">
-            <div class="card"><div class="label">Déplacement relatif caméra</div><button class="btn" id="optMoveRel">ON</button></div>
-            <div class="card"><div class="label">Sprint</div>
-              <select id="optSprintMode">
-                <option value="hold">Maintenir</option>
-                <option value="toggle">Toggle</option>
-              </select>
-            </div>
-            <div class="card"><div class="label">Dash</div><button class="btn" id="optDash">ON</button></div>
-            <div class="card"><div class="label">Auto joysticks (mobile)</div><button class="btn" id="optAutoJoy">ON</button></div>
-          </div>
-
-          <div class="row" style="margin-top:12px">
-            <div class="card">
-              <div class="label">Taille skin</div>
-              <input id="optScale" type="number" step="0.05" min="0.8" max="1.2" />
-            </div>
-            <div class="card">
-              <div class="label">Couleur</div>
-              <input id="optColor" type="color" />
+        <div class="pauseContent">
+          <div id="view_resume">
+            <h3 class="sectionTitle">Reprendre</h3>
+            <div class="grid">
+              <div class="card">
+                <div class="label">Actions rapides</div>
+                <div class="row">
+                  <button class="btn btnPrimary" id="btnResume">Reprendre</button>
+                  <button class="btn" id="btnResetPos">Reset position</button>
+                </div>
+                <div class="help">Reprendre relock la souris (si activé) et te remet en jeu.</div>
+              </div>
+              <div class="card">
+                <div class="label">Contrôles</div>
+                <div class="help">
+                  Z/Q/S/D : déplacement • Shift : sprint • Espace : saut<br/>
+                  P : pause • Échap : pause (via sortie pointer lock)
+                </div>
+              </div>
             </div>
           </div>
-        </div>
-      </div>
 
-      <div class="page hidden" id="tab_skins">
-        <div class="card">
-          <div class="label">Skins</div>
-          <div id="skinsGrid"></div>
-        </div>
-      </div>
+          <div id="view_options" class="hidden">
+            <h3 class="sectionTitle">Options</h3>
 
-      <div class="page hidden" id="tab_home">
-        <div class="card">
-          <div class="label">Retour</div>
-          <div class="row">
-            <button class="btn btn--primary" id="btnGoHome">Retour accueil</button>
-            <button class="btn" id="btnStay">Rester</button>
+            <div class="grid">
+              <div class="card">
+                <div class="label">Contrôles (souris)</div>
+                <div class="row">
+                  <div style="flex:1">
+                    <div class="label">Sensibilité</div>
+                    <input id="optSens" type="number" min="0.05" max="5" step="0.05" />
+                  </div>
+                  <div style="flex:1">
+                    <div class="label">Smoothing caméra</div>
+                    <input id="optCamSmooth" type="number" min="0" max="0.35" step="0.01" />
+                  </div>
+                </div>
+                <div class="row" style="margin-top:10px">
+                  <button class="btn" id="optInvertX">Invert X: OFF</button>
+                  <button class="btn" id="optInvertY">Invert Y: OFF</button>
+                  <button class="btn" id="optPointerLock">Pointer lock: ON</button>
+                </div>
+                <div class="help">Objectif: mouvement de souris = rotation caméra dans le même sens (gamer). Invert X/Y si tu préfères.</div>
+              </div>
+
+              <div class="card">
+                <div class="label">Caméra</div>
+                <div class="row">
+                  <div style="flex:1">
+                    <div class="label">Distance</div>
+                    <input id="optCamDist" type="number" min="2" max="12" step="0.25" />
+                  </div>
+                  <div style="flex:1">
+                    <div class="label">Hauteur</div>
+                    <input id="optCamHeight" type="number" min="0" max="4" step="0.05" />
+                  </div>
+                </div>
+                <div class="row" style="margin-top:10px">
+                  <div style="flex:1">
+                    <div class="label">FOV</div>
+                    <input id="optFov" type="number" min="40" max="110" step="1" />
+                  </div>
+                  <div style="flex:1">
+                    <div class="label">Look height</div>
+                    <input id="optLookH" type="number" min="0.5" max="2.2" step="0.05" />
+                  </div>
+                </div>
+                <div class="help">Le même set est appliqué à tous les skins, avec un ajustement automatique léger pour le Fox.</div>
+              </div>
+
+              <div class="card">
+                <div class="label">Graphiques</div>
+                <div class="row">
+                  <div style="flex:1">
+                    <div class="label">Qualité</div>
+                    <select id="optQuality">
+                      <option value="low">Basse</option>
+                      <option value="med">Moyenne</option>
+                      <option value="high">Haute</option>
+                    </select>
+                  </div>
+                  <div style="flex:1">
+                    <div class="label">Pixel ratio</div>
+                    <select id="optPixelRatio">
+                      <option value="auto">Auto</option>
+                      <option value="1">1</option>
+                      <option value="1.5">1.5</option>
+                      <option value="2">2</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="row" style="margin-top:10px">
+                  <button class="btn" id="optShadows">Ombres: ON</button>
+                </div>
+                <div class="help">Qualité ajuste aussi les ombres et la distance de rendu.</div>
+              </div>
+
+              <div class="card">
+                <div class="label">Gameplay</div>
+                <div class="row">
+                  <div style="flex:1">
+                    <div class="label">Vitesse</div>
+                    <input id="optSpeed" type="number" min="1" max="10" step="0.1" />
+                  </div>
+                  <div style="flex:1">
+                    <div class="label">Sprint (x)</div>
+                    <input id="optSprintMul" type="number" min="1" max="2.5" step="0.05" />
+                  </div>
+                </div>
+                <div class="row" style="margin-top:10px">
+                  <button class="btn" id="optSprintToggle">Sprint: HOLD</button>
+                </div>
+                <div class="help">HOLD = maintenir Shift. TOGGLE = appui pour activer/désactiver.</div>
+              </div>
+
+              <div class="card">
+                <div class="label">Réseau (hub)</div>
+                <div class="row">
+                  <div style="flex:1">
+                    <div class="label">Taux envoi (Hz)</div>
+                    <input id="optSendHz" type="number" min="5" max="30" step="1" />
+                  </div>
+                  <div style="flex:1">
+                    <div class="label">Interpolation</div>
+                    <input id="optNetLerp" type="number" min="0.05" max="0.5" step="0.01" />
+                  </div>
+                </div>
+                <div class="help">Si ça lag chez un ami, baisse le Hz (10–12 conseillé) et augmente légèrement l’interpolation.</div>
+              </div>
+
+              <div class="card">
+                <div class="label">Sauvegarde</div>
+                <div class="row">
+                  <button class="btn btnPrimary" id="btnSaveSettings">Sauvegarder</button>
+                  <button class="btn" id="btnResetSettings">Reset</button>
+                </div>
+                <div class="help">Les réglages s’appliquent instantanément. Sauvegarde = localStorage.</div>
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
-    </div>
-  </div>
 
-  <div id="rebindPanel" class="hidden" aria-hidden="true">
-    <div class="rebindCard">
-      <div class="rebindHeader">
-        <div style="font-weight:700">Rebind touches</div>
-        <button class="btn" id="btnCloseRebind">✕</button>
-      </div>
-      <div id="rebindList"></div>
-      <div class="rebindFooter">
-        <button class="btn" id="btnResetBinds">Reset</button>
-        <button class="btn btn--primary" id="btnCloseRebind2">OK</button>
+          <div id="view_skins" class="hidden">
+            <h3 class="sectionTitle">Skins (synchro temps réel)</h3>
+            <div class="skinsGrid" id="skinsGrid"></div>
+            <div class="help" style="margin-top:10px">
+              Tout changement est envoyé au serveur hub instantanément et visible chez les autres joueurs.
+            </div>
+          </div>
+
+          <div id="view_home" class="hidden">
+            <h3 class="sectionTitle">Retour à l’accueil</h3>
+            <div class="card">
+              <div class="label">Quitter le hub</div>
+              <div class="row">
+                <button class="btn btnPrimary" id="btnGoHome">Retour accueil</button>
+                <button class="btn" id="btnStay">Rester dans le hub</button>
+              </div>
+              <div class="help">Retourne au menu d’accueil (index.html).</div>
+            </div>
+          </div>
+
+        </div>
       </div>
     </div>
   </div>
@@ -366,12 +421,5 @@
   <script src="three.min.js"></script>
   <script src="GLTFLoader.js"></script>
   <script src="hub_world.js"></script>
-
-  <script>
-    // Map "OK" to the real close button (avoid duplicate IDs)
-    document.getElementById("btnCloseRebind2").addEventListener("click", () => {
-      document.getElementById("btnCloseRebind").click();
-    });
-  </script>
 </body>
 </html>
