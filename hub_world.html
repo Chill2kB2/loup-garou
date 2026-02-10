@@ -1168,6 +1168,11 @@ if(!isPaused() && !isCoarse && !camState.pointerLocked){
       pointerLocked: false
     };
 
+    // limites pitch caméra (plus libre, sans inversion)
+    const PITCH_MIN = -1.15; // regarder vers le haut (évite caméra sous le sol)
+    const PITCH_MAX =  1.35; // regarder vers le bas (plus de blocage sol)
+
+
     function updateCamera(dt){
       camState.dist = SET.gameplay.camDist;
       camState.height = SET.gameplay.camHeight;
@@ -1180,7 +1185,7 @@ if(!isPaused() && !isCoarse && !camState.pointerLocked){
       camPivot.getWorldPosition(pivotWorld);
 
       // calcul orbit
-      const cp = clamp(camState.pitch, -1.15, 0.10);
+      const cp = clamp(camState.pitch, PITCH_MIN, PITCH_MAX);
       camState.pitch = cp;
 
       const cy = camState.yaw;
@@ -1335,8 +1340,8 @@ if(!isPaused() && !isCoarse && !camState.pointerLocked){
       const inv = (SET.controls.invertY === "on") ? -1 : 1;
 
       camState.yaw   -= dx * 0.0023 * sens;
-      camState.pitch -= dy * 0.0020 * sens * inv;
-      camState.pitch = clamp(camState.pitch, -1.15, 0.10);
+      camState.pitch += dy * 0.0020 * sens * inv;
+      camState.pitch = clamp(camState.pitch, PITCH_MIN, PITCH_MAX);
     }
 
     renderer.domElement.addEventListener("mousedown", (e)=>{
