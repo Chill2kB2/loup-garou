@@ -42,8 +42,8 @@ import websockets
 from http import HTTPStatus
 from websockets.server import WebSocketServerProtocol
 
-PORT = int(os.getenv("PORT", "8080"))
-HOST = os.getenv("HOST", "0.0.0.0")
+HOST = "0.0.0.0"
+PORT = int(os.environ.get("PORT", "10000"))
 
 # -------------------------
 # Helpers
