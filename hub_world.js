@@ -651,6 +651,7 @@ function loadSkinById(id) {
       player.model = h;
       player.root.add(h);
       applyPlayerAppearance();
+      netSendSkin();
       toast("Skin: Humanoïde");
       return;
     }
@@ -677,6 +678,7 @@ function loadSkinById(id) {
         player.root.add(m);
 
         applyPlayerAppearance();
+        netSendSkin();
         toast("Skin: Fox");
       }, undefined, () => {
         toast("Erreur: impossible de charger le modèle (chemin ?).");
@@ -686,6 +688,351 @@ function loadSkinById(id) {
         player.root.add(h);
       });
     }
+  }
+
+
+  /* ---------------------------
+    Networking (Hub presence)
+  --------------------------- */
+
+  const NET = {
+    ws: null,
+    url: null,
+    id: null,
+    connected: false,
+    reconnectMs: 1200,
+    players: new Map(), // id -> remote
+    lastSend: 0,
+    sendHz: 12,
+    name: null,
+  };
+
+  function netHud() {
+    const el = $("#hudNet");
+    if (!el) return;
+    const n = NET.players.size + 1; // + self
+    const st = NET.connected ? "connecté" : "hors-ligne";
+    el.textContent = `WS: ${st} | Joueurs: ${n}`;
+  }
+
+  function pickWsUrl() {
+    const url = new URL(location.href);
+    const qp = (url.searchParams.get("ws") || "").trim();
+    if (qp) return qp;
+    // même URL que le lobby (plus simple / stable)
+    return "wss://loup-garou-ws.onrender.com/ws";
+  }
+
+  function pickName() {
+    const url = new URL(location.href);
+    const qp = (url.searchParams.get("name") || "").trim();
+    if (qp) { localStorage.setItem("lg_name", qp); return qp.slice(0, 32); }
+    const saved = (localStorage.getItem("lg_name") || "").trim();
+    if (saved) return saved.slice(0, 32);
+    const rnd = Math.random().toString(16).slice(2, 6).toUpperCase();
+    const gen = `Joueur-${rnd}`;
+    localStorage.setItem("lg_name", gen);
+    return gen;
+  }
+
+  function wsSend(obj) {
+    try {
+      if (NET.ws && NET.ws.readyState === WebSocket.OPEN) {
+        NET.ws.send(JSON.stringify(obj));
+      }
+    } catch {}
+  }
+
+  function makeNameSprite(name) {
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+    const pad = 18;
+    const font = "bold 34px system-ui, -apple-system, Segoe UI, Roboto, Arial";
+    ctx.font = font;
+    const w = Math.ceil(ctx.measureText(name).width) + pad * 2;
+    const h = 56;
+    canvas.width = w;
+    canvas.height = h;
+
+    // redraw
+    ctx.clearRect(0, 0, w, h);
+    ctx.fillStyle = "rgba(0,0,0,0.55)";
+    ctx.strokeStyle = "rgba(255,255,255,0.18)";
+    ctx.lineWidth = 3;
+    const r = 16;
+    ctx.beginPath();
+    ctx.moveTo(r, 0);
+    ctx.lineTo(w - r, 0);
+    ctx.quadraticCurveTo(w, 0, w, r);
+    ctx.lineTo(w, h - r);
+    ctx.quadraticCurveTo(w, h, w - r, h);
+    ctx.lineTo(r, h);
+    ctx.quadraticCurveTo(0, h, 0, h - r);
+    ctx.lineTo(0, r);
+    ctx.quadraticCurveTo(0, 0, r, 0);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.font = font;
+    ctx.fillStyle = "rgba(234,240,255,0.95)";
+    ctx.textBaseline = "middle";
+    ctx.fillText(name, pad, h / 2);
+
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.minFilter = THREE.LinearFilter;
+    tex.magFilter = THREE.LinearFilter;
+    tex.needsUpdate = true;
+
+    const mat = new THREE.SpriteMaterial({ map: tex, depthTest: false, depthWrite: false, transparent: true });
+    const spr = new THREE.Sprite(mat);
+    spr.scale.set((w / 56) * 1.45, 1.45, 1);
+    spr.renderOrder = 999;
+    return spr;
+  }
+
+  function buildRemoteAvatar(colorHex = "#4fe3c1") {
+    const g = new THREE.Group();
+    const mat = new THREE.MeshStandardMaterial({ color: new THREE.Color(colorHex), roughness: 0.75, metalness: 0.0 });
+    const mat2 = new THREE.MeshStandardMaterial({ color: 0x0f1320, roughness: 0.92 });
+
+    const body = new THREE.Mesh(new THREE.CylinderGeometry(0.36, 0.42, 1.18, 12), mat);
+    body.castShadow = true;
+    body.receiveShadow = true;
+    body.position.y = 1.02;
+    g.add(body);
+
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.28, 12, 10), mat);
+    head.castShadow = true;
+    head.position.y = 1.72;
+    g.add(head);
+
+    const base = new THREE.Mesh(new THREE.CylinderGeometry(0.46, 0.50, 0.16, 12), mat2);
+    base.receiveShadow = true;
+    base.position.y = 0.08;
+    g.add(base);
+
+    return g;
+  }
+
+  function addRemotePlayer(p) {
+    if (!p || !p.id) return;
+    const id = String(p.id);
+    if (NET.id && id === String(NET.id)) return;
+    if (NET.players.has(id)) return;
+
+    const skin = (p.skin && typeof p.skin === "object") ? p.skin : {};
+    const color = skin.color || "#4fe3c1";
+
+    const root = new THREE.Group();
+    const avatar = buildRemoteAvatar(color);
+    root.add(avatar);
+
+    const label = makeNameSprite((p.name || "Joueur").slice(0, 32));
+    label.position.set(0, 2.35, 0);
+    root.add(label);
+
+    root.position.set(0, 0, 0);
+    scene.add(root);
+
+    const st = (p.st && typeof p.st === "object") ? p.st : {};
+    const rx = parseFloat(st.x || 0);
+    const ry = parseFloat(st.y || 0);
+    const rz = parseFloat(st.z || 0);
+    const yaw = parseFloat(st.yaw || 0);
+
+    const remote = {
+      id,
+      name: p.name || "Joueur",
+      root,
+      avatar,
+      label,
+      pos: new THREE.Vector3(rx, ry, rz),
+      targetPos: new THREE.Vector3(rx, ry, rz),
+      yaw,
+      targetYaw: yaw,
+      lastUpdate: performance.now(),
+      skin,
+    };
+
+    root.position.copy(remote.pos);
+    root.rotation.y = remote.yaw;
+
+    NET.players.set(id, remote);
+    netHud();
+  }
+
+  function removeRemotePlayer(id) {
+    const key = String(id);
+    const r = NET.players.get(key);
+    if (!r) return;
+    scene.remove(r.root);
+    r.root.traverse((o) => {
+      if (o.material && o.material.map && o.material.map.isTexture) {
+        o.material.map.dispose?.();
+      }
+      if (o.material) o.material.dispose?.();
+      if (o.geometry) o.geometry.dispose?.();
+    });
+    NET.players.delete(key);
+    netHud();
+  }
+
+  function applyRemoteSkin(id, skin) {
+    const r = NET.players.get(String(id));
+    if (!r) return;
+    r.skin = (skin && typeof skin === "object") ? skin : {};
+    const color = r.skin.color || "#4fe3c1";
+    // recolor by rebuilding avatar (simple, robuste)
+    r.root.remove(r.avatar);
+    r.avatar = buildRemoteAvatar(color);
+    r.root.add(r.avatar);
+  }
+
+  function netConnect() {
+    NET.name = pickName();
+    NET.url = pickWsUrl();
+
+    try {
+      NET.ws = new WebSocket(NET.url);
+    } catch {
+      NET.connected = false;
+      netHud();
+      return;
+    }
+
+    NET.ws.addEventListener("open", () => {
+      NET.connected = true;
+      NET.reconnectMs = 1200;
+      netHud();
+
+      // spawn initial proche du centre (évite overlap total)
+      const sx = (Math.random() - 0.5) * 4.0;
+      const sz = (Math.random() - 0.5) * 4.0;
+      if (player && player.root) player.root.position.set(sx, 0, sz);
+
+      wsSend({
+        t: "join",
+        room: "hub",
+        name: NET.name,
+        skin: SETTINGS.skin,
+        st: { x: player.root.position.x, y: player.root.position.y, z: player.root.position.z, yaw: player.yaw }
+      });
+
+      // push skin to be safe
+      wsSend({ t: "hub_skin", skin: SETTINGS.skin });
+
+      toast("Hub: connecté");
+    });
+
+    NET.ws.addEventListener("message", (ev) => {
+      let data = null;
+      try { data = JSON.parse(ev.data); } catch { return; }
+      if (!data || typeof data !== "object") return;
+
+      const t = String(data.t || "");
+      if (t === "hello" || t === "welcome" || t === "hub_welcome") {
+        if (data.id != null) NET.id = String(data.id);
+        netHud();
+        return;
+      }
+
+      if (t === "hub_snapshot") {
+        const arr = Array.isArray(data.players) ? data.players : [];
+        for (const p of arr) addRemotePlayer(p);
+        netHud();
+        return;
+      }
+
+      if (t === "hub_join") {
+        addRemotePlayer(data.p);
+        return;
+      }
+
+      if (t === "hub_leave") {
+        removeRemotePlayer(data.id);
+        return;
+      }
+
+      if (t === "hub_state") {
+        const id = String(data.id);
+        if (NET.id && id === String(NET.id)) return;
+        const r = NET.players.get(id);
+        if (!r) return;
+        const st = (data.st && typeof data.st === "object") ? data.st : {};
+        r.targetPos.set(parseFloat(st.x || 0), parseFloat(st.y || 0), parseFloat(st.z || 0));
+        r.targetYaw = parseFloat(st.yaw || 0);
+        r.lastUpdate = performance.now();
+        return;
+      }
+
+      if (t === "hub_skin") {
+        const p = data.p;
+        if (!p || p.id == null) return;
+        const id = String(p.id);
+        if (NET.id && id === String(NET.id)) return;
+        if (!NET.players.has(id)) addRemotePlayer(p);
+        applyRemoteSkin(id, p.skin);
+        return;
+      }
+    });
+
+    NET.ws.addEventListener("close", () => {
+      NET.connected = false;
+      NET.id = NET.id; // keep
+      netHud();
+      toast("WS: déconnecté");
+
+      // cleanup remotes (on les garde pas en cas de reconnection)
+      for (const k of [...NET.players.keys()]) removeRemotePlayer(k);
+
+      const wait = NET.reconnectMs;
+      NET.reconnectMs = Math.min(10000, Math.floor(NET.reconnectMs * 1.5));
+      setTimeout(netConnect, wait);
+    });
+
+    NET.ws.addEventListener("error", () => {
+      // close triggers reconnection
+      try { NET.ws.close(); } catch {}
+    });
+
+    netHud();
+  }
+
+  function netSendSkin() {
+    if (!NET.connected) return;
+    wsSend({ t: "hub_skin", skin: SETTINGS.skin });
+    netHud();
+  }
+
+  function netTick(now, dt) {
+    // Update remote smoothing + label facing
+    for (const r of NET.players.values()) {
+      const a = 1 - Math.pow(0.001, dt); // framerate independent
+      r.pos.lerp(r.targetPos, a);
+      r.yaw = lerp(r.yaw, r.targetYaw, a);
+
+      r.root.position.copy(r.pos);
+      r.root.rotation.y = r.yaw;
+
+      if (r.label) r.label.quaternion.copy(camera.quaternion);
+    }
+
+    // Send own state (rate-limited)
+    if (!NET.connected || !NET.ws || NET.ws.readyState !== WebSocket.OPEN) return;
+    const interval = 1000 / NET.sendHz;
+    if ((now - NET.lastSend) < interval) return;
+    NET.lastSend = now;
+
+    wsSend({
+      t: "hub_state",
+      st: {
+        x: player.root.position.x,
+        y: player.root.position.y,
+        z: player.root.position.z,
+        yaw: player.yaw
+      }
+    });
   }
 
   loadSkinById(SETTINGS.skin.selected);
@@ -1023,12 +1370,14 @@ function loadSkinById(id) {
     SETTINGS.skin.scale = clamp(parseFloat(e.target.value || "1.0"), 0.8, 1.2);
     saveSettings();
     applyPlayerAppearance();
+    netSendSkin();
   });
 
   $("#optColor").addEventListener("change", (e) => {
     SETTINGS.skin.color = e.target.value;
     saveSettings();
     applyPlayerAppearance();
+    netSendSkin();
   });
 
   // Rebind UI
@@ -1140,6 +1489,8 @@ function loadSkinById(id) {
     updatePlayer(dt);
     updateCamera(dt);
 
+    netTick(now, dt);
+
     renderer.render(scene, camera);
 
     requestAnimationFrame(tick);
@@ -1155,6 +1506,7 @@ function loadSkinById(id) {
     const url = new URL(location.href);
     const name = (url.searchParams.get("name") || "").trim();
     if (name) localStorage.setItem("lg_name", name);
+    netConnect();
   })();
 
   // Start not paused
