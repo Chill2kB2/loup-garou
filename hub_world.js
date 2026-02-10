@@ -168,6 +168,14 @@
     jumpPressed: false,
     dashPressed: false,
   };
+  const _requestPointerLock = () => {
+    try {
+      if (PAUSED) return;
+      if (SETTINGS.controls.mouseMode !== "lock") return;
+      renderer.domElement.requestPointerLock?.();
+    } catch (_) {}
+  };
+
 
   function actionDown(action) {
     const codes = BINDS[action] || [];
@@ -194,6 +202,12 @@
     // éviter scroll
     if (["ArrowUp","ArrowDown","ArrowLeft","ArrowRight","Space"].includes(e.code)) e.preventDefault();
 
+    // In Pointer Lock mode, allow locking via keyboard (no need to click first)
+    if (!Input.pointerLocked && SETTINGS.controls.mouseMode === "lock") {
+      const isMoveKey = (BINDS.forward?.includes(e.code) || BINDS.back?.includes(e.code) || BINDS.left?.includes(e.code) || BINDS.right?.includes(e.code));
+      if (isMoveKey) _requestPointerLock();
+    }
+
     // Toggle joystick
     if (BINDS.joystickToggle.includes(e.code)) toggleTouchUI();
   }, { passive: false });
@@ -217,12 +231,7 @@
   renderer.domElement.addEventListener("click", () => {
     if (PAUSED) return;
     if (SETTINGS.controls.mouseMode !== "lock") return;
-
-    try {
-      renderer.domElement.requestPointerLock?.();
-    } catch (e) {
-      toast("Impossible de capturer la souris (Pointer Lock). Essaie de cliquer dans la scène puis réessaie.");
-    }
+    renderer.domElement.requestPointerLock?.();
   });
 
   document.addEventListener("pointerlockchange", () => {
@@ -239,11 +248,11 @@
 
   function setStickKnob(stickEl, nx, ny) {
     const knob = stickEl.querySelector(".knob");
-    if (!knob) return;
-    const r = 42; // px radius
-    const x = clamp(nx, -1, 1) * r;
-    const y = clamp(ny, -1, 1) * r;
-    knob.style.transform = `translate(-50%,-50%) translate(${x}px, ${y}px)`;
+    const r = 40; // radius px for knob movement
+    knob.style.left = (50 + nx * r / 75 * 50) + "%";
+    knob.style.top  = (50 + ny * r / 75 * 50) + "%";
+    // simple alternative: pixel translate, but % is ok here
+    knob.style.transform = "translate(-50%,-50%)";
   }
 
   function makeStick(stickEl, onMove) {
@@ -270,7 +279,7 @@
       const nx = clamp(dx / max, -1, 1);
       const ny = clamp(dy / max, -1, 1);
       onMove(nx, ny);
-      setStickKnob(stickEl, nx, ny);
+      setStickKnob(stickEl, nx * 40, ny * 40);
       e.preventDefault();
     });
 
@@ -432,20 +441,21 @@
 
     // Mouse
     if (!PAUSED) {
-      camRig.yaw   -= (Input.lookDX * 0.0022) * sens;
-      camRig.pitch -= (Input.lookDY * 0.0018) * sens * invert;
+      camRig.yaw   += (Input.lookDX * 0.0022) * sens;
+      camRig.pitch += (Input.lookDY * 0.0018) * sens * invert;
     }
     Input.lookDX = 0;
     Input.lookDY = 0;
 
     // Touch look
     if (!PAUSED && touchEnabled) {
-      camRig.yaw   -= (Input.lookX * 1.35) * dt * sens;
-      camRig.pitch -= (Input.lookY * 1.10) * dt * sens * invert;
+      camRig.yaw   += (Input.lookX * 1.35) * dt * sens;
+      camRig.pitch += (Input.lookY * 1.10) * dt * sens * invert;
     }
 
-    camRig.pitch = clamp(camRig.pitch, -1.52, 1.05);
-// Target = player head
+    camRig.pitch = clamp(camRig.pitch, -1.25, 1.05);
+
+    // Target = player head
     const target = new THREE.Vector3(
       player.root.position.x,
       player.root.position.y + camRig.height,
@@ -453,11 +463,14 @@
     );
 
     // Camera offset (rotated by yaw/pitch)
-    const offset = new THREE.Vector3(0, 0, -camRig.dist);
+    const offset = new THREE.Vector3(0, 0, camRig.dist);
     const rot = new THREE.Euler(camRig.pitch, camRig.yaw, 0, "YXZ");
     offset.applyEuler(rot);
 
     const desiredPos = target.clone().add(offset);
+
+    // Prevent camera going below ground
+    desiredPos.y = Math.max(desiredPos.y, 0.25);
 
     // Smooth
     const k = 1 - Math.pow(0.001, dt);
@@ -495,50 +508,21 @@
     }
   }
 
-  function computeVisibleBounds(root) {
-    // More robust than Box3.setFromObject for skinned meshes / weird hierarchies.
-    const box = new THREE.Box3();
-    const tmp = new THREE.Box3();
-    let has = false;
-
-    root.updateWorldMatrix(true, true);
-    root.traverse((o) => {
-      if (!o.isMesh || !o.geometry) return;
-      const g = o.geometry;
-      if (!g.boundingBox) g.computeBoundingBox?.();
-      if (!g.boundingBox) return;
-
-      tmp.copy(g.boundingBox);
-      tmp.applyMatrix4(o.matrixWorld);
-
-      if (!has) { box.copy(tmp); has = true; }
-      else box.union(tmp);
-    });
-
-    return has ? box : null;
-  }
-
   function fitModelToPlayer(m) {
-    // recentre + scale raisonnable, stable même avec des GLB "capricieux"
-    m.position.set(0, 0, 0);
-    m.rotation.set(0, 0, 0);
-    m.scale.set(1, 1, 1);
-    m.updateWorldMatrix(true, true);
-
-    const box = computeVisibleBounds(m) || new THREE.Box3().setFromObject(m);
+    // recentre + scale raisonnable
+    const box = new THREE.Box3().setFromObject(m);
     const size = new THREE.Vector3();
     box.getSize(size);
     const center = new THREE.Vector3();
     box.getCenter(center);
 
-    // Move pivot to center, then drop to ground
+    // Move pivot to ground
     m.position.sub(center);
-
-    m.updateWorldMatrix(true, true);
-    const box2 = computeVisibleBounds(m) || new THREE.Box3().setFromObject(m);
+    // put feet on ground
+    const box2 = new THREE.Box3().setFromObject(m);
     m.position.y -= box2.min.y;
 
-    // scale to ~1.55m
+    // scale to ~1.6m
     const h = Math.max(0.01, size.y);
     const targetH = 1.55;
     const s = targetH / h;
@@ -628,7 +612,7 @@
     PAUSED = v;
 
     const overlay = $("#pauseOverlay");
-    overlay?.classList.toggle("active", v);
+    overlay.classList.toggle("active", v);
 
     // Release pointer lock in pause
     if (v && document.pointerLockElement) document.exitPointerLock?.();
@@ -636,8 +620,7 @@
     // Show/hide touch UI depending
     applyAutoTouchUI();
 
-    const hint = $("#hudHint");
-    if (hint) hint.textContent = v ? "Pause (menu ouvert)" : "Clique / touche l’écran pour contrôler la caméra";
+    $("#hudHint").textContent = v ? "Pause (menu ouvert)" : "Clique / touche l’écran pour contrôler la caméra";
   }
 
   function teleportSpawn() {
@@ -691,16 +674,14 @@
     }
 
     // Direction relative camera or world
-    // Note: iz est négatif quand on avance (Z / stick vers le haut).
-    // Pour "moveRelativeCamera", on veut avancer DANS la direction où regarde la caméra (et non vers la caméra),
-    // sans inverser gauche/droite. Donc: on inverse uniquement l'axe avant/arrière (z), puis on rotate par yaw.
     let desiredDir = new THREE.Vector3(ix, 0, iz);
     if (SETTINGS.gameplay.moveRelativeCamera) {
+      // rotate by camera yaw only
       const yaw = camRig.yaw;
-      desiredDir.set(ix, 0, -iz);
       desiredDir.applyAxisAngle(new THREE.Vector3(0,1,0), yaw);
     }
-// Speed
+
+    // Speed
     let speed = player.baseSpeed;
     if (player.sprinting) speed *= player.sprintMul;
     if (player.crouching) speed *= player.crouchMul;
@@ -763,13 +744,13 @@
   --------------------------- */
 
   // Pause toggles
-  $("#btnPause")?.addEventListener("click", () => setPaused(!PAUSED));
-  $("#btnClosePause")?.addEventListener("click", () => setPaused(false));
-  $("#btnResume")?.addEventListener("click", () => setPaused(false));
-  $("#btnStay")?.addEventListener("click", () => setPaused(false));
-  $("#btnGoHome")?.addEventListener("click", () => { location.href = "index.html"; });
-  $("#btnResetPos")?.addEventListener("click", () => teleportSpawn());
-  $("#btnJoystick")?.addEventListener("click", () => toggleTouchUI());
+  $("#btnPause").addEventListener("click", () => setPaused(!PAUSED));
+  $("#btnClosePause").addEventListener("click", () => setPaused(false));
+  $("#btnResume").addEventListener("click", () => setPaused(false));
+  $("#btnStay").addEventListener("click", () => setPaused(false));
+  $("#btnGoHome").addEventListener("click", () => { location.href = "index.html"; });
+  $("#btnResetPos").addEventListener("click", () => teleportSpawn());
+  $("#btnJoystick").addEventListener("click", () => toggleTouchUI());
 
   // Escape
   window.addEventListener("keydown", (e) => {
@@ -837,7 +818,7 @@
   refreshOptionsUI();
 
   // Graphics handlers
-  $("#optQuality")?.addEventListener("change", (e) => {
+  $("#optQuality").addEventListener("change", (e) => {
     SETTINGS.graphics.quality = e.target.value;
     // quality affects shadow map size & fog density lightly
     if (SETTINGS.graphics.quality === "low") {
@@ -854,64 +835,64 @@
     toast("Graphiques: " + SETTINGS.graphics.quality);
   });
 
-  $("#optShadows")?.addEventListener("click", () => {
+  $("#optShadows").addEventListener("click", () => {
     SETTINGS.graphics.shadows = !SETTINGS.graphics.shadows;
     renderer.shadowMap.enabled = SETTINGS.graphics.shadows;
     $("#optShadows").textContent = SETTINGS.graphics.shadows ? "ON" : "OFF";
     saveSettings();
   });
 
-  $("#optFov")?.addEventListener("change", (e) => {
+  $("#optFov").addEventListener("change", (e) => {
     SETTINGS.graphics.fov = clamp(parseInt(e.target.value || "60", 10), 45, 85);
     camera.fov = SETTINGS.graphics.fov;
     camera.updateProjectionMatrix();
     saveSettings();
   });
 
-  $("#optPixelRatio")?.addEventListener("change", (e) => {
+  $("#optPixelRatio").addEventListener("change", (e) => {
     SETTINGS.graphics.pixelRatio = e.target.value;
     applyPixelRatio();
     saveSettings();
   });
 
   // Controls handlers
-  $("#optSens")?.addEventListener("change", (e) => {
+  $("#optSens").addEventListener("change", (e) => {
     SETTINGS.controls.sens = clamp(parseFloat(e.target.value || "1.2"), 0.3, 3);
     saveSettings();
   });
 
-  $("#optInvertY")?.addEventListener("click", () => {
+  $("#optInvertY").addEventListener("click", () => {
     SETTINGS.controls.invertY = !SETTINGS.controls.invertY;
     $("#optInvertY").textContent = SETTINGS.controls.invertY ? "ON" : "OFF";
     saveSettings();
   });
 
-  $("#optMouseMode")?.addEventListener("change", (e) => {
+  $("#optMouseMode").addEventListener("change", (e) => {
     SETTINGS.controls.mouseMode = e.target.value;
     saveSettings();
     toast("Souris: " + (SETTINGS.controls.mouseMode === "lock" ? "Pointer Lock" : "Drag"));
   });
 
   // Gameplay handlers
-  $("#optMoveRel")?.addEventListener("click", () => {
+  $("#optMoveRel").addEventListener("click", () => {
     SETTINGS.gameplay.moveRelativeCamera = !SETTINGS.gameplay.moveRelativeCamera;
     $("#optMoveRel").textContent = SETTINGS.gameplay.moveRelativeCamera ? "ON" : "OFF";
     saveSettings();
   });
 
-  $("#optSprintMode")?.addEventListener("change", (e) => {
+  $("#optSprintMode").addEventListener("change", (e) => {
     SETTINGS.gameplay.sprintMode = e.target.value;
     sprintToggled = false;
     saveSettings();
   });
 
-  $("#optDash")?.addEventListener("click", () => {
+  $("#optDash").addEventListener("click", () => {
     SETTINGS.gameplay.dash = !SETTINGS.gameplay.dash;
     $("#optDash").textContent = SETTINGS.gameplay.dash ? "ON" : "OFF";
     saveSettings();
   });
 
-  $("#optAutoJoy")?.addEventListener("click", () => {
+  $("#optAutoJoy").addEventListener("click", () => {
     SETTINGS.gameplay.autoJoy = !SETTINGS.gameplay.autoJoy;
     $("#optAutoJoy").textContent = SETTINGS.gameplay.autoJoy ? "ON" : "OFF";
     applyAutoTouchUI();
@@ -944,13 +925,13 @@
   }
   renderSkinsGrid();
 
-  $("#optScale")?.addEventListener("change", (e) => {
+  $("#optScale").addEventListener("change", (e) => {
     SETTINGS.skin.scale = clamp(parseFloat(e.target.value || "1.0"), 0.8, 1.2);
     saveSettings();
     applyPlayerAppearance();
   });
 
-  $("#optColor")?.addEventListener("change", (e) => {
+  $("#optColor").addEventListener("change", (e) => {
     SETTINGS.skin.color = e.target.value;
     saveSettings();
     applyPlayerAppearance();
@@ -967,25 +948,12 @@
   let waitingAction = null;
 
   function niceKey(code) {
-    // e.code is a PHYSICAL key. We display a friendlier label for AZERTY FR users.
-    const lang = (navigator.language || "").toLowerCase();
-    const isFR = lang.startsWith("fr");
-    const azerty = {
-      KeyW: "Z",
-      KeyA: "Q",
-      KeyQ: "A",
-      KeyZ: "W",
-    };
-
-    if (isFR && azerty[code]) return azerty[code];
-
     if (code.startsWith("Key")) return code.slice(3);
     if (code.startsWith("Digit")) return code.slice(5);
     if (code === "Space") return "Espace";
     if (code.startsWith("Arrow")) return code.replace("Arrow", "Flèche ");
     if (code === "ShiftLeft" || code === "ShiftRight") return "Shift";
     if (code === "ControlLeft" || code === "ControlRight") return "Ctrl";
-    if (code === "AltLeft" || code === "AltRight") return "Alt";
     return code;
   }
 
