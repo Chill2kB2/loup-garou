@@ -47,7 +47,7 @@
 
   const DEFAULT_SETTINGS = {
     graphics: { quality: "high", shadows: true, fov: 60, pixelRatio: "auto" },
-    controls: { sens: 1.2, invertY: false, mouseMode: "drag" }, // drag / lock
+    controls: { sens: 1.2, invertY: false, mouseMode: "lock" }, // drag / lock
     audio: { master: 70, amb: 60, sfx: 80 },
     gameplay: { moveRelativeCamera: true, sprintMode: "hold", dash: true, autoJoy: true },
     skin: { selected: "humanoid", scale: 1.0, color: "#7c5cff" }
@@ -444,9 +444,8 @@
       camRig.pitch -= (Input.lookY * 1.10) * dt * sens * invert;
     }
 
-    camRig.pitch = clamp(camRig.pitch, -1.35, 0.55);
-
-    // Target = player head
+    camRig.pitch = clamp(camRig.pitch, -1.52, 1.05);
+// Target = player head
     const target = new THREE.Vector3(
       player.root.position.x,
       player.root.position.y + camRig.height,
@@ -692,14 +691,16 @@
     }
 
     // Direction relative camera or world
+    // Note: iz est négatif quand on avance (Z / stick vers le haut).
+    // Pour "moveRelativeCamera", on veut avancer DANS la direction où regarde la caméra (et non vers la caméra),
+    // sans inverser gauche/droite. Donc: on inverse uniquement l'axe avant/arrière (z), puis on rotate par yaw.
     let desiredDir = new THREE.Vector3(ix, 0, iz);
     if (SETTINGS.gameplay.moveRelativeCamera) {
-      // rotate by camera yaw only
-      const yaw = camRig.yaw + Math.PI;
+      const yaw = camRig.yaw;
+      desiredDir.set(ix, 0, -iz);
       desiredDir.applyAxisAngle(new THREE.Vector3(0,1,0), yaw);
     }
-
-    // Speed
+// Speed
     let speed = player.baseSpeed;
     if (player.sprinting) speed *= player.sprintMul;
     if (player.crouching) speed *= player.crouchMul;
