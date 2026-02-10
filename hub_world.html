@@ -1354,13 +1354,19 @@
 
       if(msg.t === "hub_skin"){
         // re-spawn rapide (modèle/scale)
-        const p = msg.p || {};
+        // Supporte 2 formats :
+        //  - nouveau: {t:"hub_skin", p:{id,name,skin,st}}
+        //  - ancien : {t:"hub_skin", id:<int>, skin:{...}}
+        const p = msg.p ? msg.p : { id: msg.id, skin: msg.skin };
         if(p.id == null) return;
         if(p.id === NET.id) return;
+
         const old = NET.remotes.get(p.id);
+        const name = (p.name != null) ? p.name : (old ? old.name : "Joueur");
         const st = old ? { x: old.targetPos.x, y: old.targetPos.y, z: old.targetPos.z, yaw: old.targetYaw } : (p.st||{});
+
         netDespawnRemote(p.id);
-        netSpawnRemote({ ...p, st });
+        netSpawnRemote({ ...p, name, st });
         return;
       }
     }
@@ -1377,7 +1383,7 @@
         NET.connected = true;
         netOnlineCount();
         toast("Connecté au Hub", 1000);
-        netSend({ t:"join", room:"hub", name: SET.name, skin: SET.skin });
+        netSend({ t:"join", room:"hub", name: SET.name, skin: SET.skin, st:{ x: player.pos.x, y: player.pos.y, z: player.pos.z, yaw: player.yaw } });
       };
 
       NET.ws.onmessage = (ev)=>{
@@ -1434,7 +1440,37 @@
       dashCd: 0,
       sprintToggle: false,
       crouch: false
-    };
+    
+    // ----------------------------
+    // Spawn: éviter que tous les joueurs apparaissent au même endroit (0,0,0)
+    // => réduit le "clip" caméra dans les autres skins (ex: Fox) au spawn.
+    const HUB_SPAWNS = [
+      new THREE.Vector3( 0,0, 8),
+      new THREE.Vector3( 8,0, 0),
+      new THREE.Vector3( 0,0,-8),
+      new THREE.Vector3(-8,0, 0),
+      new THREE.Vector3( 6,0, 6),
+      new THREE.Vector3(-6,0, 6),
+      new THREE.Vector3(-6,0,-6),
+      new THREE.Vector3( 6,0,-6),
+    ];
+    function hashStr(s){
+      s = String(s||"");
+      let h = 2166136261;
+      for(let i=0;i<s.length;i++){
+        h ^= s.charCodeAt(i);
+        h = Math.imul(h, 16777619);
+      }
+      return (h>>>0);
+    }
+    // spawn déterministe par nom (pratique pour tests multi sans collisions)
+    {
+      const idx = hashStr(SET.name) % HUB_SPAWNS.length;
+      player.pos.copy(HUB_SPAWNS[idx]);
+      player.yaw = (idx / HUB_SPAWNS.length) * Math.PI * 2;
+    }
+
+};
 
     // camera orbit params
     const camState = {
@@ -1507,7 +1543,7 @@
       let mz = input.moveZ;
 
       // clavier
-      let kx = (l?1:0) - (r?1:0);
+      let kx = (r?1:0) - (l?1:0);
       let kz = (f?1:0) - (b?1:0);
 
       // combine (joystick + clavier)
