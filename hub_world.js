@@ -1,6 +1,28 @@
 (() => {
   "use strict";
 
+  const bootBadge = document.getElementById("bootBadge");
+
+  // Fatal error helper (only shows if something breaks)
+  function fatal(msg, err) {
+    try {
+      const el = document.createElement("div");
+      el.style.position = "fixed";
+      el.style.inset = "12px";
+      el.style.zIndex = "9999";
+      el.style.padding = "12px 14px";
+      el.style.borderRadius = "14px";
+      el.style.border = "1px solid rgba(255,255,255,.14)";
+      el.style.background = "rgba(10,12,18,.92)";
+      el.style.color = "rgba(234,240,255,.92)";
+      el.style.font = "13px system-ui, -apple-system, Segoe UI, Arial";
+      el.style.whiteSpace = "pre-wrap";
+      el.textContent = "Hub error:\n" + msg + (err ? "\n\n" + (err.stack || err.message || String(err)) : "");
+      document.body.appendChild(el);
+    } catch {}
+    console.error(msg, err);
+  }
+
   // ------------------------------------------------------------
   // Helpers
   // ------------------------------------------------------------
@@ -271,14 +293,24 @@
   // ------------------------------------------------------------
   // Scene / Three.js
   // ------------------------------------------------------------
+  if (typeof THREE === "undefined") {
+    fatal("Three.js (THREE) est introuvable. Vérifie que three.min.js est bien servi à la racine.");
+    return;
+  }
+
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x07090d);
+  scene.background = new THREE.Color(0x0a0f1a);
 
   const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.05, 250);
   const renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
-  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  // Color space compatibility (old/new three)
+  if ("outputColorSpace" in renderer && THREE.SRGBColorSpace) {
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+  } else if ("outputEncoding" in renderer && THREE.sRGBEncoding) {
+    renderer.outputEncoding = THREE.sRGBEncoding;
+  }
   document.body.appendChild(renderer.domElement);
 
   // Lights
@@ -291,7 +323,7 @@
 
   // Ground (simple + visible)
   const groundGeo = new THREE.PlaneGeometry(140, 140, 1, 1);
-  const groundMat = new THREE.MeshStandardMaterial({ color: 0x1b2230, roughness: 0.95, metalness: 0.0 });
+  const groundMat = new THREE.MeshStandardMaterial({ color: 0x2a344a, roughness: 0.92, metalness: 0.0 });
   const ground = new THREE.Mesh(groundGeo, groundMat);
   ground.rotation.x = -Math.PI / 2;
   ground.receiveShadow = true;
@@ -311,15 +343,34 @@
   player.root.position.set(0, 0, 0);
 
   // Simple fallback player mesh (capsule)
-  function makeFallbackBody(colorHex = settings.skin.color) {
-    const grp = new THREE.Group();
-    const mat = new THREE.MeshStandardMaterial({ color: new THREE.Color(colorHex), roughness: 0.65, metalness: 0.05 });
-    const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.32, 0.75, 6, 12), mat);
-    body.castShadow = true;
+  
+function makeFallbackBody(colorHex = settings.skin.color) {
+  const grp = new THREE.Group();
+  const mat = new THREE.MeshStandardMaterial({
+    color: new THREE.Color(colorHex),
+    roughness: 0.65,
+    metalness: 0.05,
+  });
+
+  let body = null;
+
+  // CapsuleGeometry may not exist in older Three builds
+  if (THREE.CapsuleGeometry) {
+    body = new THREE.Mesh(new THREE.CapsuleGeometry(0.32, 0.75, 6, 12), mat);
     body.position.y = 0.8;
-    grp.add(body);
-    return grp;
+  } else {
+    const cyl = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.32, 1.15, 12), mat);
+    cyl.position.y = 0.85;
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.28, 12, 10), mat);
+    head.position.y = 1.55;
+    grp.add(cyl, head);
   }
+
+  if (body) grp.add(body);
+
+  grp.traverse((o) => { if (o.isMesh) o.castShadow = true; });
+  return grp;
+}
 
   function applyColorToModel(obj3d, colorHex) {
     if (!obj3d) return;
@@ -433,8 +484,8 @@
     const yOff = cam.dist * Math.sin(cam.pitch);
 
     // Behind-the-player orbit
-    const cx = target.x + (-Math.sin(cam.yaw) * horiz);
-    const cz = target.z + (-Math.cos(cam.yaw) * horiz);
+    const cx = target.x + (Math.sin(cam.yaw) * horiz);
+    const cz = target.z - (Math.cos(cam.yaw) * horiz);
     const cy = target.y + yOff;
 
     camera.position.set(cx, cy, cz);
@@ -703,7 +754,11 @@
     ctx.fillText(text, pad, h / 2);
 
     const tex = new THREE.CanvasTexture(cvs);
-    tex.colorSpace = THREE.SRGBColorSpace;
+    if ("colorSpace" in tex && THREE.SRGBColorSpace) {
+      tex.colorSpace = THREE.SRGBColorSpace;
+    } else if ("encoding" in tex && THREE.sRGBEncoding) {
+      tex.encoding = THREE.sRGBEncoding;
+    }
     const mat = new THREE.SpriteMaterial({ map: tex, transparent: true });
     const spr = new THREE.Sprite(mat);
     spr.scale.set(w / 140, h / 140, 1);
@@ -923,7 +978,6 @@
     const q = settings.quality || "high";
     if (q === "low") {
       renderer.setPixelRatio(1);
-      renderer.antialias = false;
       dir.intensity = 0.9;
     } else if (q === "med") {
       renderer.setPixelRatio(Math.min(1.5, window.devicePixelRatio || 1));
@@ -979,10 +1033,12 @@
   // ------------------------------------------------------------
   let last = performance.now();
   async function boot() {
+    try {
     await initPlayerModel();
     setupTouchUI();
     connectWS();
     updateWsBadge();
+    if (bootBadge) bootBadge.remove();
 
     function frame(now) {
       const dt = clamp((now - last) / 1000, 0, 0.05);
@@ -1019,6 +1075,9 @@
       requestAnimationFrame(frame);
     }
     requestAnimationFrame(frame);
+    } catch (e) {
+      fatal("Erreur au démarrage du Hub (voir détails).", e);
+    }
   }
 
   boot();
