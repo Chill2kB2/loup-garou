@@ -61,6 +61,7 @@
   const DEFAULTS = {
     mouseSens: 0.45,
     invertY: false,
+    invertX: false,
     quality: "high",      // low | med | high
     shadows: true,
     camDist: 3.3,
@@ -207,6 +208,7 @@
   const sensRange = $("optSens");
   const sensLabel = $("sensLabel");
   const invertBtn = $("optInvertY");
+  const invertXBtn = $("optInvertX");
   const qualitySel = $("optQuality");
   const shadowsBtn = $("optShadows");
   const camDistRange = $("optCamDist");
@@ -217,6 +219,7 @@
     sensLabel.textContent = settings.mouseSens.toFixed(2);
 
     invertBtn.textContent = settings.invertY ? "ON" : "OFF";
+    if (invertXBtn) invertXBtn.textContent = settings.invertX ? "ON" : "OFF";
     qualitySel.value = settings.quality || "high";
     shadowsBtn.textContent = settings.shadows ? "ON" : "OFF";
 
@@ -231,6 +234,7 @@
   });
 
   invertBtn.addEventListener("click", () => {
+
     settings.invertY = !settings.invertY;
     invertBtn.textContent = settings.invertY ? "ON" : "OFF";
     saveSettings();
@@ -256,6 +260,11 @@
   });
 
   applyOptionsToUI();
+
+  // ------------------------------------------------------------
+  // Touch detection (mobile)
+  // ------------------------------------------------------------
+  const isTouch = ("ontouchstart" in window) || (navigator.maxTouchPoints && navigator.maxTouchPoints > 0);
 
   // ------------------------------------------------------------
   // Scene / Three.js
@@ -436,8 +445,94 @@
   const pressed = Object.create(null);
   let pointerLocked = false;
 
+  // Touch UI (two sticks + jump)
+  const touchUI = $("touchUI");
+  const stickMoveEl = $("stickMove");
+  const stickLookEl = $("stickLook");
+  const btnJump = $("btnJump");
+
+  const touchMove = { id: null, sx: 0, sy: 0, x: 0, y: 0, knob: stickMoveEl ? stickMoveEl.querySelector(".knob") : null };
+  const touchLook = { id: null, sx: 0, sy: 0, x: 0, y: 0, knob: stickLookEl ? stickLookEl.querySelector(".knob") : null };
+  const STICK_R = 60;
+
+  let touchJumpQueued = false;
+
+  function stickSet(st, dx, dy){
+    const mag = Math.hypot(dx, dy);
+    if (mag > STICK_R) {
+      dx = dx / mag * STICK_R;
+      dy = dy / mag * STICK_R;
+    }
+    st.x = dx / STICK_R;
+    st.y = dy / STICK_R;
+    if (st.knob) st.knob.style.transform = `translate(${dx}px, ${dy}px) translate(-50%, -50%)`;
+  }
+
+  function stickReset(st){
+    st.id = null;
+    st.x = 0; st.y = 0;
+    if (st.knob) st.knob.style.transform = `translate(0px, 0px) translate(-50%, -50%)`;
+  }
+
+  function handleStickStart(el, st, e){
+    if (!el || st.id !== null) return;
+    const t = e.changedTouches[0];
+    st.id = t.identifier;
+    st.sx = t.clientX;
+    st.sy = t.clientY;
+    stickSet(st, 0, 0);
+    e.preventDefault();
+  }
+
+  function handleStickMove(st, e){
+    if (st.id === null) return;
+    for (const t of e.changedTouches) {
+      if (t.identifier !== st.id) continue;
+      stickSet(st, t.clientX - st.sx, t.clientY - st.sy);
+      e.preventDefault();
+      return;
+    }
+  }
+
+  function handleStickEnd(st, e){
+    if (st.id === null) return;
+    for (const t of e.changedTouches) {
+      if (t.identifier !== st.id) continue;
+      stickReset(st);
+      e.preventDefault();
+      return;
+    }
+  }
+
+  function setupTouchUI(){
+    if (!isTouch || !touchUI || !stickMoveEl || !stickLookEl || !btnJump) return;
+
+    touchUI.classList.remove("hidden");
+    touchUI.setAttribute("aria-hidden", "false");
+
+    // Better hint on mobile
+    const hint = $("hudHint");
+    if (hint) hint.textContent = "Joysticks pour bouger/regarder • Menu pour options";
+
+    stickMoveEl.addEventListener("touchstart", (e) => handleStickStart(stickMoveEl, touchMove, e), { passive: false });
+    stickLookEl.addEventListener("touchstart", (e) => handleStickStart(stickLookEl, touchLook, e), { passive: false });
+
+    document.addEventListener("touchmove", (e) => { handleStickMove(touchMove, e); handleStickMove(touchLook, e); }, { passive: false });
+    document.addEventListener("touchend", (e) => { handleStickEnd(touchMove, e); handleStickEnd(touchLook, e); }, { passive: false });
+    document.addEventListener("touchcancel", (e) => { handleStickEnd(touchMove, e); handleStickEnd(touchLook, e); }, { passive: false });
+
+    btnJump.addEventListener("touchstart", (e) => {
+      if (paused) return;
+      touchJumpQueued = true;
+      // brief pulse
+      setTimeout(() => { touchJumpQueued = false; }, 180);
+      e.preventDefault();
+    }, { passive: false });
+  }
+
   // Request pointer lock with an activation: click OR movement key press.
   function tryLockPointer() {
+    if (isTouch) return;
     if (paused) return;
     if (document.pointerLockElement === renderer.domElement) return;
     renderer.domElement.requestPointerLock?.();
@@ -455,9 +550,9 @@
     if (!pointerLocked || paused) return;
 
     // movementX > 0 => mouse right => look right (gamer expectation)
-    // Orbit camera: invert sign here to match intuitive direction.
     const k = settings.mouseSens * 0.0026;
-    cam.yaw -= e.movementX * k;
+    const multX = settings.invertX ? -1 : 1;
+    cam.yaw += e.movementX * k * multX;
 
     // movementY < 0 (mouse up) => look up. Default: pitch -= movementY*k
     const mult = settings.invertY ? -1 : 1;
@@ -534,7 +629,7 @@
     }
 
     // Jump
-    if (player.onGround && hasAnyBindPressed(settings.binds.jump, pressed)) {
+    if (player.onGround && (hasAnyBindPressed(settings.binds.jump, pressed) || (isTouch && touchJumpQueued))) {
       player.velY = JUMP;
       player.onGround = false;
     }
@@ -544,8 +639,16 @@
     player.root.position.y += player.velY * dt;
 
     // Movement direction relative to camera yaw
-    const f = (hasAnyBindPressed(settings.binds.forward, pressed) ? 1 : 0) - (hasAnyBindPressed(settings.binds.back, pressed) ? 1 : 0);
-    const r = (hasAnyBindPressed(settings.binds.right, pressed) ? 1 : 0) - (hasAnyBindPressed(settings.binds.left, pressed) ? 1 : 0);
+    let f = (hasAnyBindPressed(settings.binds.forward, pressed) ? 1 : 0) - (hasAnyBindPressed(settings.binds.back, pressed) ? 1 : 0);
+    let r = (hasAnyBindPressed(settings.binds.right, pressed) ? 1 : 0) - (hasAnyBindPressed(settings.binds.left, pressed) ? 1 : 0);
+    if (isTouch) {
+      // Left stick: up = forward (negative y), right = strafe right
+      f += -touchMove.y;
+      r += touchMove.x;
+      // Clamp to keep consistent speed
+      f = clamp(f, -1, 1);
+      r = clamp(r, -1, 1);
+    }
 
     const moving = (f !== 0 || r !== 0);
     const sp = hasAnyBindPressed(settings.binds.sprint, pressed) ? SPRINT : SPEED;
@@ -874,12 +977,22 @@
   let last = performance.now();
   async function boot() {
     await initPlayerModel();
+    setupTouchUI();
     connectWS();
     updateWsBadge();
 
     function frame(now) {
       const dt = clamp((now - last) / 1000, 0, 0.05);
       last = now;
+
+      if (isTouch && !paused) {
+        // Right stick look
+        const lookRate = 2.4 * (0.6 + settings.mouseSens); // rad/s
+        const multX = settings.invertX ? -1 : 1;
+        const multY = settings.invertY ? -1 : 1;
+        cam.yaw += touchLook.x * lookRate * dt * multX;
+        cam.pitch -= touchLook.y * lookRate * dt * multY;
+      }
 
       if (!paused) updatePlayer(dt);
       updateCamera(dt);
