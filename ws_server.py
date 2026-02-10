@@ -1,379 +1,276 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-WebSocket server for Loup-Garou:
-- Room "lg" (default): lobby + party events used by lg.html
-- Room "hub": 3D hub presence (positions/orientation + skins)
+Loup-Garou WebSocket server (Render-friendly)
 
-Protocol (JSON):
-Client -> Server:
-  {t:"join", name:"Stan"}                         # default room "lg"
-  {t:"join", room:"hub", name:"Stan", skin:{...}} # hub
-  {t:"ready", ready:true}                         # lg
-  {t:"start"}                                     # lg (host only)
-  {t:"settings", settings:{...}}                  # lg (host only)
-  {t:"chat", text:"..."}                          # lg
-  {t:"hub_state", st:{x,y,z,yaw}}                 # hub
-  {t:"hub_skin", skin:{model,scale,...}}          # hub
-  {t:"leave"}                                     # both (optional)
+- HTTP: GET/HEAD /health  -> 200 "ok" (Render health checks may use HEAD)
+- WS:   /ws               -> JSON protocol for:
+          room "lg"  (default): lobby + party
+          room "hub": 3D hub presence (positions/orientation + skins)
 
-Server -> Client:
-  {t:"welcome", id:<int>, isHost:<bool>, phase:<str>}         # lg
-  {t:"lobby", hostId, phase, players:[...], settings:{...}}   # lg
-  {t:"log", text, level}                                      # lg
-  {t:"chat", from, text}                                      # lg
-  {t:"error", text}                                           # both
-
-  {t:"welcome", id:<int>}                                     # hub
-  {t:"hub_snapshot", players:[{id,name,skin,st}...]}           # hub
-  {t:"hub_join", p:{id,name,skin,st}}                          # hub
-  {t:"hub_leave", id, name}                                   # hub
-  {t:"hub_state", id, st:{x,y,z,yaw}}                          # hub
-  {t:"hub_skin", p:{id,name,skin,st}}                          # hub
+Designed to be stable on Render.
 """
+
 import asyncio
 import json
 import os
 import time
 from dataclasses import dataclass, field
-from typing import Dict, Optional, Any
+from typing import Any, Dict, Optional
 
-import websockets
-from http import HTTPStatus
-from websockets.server import WebSocketServerProtocol
+from aiohttp import web, WSMsgType
 
 HOST = "0.0.0.0"
 PORT = int(os.environ.get("PORT", "10000"))
 
-# -------------------------
-# Helpers
-# -------------------------
 
 def jdump(obj: Any) -> str:
     return json.dumps(obj, ensure_ascii=False, separators=(",", ":"))
 
-async def ws_send(ws: WebSocketServerProtocol, obj: Any) -> None:
+
+@dataclass
+class Conn:
+    ws: web.WebSocketResponse
+    id: int
+    room: str = "lg"
+    name: str = "Player"
+    ready: bool = False
+    skin: Dict[str, Any] = field(default_factory=dict)
+    st: Dict[str, Any] = field(default_factory=dict)  # hub state {x,y,z,yaw,pitch,...}
+    last_seen: float = field(default_factory=lambda: time.time())
+
+
+class State:
+    def __init__(self) -> None:
+        self.next_id = 1
+        self.conns: Dict[int, Conn] = {}
+        self.lock = asyncio.Lock()
+
+        # Lobby ("lg") state
+        self.lg_phase: str = "lobby"
+        self.lg_settings: Dict[str, Any] = {}
+        self.lg_host_id: Optional[int] = None
+
+    def alloc_id(self) -> int:
+        i = self.next_id
+        self.next_id += 1
+        return i
+
+
+STATE = State()
+
+
+async def ws_send(ws: web.WebSocketResponse, obj: Any) -> None:
+    if ws.closed:
+        return
     try:
-        await ws.send(jdump(obj))
+        await ws.send_str(jdump(obj))
     except Exception:
         pass
 
-# -------------------------
-# State
-# -------------------------
-
-_next_id = 1
-
-def new_id() -> int:
-    global _next_id
-    i = _next_id
-    _next_id += 1
-    return i
-
-@dataclass
-class Client:
-    id: int
-    ws: WebSocketServerProtocol
-    room: str
-    name: str = "Joueur"
-    joined_at: float = field(default_factory=time.time)
-
-    # lobby
-    ready: bool = False
-
-    # hub
-    skin: dict = field(default_factory=dict)
-    st: dict = field(default_factory=lambda: {"x": 0, "y": 0, "z": 0, "yaw": 0})
-    last_hub_update: float = field(default_factory=time.time)
-
-clients_by_ws: Dict[WebSocketServerProtocol, Client] = {}
-
-# Room maps: room -> {id -> Client}
-rooms: Dict[str, Dict[int, Client]] = {"lg": {}, "hub": {}}
-
-# Lobby (lg) room state
-lg_phase = "LOBBY"  # or "GAME"
-lg_host_id: Optional[int] = None
-lg_settings: Dict[str, Any] = {
-    "minPlayers": 4,
-}
-
-# -------------------------
-# Broadcast utilities
-# -------------------------
 
 async def broadcast(room: str, obj: Any, exclude_id: Optional[int] = None) -> None:
-    rs = rooms.get(room, {})
-    if not rs:
-        return
+    conns = list(STATE.conns.values())
     msg = jdump(obj)
-    coros = []
-    for cid, c in list(rs.items()):
-        if exclude_id is not None and cid == exclude_id:
+    for c in conns:
+        if c.room != room:
+            continue
+        if exclude_id is not None and c.id == exclude_id:
+            continue
+        if c.ws.closed:
             continue
         try:
-            coros.append(c.ws.send(msg))
+            await c.ws.send_str(msg)
         except Exception:
+            pass
+
+
+def lg_players_snapshot() -> list:
+    players = []
+    for c in STATE.conns.values():
+        if c.room != "lg":
             continue
-    if coros:
-        # avoid failing if one send fails
-        results = await asyncio.gather(*coros, return_exceptions=True)
-        _ = results
+        players.append({"id": c.id, "name": c.name, "ready": bool(c.ready)})
+    players.sort(key=lambda p: p["id"])
+    return players
 
-def lg_players_payload():
-    rs = rooms["lg"]
-    return [
-        {"id": c.id, "name": c.name, "ready": c.ready}
-        for c in sorted(rs.values(), key=lambda x: x.id)
-    ]
 
-async def lg_push_state() -> None:
-    await broadcast("lg", {
-        "t": "lobby",
-        "hostId": lg_host_id,
-        "phase": lg_phase,
-        "players": lg_players_payload(),
-        "settings": lg_settings,
-    })
+async def lg_broadcast_lobby() -> None:
+    await broadcast(
+        "lg",
+        {
+            "t": "lobby",
+            "hostId": STATE.lg_host_id,
+            "phase": STATE.lg_phase,
+            "players": lg_players_snapshot(),
+            "settings": STATE.lg_settings,
+        },
+    )
 
-def lg_can_start() -> bool:
-    rs = rooms["lg"]
-    if lg_host_id is None or lg_host_id not in rs:
-        return False
-    if len(rs) < int(lg_settings.get("minPlayers", 4)):
-        return False
-    return all(c.ready for c in rs.values())
 
-# -------------------------
-# Join / Leave
-# -------------------------
+def hub_players_snapshot() -> list:
+    ps = []
+    for c in STATE.conns.values():
+        if c.room != "hub":
+            continue
+        ps.append({"id": c.id, "name": c.name, "skin": c.skin, "st": c.st})
+    ps.sort(key=lambda p: p["id"])
+    return ps
 
-async def handle_join(ws: WebSocketServerProtocol, msg: dict) -> Client:
-    room = (msg.get("room") or "lg").strip().lower()
-    if room not in rooms:
+
+async def handle_join(conn: Conn, data: Dict[str, Any]) -> None:
+    room = str(data.get("room") or "lg")
+    if room not in ("lg", "hub"):
         room = "lg"
 
-    cid = new_id()
-    name = (msg.get("name") or "Joueur").strip()[:24] or "Joueur"
-    c = Client(id=cid, ws=ws, room=room, name=name)
-
-    clients_by_ws[ws] = c
-    rooms[room][cid] = c
+    conn.room = room
+    conn.name = str(data.get("name") or conn.name)[:32]
+    if isinstance(data.get("skin"), dict):
+        conn.skin = data["skin"]
 
     if room == "lg":
-        global lg_host_id
-        if lg_host_id is None or lg_host_id not in rooms["lg"]:
-            lg_host_id = cid
+        if STATE.lg_host_id is None or STATE.lg_host_id not in STATE.conns:
+            STATE.lg_host_id = conn.id
+        is_host = conn.id == STATE.lg_host_id
+        await ws_send(conn.ws, {"t": "welcome", "id": conn.id, "isHost": is_host, "phase": STATE.lg_phase})
+        await lg_broadcast_lobby()
+        await broadcast("lg", {"t": "log", "text": f"{conn.name} a rejoint.", "level": "info"})
+    else:
+        await ws_send(conn.ws, {"t": "welcome", "id": conn.id})
+        await ws_send(conn.ws, {"t": "hub_welcome", "id": conn.id})
+        await ws_send(conn.ws, {"t": "hub_snapshot", "players": hub_players_snapshot()})
+        await broadcast("hub", {"t": "hub_join", "p": {"id": conn.id, "name": conn.name, "skin": conn.skin, "st": conn.st}}, exclude_id=conn.id)
 
-        await ws_send(ws, {"t": "welcome", "id": cid, "isHost": cid == lg_host_id, "phase": lg_phase})
-        await broadcast("lg", {"t": "log", "text": f"{name} a rejoint.", "level": "info"})
-        await lg_push_state()
-        return c
 
-    # hub
-    skin = msg.get("skin") or {}
-    if isinstance(skin, dict):
-        # keep only simple fields
-        c.skin = {
-            "model": str(skin.get("model") or "humanoid_placeholder"),
-            "scale": float(skin.get("scale") or 1.0),
-            "hairHue": int(skin.get("hairHue") or 0),
-            "eyeHue": int(skin.get("eyeHue") or 200),
-        }
+async def handle_lg_ready(conn: Conn, data: Dict[str, Any]) -> None:
+    conn.ready = bool(data.get("ready"))
+    await lg_broadcast_lobby()
 
-    # send welcome + snapshot
-    await ws_send(ws, {"t": "welcome", "id": cid})
-    snapshot = []
-    for other in rooms["hub"].values():
-        if other.id == cid:
-            continue
-        snapshot.append({"id": other.id, "name": other.name, "skin": other.skin, "st": other.st})
-    await ws_send(ws, {"t": "hub_snapshot", "players": snapshot})
 
-    # notify others
-    await broadcast("hub", {"t": "hub_join", "p": {"id": cid, "name": c.name, "skin": c.skin, "st": c.st}}, exclude_id=cid)
-    return c
-
-async def handle_disconnect(ws: WebSocketServerProtocol) -> None:
-    c = clients_by_ws.pop(ws, None)
-    if not c:
+async def handle_lg_start(conn: Conn, data: Dict[str, Any]) -> None:
+    if conn.id != STATE.lg_host_id:
+        await ws_send(conn.ws, {"t": "error", "text": "Seul l'hôte peut démarrer."})
         return
+    STATE.lg_phase = "started"
+    await lg_broadcast_lobby()
+    await broadcast("lg", {"t": "log", "text": "La partie démarre.", "level": "info"})
 
-    rs = rooms.get(c.room)
-    if rs and c.id in rs:
-        del rs[c.id]
 
-    if c.room == "lg":
-        global lg_host_id, lg_phase
-        # host reassignment
-        if lg_host_id == c.id:
-            lg_host_id = min(rs.keys(), default=None) if rs else None
-            if lg_host_id is None:
-                lg_phase = "LOBBY"  # reset if empty
-        await broadcast("lg", {"t": "log", "text": f"{c.name} a quitté.", "level": "warn"})
-        await lg_push_state()
+async def handle_lg_settings(conn: Conn, data: Dict[str, Any]) -> None:
+    if conn.id != STATE.lg_host_id:
+        await ws_send(conn.ws, {"t": "error", "text": "Seul l'hôte peut changer les paramètres."})
         return
+    settings = data.get("settings")
+    if isinstance(settings, dict):
+        STATE.lg_settings = settings
+    await lg_broadcast_lobby()
 
-    # hub
-    await broadcast("hub", {"t": "hub_leave", "id": c.id, "name": c.name})
 
-# -------------------------
-# Message handlers
-# -------------------------
-
-async def handle_lg(c: Client, msg: dict) -> None:
-    global lg_phase, lg_settings
-
-    t = msg.get("t")
-    if t == "ready":
-        c.ready = bool(msg.get("ready", True))
-        await lg_push_state()
+async def handle_chat(conn: Conn, data: Dict[str, Any]) -> None:
+    text = str(data.get("text") or "")[:500]
+    if not text.strip():
         return
+    await broadcast(conn.room, {"t": "chat", "from": conn.name, "text": text})
 
-    if t == "start":
-        if c.id != lg_host_id:
-            await ws_send(c.ws, {"t": "error", "text": "Seul l'hôte peut démarrer."})
-            return
-        if not lg_can_start():
-            await ws_send(c.ws, {"t": "error", "text": "Pas assez de joueurs prêts."})
-            return
-        lg_phase = "GAME"
-        await broadcast("lg", {"t": "log", "text": "Partie lancée.", "level": "ok"})
-        await lg_push_state()
+
+async def handle_hub_state(conn: Conn, data: Dict[str, Any]) -> None:
+    st = data.get("st")
+    if not isinstance(st, dict):
         return
+    conn.st = dict(st)
+    conn.last_seen = time.time()
+    await broadcast("hub", {"t": "hub_state", "id": conn.id, "st": conn.st}, exclude_id=conn.id)
 
-    if t == "settings":
-        if c.id != lg_host_id:
-            return
-        settings = msg.get("settings") or {}
-        if isinstance(settings, dict):
-            # Only accept safe keys
-            if "minPlayers" in settings:
-                try:
-                    lg_settings["minPlayers"] = int(settings["minPlayers"])
-                except Exception:
-                    pass
-        await lg_push_state()
+
+async def handle_hub_skin(conn: Conn, data: Dict[str, Any]) -> None:
+    skin = data.get("skin")
+    if not isinstance(skin, dict):
         return
+    conn.skin = dict(skin)
+    await broadcast("hub", {"t": "hub_skin", "id": conn.id, "skin": conn.skin}, exclude_id=conn.id)
 
-    if t == "chat":
-        text = (msg.get("text") or "").strip()
-        if not text:
-            return
-        text = text[:300]
-        await broadcast("lg", {"t": "chat", "from": {"id": c.id, "name": c.name}, "text": text})
-        return
 
-    # action / leave / unknown -> ignore (backwards compatible)
+async def disconnect(conn: Conn) -> None:
+    async with STATE.lock:
+        STATE.conns.pop(conn.id, None)
+        if conn.id == STATE.lg_host_id:
+            lg_ids = sorted([c.id for c in STATE.conns.values() if c.room == "lg"])
+            STATE.lg_host_id = lg_ids[0] if lg_ids else None
 
-async def handle_hub(c: Client, msg: dict) -> None:
-    t = msg.get("t")
-    if t == "hub_state":
-        st = msg.get("st") or {}
-        if not isinstance(st, dict):
-            return
-        # throttle per client (avoid flood)
-        now = time.time()
-        if now - c.last_hub_update < 1/60:  # cap at ~60Hz inbound
-            return
-        c.last_hub_update = now
+    if conn.room == "lg":
+        await broadcast("lg", {"t": "log", "text": f"{conn.name} a quitté.", "level": "info"})
+        await lg_broadcast_lobby()
+    else:
+        await broadcast("hub", {"t": "hub_leave", "id": conn.id, "name": conn.name})
 
-        def clamp(v, lo, hi):
-            return max(lo, min(hi, v))
 
-        try:
-            x = float(st.get("x", 0))
-            y = float(st.get("y", 0))
-            z = float(st.get("z", 0))
-            yaw = float(st.get("yaw", 0))
-        except Exception:
-            return
+async def ws_endpoint(request: web.Request) -> web.WebSocketResponse:
+    ws = web.WebSocketResponse(heartbeat=20)
+    await ws.prepare(request)
 
-        c.st = {
-            "x": clamp(x, -2000, 2000),
-            "y": clamp(y, -200, 200),
-            "z": clamp(z, -2000, 2000),
-            "yaw": yaw,
-        }
-        await broadcast("hub", {"t": "hub_state", "id": c.id, "st": c.st}, exclude_id=c.id)
-        return
+    async with STATE.lock:
+        cid = STATE.alloc_id()
+        conn = Conn(ws=ws, id=cid)
+        STATE.conns[cid] = conn
 
-    if t == "hub_skin":
-        skin = msg.get("skin") or {}
-        if isinstance(skin, dict):
-            c.skin = {
-                "model": str(skin.get("model") or c.skin.get("model") or "humanoid_placeholder"),
-                "scale": float(skin.get("scale") or c.skin.get("scale") or 1.0),
-                "hairHue": int(skin.get("hairHue") or c.skin.get("hairHue") or 0),
-                "eyeHue": int(skin.get("eyeHue") or c.skin.get("eyeHue") or 200),
-            }
-            await broadcast("hub", {"t": "hub_skin", "p": {"id": c.id, "name": c.name, "skin": c.skin, "st": c.st}}, exclude_id=c.id)
-        return
+    await ws_send(ws, {"t": "hello", "id": conn.id})
 
-# -------------------------
-# Main connection loop
-# -------------------------
-
-async def handler(ws: WebSocketServerProtocol):
     try:
-        async for raw in ws:
+        async for msg in ws:
+            if msg.type != WSMsgType.TEXT:
+                continue
             try:
-                msg = json.loads(raw)
+                data = json.loads(msg.data)
             except Exception:
                 continue
-            if not isinstance(msg, dict):
+            if not isinstance(data, dict):
+                continue
+            t = str(data.get("t") or "")
+            if not t:
                 continue
 
-            c = clients_by_ws.get(ws)
-            if c is None:
-                # only join allowed before being in a room
-                if msg.get("t") != "join":
-                    await ws_send(ws, {"t": "error", "text": "Veuillez envoyer {t:'join'} d'abord."})
-                    continue
-                await handle_join(ws, msg)
-                continue
-
-            # optional leave
-            if msg.get("t") == "leave":
-                try:
-                    await ws.close()
-                except Exception:
-                    pass
+            if t == "join":
+                await handle_join(conn, data)
+            elif t == "ready" and conn.room == "lg":
+                await handle_lg_ready(conn, data)
+            elif t == "start" and conn.room == "lg":
+                await handle_lg_start(conn, data)
+            elif t == "settings" and conn.room == "lg":
+                await handle_lg_settings(conn, data)
+            elif t == "chat":
+                await handle_chat(conn, data)
+            elif t == "hub_state" and conn.room == "hub":
+                await handle_hub_state(conn, data)
+            elif t == "hub_skin" and conn.room == "hub":
+                await handle_hub_skin(conn, data)
+            elif t == "leave":
                 break
-
-            if c.room == "lg":
-                await handle_lg(c, msg)
             else:
-                await handle_hub(c, msg)
-
-    except websockets.exceptions.ConnectionClosed:
-        pass
+                pass
     finally:
-        await handle_disconnect(ws)
+        await disconnect(conn)
+        await ws.close()
 
-async def process_request(path, request_headers):
-    """Render health check support.
-    Render hits http://<service>:<port>/health expecting 200.
-    websockets can serve plain HTTP responses via process_request.
-    """
-    if path == "/health" or path == "/":
-        body = b"ok"
-        headers = [
-            ("Content-Type", "text/plain; charset=utf-8"),
-            ("Content-Length", str(len(body))),
-            ("Cache-Control", "no-store"),
-        ]
-        return HTTPStatus.OK, headers, body
-    return None
+    return ws
 
 
-async def main():
-    print(f"WS server on ws://{HOST}:{PORT}/ws")
-    async with websockets.serve(handler, HOST, PORT, process_request=process_request, ping_interval=20, ping_timeout=20, max_size=2_000_000):
-        await asyncio.Future()
+async def health(_: web.Request) -> web.Response:
+    return web.Response(text="ok", content_type="text/plain")
+
+
+def create_app() -> web.Application:
+    app = web.Application()
+    app.router.add_get("/", health)         # add_get also registers HEAD by default
+    app.router.add_get("/health", health)   # Render health checks
+    app.router.add_get("/ws", ws_endpoint)  # websocket endpoint
+    return app
+
+
+def main() -> None:
+    app = create_app()
+    print(f"HTTP+WS on http://{HOST}:{PORT}   (WS: /ws)")
+    web.run_app(app, host=HOST, port=PORT, access_log=None)
+
 
 if __name__ == "__main__":
-    try:
-        asyncio.run(main())
-    except KeyboardInterrupt:
-        pass
+    main()
