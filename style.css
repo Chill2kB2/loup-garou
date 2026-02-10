@@ -1,113 +1,50 @@
-<!doctype html>
-<html lang="fr">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
-  <meta name="theme-color" content="#07090d" />
-  <title>Loup-Garou / Murder — Accueil</title>
+/* Global stylesheet (optional)
+   Note: previously this file contained HTML. If you still need that HTML,
+   keep it as a separate .html file and use this file only for CSS.
+*/
 
-  <!-- Pas de favicon 404 -->
-  <link rel="icon" href="data:," />
+:root{
+  --bg:#07090d;
+  --ink:#eaf0ff;
+  --muted:rgba(234,240,255,.72);
+  --panel:rgba(10,12,18,.80);
+  --bd:rgba(255,255,255,.12);
+  --accent:rgba(124,92,255,.30);
+  --accentBd:rgba(124,92,255,.55);
+}
 
-  <link rel="stylesheet" href="style.css" />
-</head>
-<body class="app app-home">
-  <main class="home">
-    <header class="home__header">
-      <div class="brand">
-        <div class="brand__dot"></div>
-        <div>
-          <div class="brand__title">Loup-Garou / Murder</div>
-          <div class="brand__sub">Lobby en ligne + Salon 3D (Hub)</div>
-        </div>
-      </div>
-    </header>
+*{ box-sizing:border-box; }
+html,body{ height:100%; }
+body{
+  margin:0;
+  background:var(--bg);
+  color:var(--ink);
+  font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+}
 
-    <section class="panel panel--hero">
-      <h1 class="h1">Bienvenue 👋</h1>
-      <p class="p">
-        Choisis un pseudo. Tu peux rejoindre le Lobby (multijoueur) ou le Salon 3D (Hub) pour te balader et tester tes skins.
-      </p>
+a{ color:inherit; }
+img{ max-width:100%; display:block; }
 
-      <div class="grid2">
-        <div class="field">
-          <label class="label" for="nick">Pseudo</label>
-          <input id="nick" class="input" type="text" maxlength="16" placeholder="Ex: Stan" autocomplete="nickname" />
-          <div class="hint">Ton pseudo est sauvegardé localement.</div>
-        </div>
-        <div class="field">
-          <label class="label" for="room">Code salon (optionnel)</label>
-          <input id="room" class="input" type="text" maxlength="12" placeholder="Ex: ABC123" autocomplete="off" />
-          <div class="hint">Uniquement utile pour le Lobby si tu l’utilises.</div>
-        </div>
-      </div>
+.btn{
+  display:inline-flex; align-items:center; justify-content:center;
+  height:42px; padding:0 14px;
+  border-radius:14px;
+  border:1px solid var(--bd);
+  background:rgba(12,14,22,.55);
+  color:var(--ink);
+  cursor:pointer;
+  font-weight:700;
+  text-decoration:none;
+}
 
-      <div class="row">
-        <button id="btnLobby" class="btn btn--primary">Jouer en ligne (Lobby)</button>
-        <button id="btnHub" class="btn btn--ghost">Salon (Hub 3D)</button>
-      </div>
+.btn.primary{
+  background:var(--accent);
+  border-color:var(--accentBd);
+}
 
-      <div class="sep"></div>
-
-      <div class="cards">
-        <div class="card">
-          <div class="card__title">Contrôles (Hub)</div>
-          <div class="card__text">
-            ZQSD / Flèches • Sprint: Shift • Saut: Espace • Accroupi: Ctrl • Pause: Échap • Joystick: bouton “Joystick”
-          </div>
-        </div>
-        <div class="card">
-          <div class="card__title">Mobile</div>
-          <div class="card__text">
-            Deux joysticks (déplacement + caméra), bouton saut. Le menu pause est accessible via l’icône en haut à droite.
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <footer class="home__footer">
-      <div class="muted">© Prototype — Loup-Garou</div>
-      <div class="muted">Conseil : lance toujours via serveur local (pas file://).</div>
-    </footer>
-  </main>
-
-  <script>
-    (function(){
-      const nick = document.getElementById("nick");
-      const room = document.getElementById("room");
-      const btnLobby = document.getElementById("btnLobby");
-      const btnHub = document.getElementById("btnHub");
-
-      nick.value = localStorage.getItem("lg_name") || "";
-      room.value = localStorage.getItem("lg_room") || "";
-
-      function getName(){
-        const v = (nick.value || "").trim();
-        return v.length ? v : "Joueur";
-      }
-      function save(){
-        localStorage.setItem("lg_name", getName());
-        localStorage.setItem("lg_room", (room.value || "").trim());
-      }
-
-      btnHub.addEventListener("click", () => {
-        save();
-        const url = new URL("hub_world.html", location.href);
-        url.searchParams.set("name", getName());
-        location.href = url.toString();
-      });
-
-      btnLobby.addEventListener("click", () => {
-        save();
-        // Si ton lobby est sur lg.html (comme dans ton repo), on y va.
-        // Sinon tu peux renommer ici.
-        const url = new URL("lg.html", location.href);
-        url.searchParams.set("name", getName());
-        const code = (room.value || "").trim();
-        if (code) url.searchParams.set("room", code);
-        location.href = url.toString();
-      });
-    })();
-  </script>
-</body>
-</html>
+.card{
+  background:var(--panel);
+  border:1px solid var(--bd);
+  border-radius:22px;
+  box-shadow:0 20px 70px rgba(0,0,0,.55);
+}
