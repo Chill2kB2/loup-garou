@@ -128,6 +128,22 @@ async def handle_join(conn: Conn, data: Dict[str, Any]) -> None:
     if isinstance(data.get("skin"), dict):
         conn.skin = data["skin"]
 
+    # optional initial state (avoid everyone spawning at 0,0,0)
+    st = data.get("st")
+    if isinstance(st, dict):
+        def fnum(v, d=0.0):
+            try:
+                return float(v)
+            except Exception:
+                return float(d)
+        conn.st = {
+            "x": fnum(st.get("x"), 0.0),
+            "y": fnum(st.get("y"), 0.0),
+            "z": fnum(st.get("z"), 0.0),
+            "yaw": fnum(st.get("yaw"), 0.0),
+        }
+
+
     if room == "lg":
         if STATE.lg_host_id is None or STATE.lg_host_id not in STATE.conns:
             STATE.lg_host_id = conn.id
@@ -187,7 +203,7 @@ async def handle_hub_skin(conn: Conn, data: Dict[str, Any]) -> None:
     if not isinstance(skin, dict):
         return
     conn.skin = dict(skin)
-    await broadcast("hub", {"t": "hub_skin", "id": conn.id, "skin": conn.skin}, exclude_id=conn.id)
+    await broadcast("hub", {"t": "hub_skin", "p": {"id": conn.id, "name": conn.name, "skin": conn.skin, "st": conn.st}}, exclude_id=conn.id)
 
 
 async def disconnect(conn: Conn) -> None:
