@@ -86,6 +86,8 @@
     localStorage.setItem(LS_KEY, JSON.stringify(settings));
   }
 
+
+
   // ------------------------------------------------------------
   // UI / Pause pages
   // ------------------------------------------------------------
@@ -833,6 +835,7 @@
         if (r) {
           r.lastSt = { ...r.st };
           r.st = { ...r.st, ...msg.st };
+          if (msg.skin) applyRemoteSkin(msg.id, msg.skin);
         }
         return;
       }
