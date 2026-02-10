@@ -11,410 +11,304 @@
       --bg:#07090d;
       --ink:#eaf0ff;
       --muted:rgba(234,240,255,.72);
-      --panel:rgba(10,12,18,.78);
-      --panel2:rgba(12,14,22,.55);
+      --panel:rgba(10,12,18,.82);
       --bd:rgba(255,255,255,.12);
-      --accent:rgba(124,92,255,.65);
       --r:18px;
+      --accent: rgba(124,92,255,.30);
+      --accentBd: rgba(124,92,255,.55);
     }
     html,body{ height:100%; margin:0; background:var(--bg); color:var(--ink); overflow:hidden; font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial; }
     canvas{ position:fixed; inset:0; z-index:0; display:block; }
 
-    /* HUD bar */
-    #hudBar{
+    /* HUD */
+    #hudTop{
       position:fixed; top:12px; left:12px; right:12px;
-      z-index:10; display:flex; gap:10px; align-items:center;
+      z-index:10; display:flex; gap:10px; align-items:center; justify-content:space-between;
       pointer-events:none;
     }
-    #btnPause{
+    #hudLeft, #hudRight{ display:flex; gap:10px; align-items:center; }
+    #btnMenu{
       pointer-events:auto;
       height:42px; padding:0 14px; border-radius:14px;
       border:1px solid var(--bd); background:rgba(12,14,22,.55); color:var(--ink);
       cursor:pointer;
     }
-    #hudPills{ display:flex; gap:8px; flex-wrap:wrap; pointer-events:none; }
-    .pill{
-      font-size:12px; color:var(--muted);
-      padding:9px 10px; border-radius:14px; border:1px solid var(--bd);
-      background:rgba(12,14,22,.35);
-      user-select:none;
-    }
-    .pill strong{ color:var(--ink); font-weight:650; }
-    #hudHint{
-      margin-left:auto;
-      font-size:12px; color:var(--muted);
-      padding:9px 10px; border-radius:14px; border:1px solid var(--bd);
-      background:rgba(12,14,22,.35);
+    #hudHint, #wsBadge{
       pointer-events:none;
-      max-width:min(540px, 55vw);
+      font-size:13px; color:var(--muted);
+      padding:10px 12px; border-radius:14px; border:1px solid var(--bd);
+      background:rgba(12,14,22,.35);
+      max-width:min(760px, 70vw);
+      white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
     }
-
-    /* Toast */
-    #toast{
-      position:fixed; bottom:14px; left:50%; transform:translateX(-50%);
-      z-index:20; display:flex; flex-direction:column; gap:8px;
-      pointer-events:none;
-    }
-    .toastLine{
-      background:rgba(10,12,18,.75); border:1px solid var(--bd);
-      padding:10px 12px; border-radius:14px; color:var(--ink); font-size:13px;
-    }
+    #wsBadge{ max-width: 40vw; }
 
     /* Pause overlay */
     #pauseOverlay{
       position:fixed; inset:0; z-index:30;
       display:none; align-items:center; justify-content:center;
-      background:rgba(0,0,0,.60);
+      background:rgba(0,0,0,.55);
       padding:18px;
     }
     #pauseOverlay.active{ display:flex; }
-    .pauseCard{
-      width:min(1040px, 96vw); height:min(760px, 92vh);
-      background:var(--panel); border:1px solid var(--bd); border-radius:22px;
+    .card{
+      width:min(860px, 96vw);
+      background:var(--panel);
+      border:1px solid var(--bd);
+      border-radius:22px;
       box-shadow:0 20px 70px rgba(0,0,0,.55);
-      display:flex; flex-direction:column; overflow:hidden;
+      overflow:hidden;
     }
-    .pauseHeader{
+    .cardHeader{
+      padding:14px 16px;
       display:flex; align-items:center; justify-content:space-between;
-      padding:14px 16px; border-bottom:1px solid var(--bd);
-      background:rgba(10,12,18,.35);
+      border-bottom:1px solid var(--bd);
     }
-    .pauseHeader .title{ font-weight:800; letter-spacing:.2px; }
-    #btnClosePause{
+    .title{ font-weight:800; letter-spacing:.2px; }
+    .sub{ color:var(--muted); font-size:13px; }
+
+    .cardBody{ padding:14px; }
+    .grid4{ display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:12px; }
+    .bigBtn{
+      height:58px; border-radius:16px;
+      border:1px solid var(--bd);
+      background:rgba(12,14,22,.40);
+      color:var(--ink);
+      cursor:pointer;
+      font-size:16px;
+      font-weight:700;
+    }
+    .bigBtn.primary{
+      background:var(--accent);
+      border-color:var(--accentBd);
+    }
+    .row{ display:flex; gap:12px; flex-wrap:wrap; }
+    .section{
+      padding:12px;
+      border:1px solid var(--bd);
+      border-radius:18px;
+      background:rgba(12,14,22,.30);
+    }
+    .section h3{ margin:0 0 8px 0; font-size:14px; letter-spacing:.2px; }
+    .field{ display:flex; align-items:center; justify-content:space-between; gap:12px; padding:8px 0; border-top:1px solid rgba(255,255,255,.08); }
+    .field:first-of-type{ border-top:none; }
+    .field label{ color:var(--muted); font-size:13px; }
+    .field .val{ color:var(--ink); font-size:13px; min-width:140px; text-align:right; }
+    input[type="range"]{ width:min(320px, 50vw); }
+    select{
+      height:38px; border-radius:12px;
+      border:1px solid var(--bd); background:rgba(8,10,16,.55); color:var(--ink);
+      padding:0 10px;
+      min-width:200px;
+    }
+    .btn{
       height:38px; padding:0 12px; border-radius:12px;
       border:1px solid var(--bd); background:rgba(12,14,22,.45); color:var(--ink);
       cursor:pointer;
+      font-weight:650;
+    }
+    .btn.primary{
+      background:var(--accent);
+      border-color:var(--accentBd);
     }
 
-    .pauseBody{ flex:1; display:flex; min-height:0; }
+    .page{ display:none; }
+    .page.active{ display:block; }
 
-    /* Left 4 buttons */
-    .pauseNav{
-      width:240px; border-right:1px solid var(--bd);
-      padding:14px; display:flex; flex-direction:column; gap:10px;
-      background:rgba(10,12,18,.22);
+    /* Keybind modal */
+    #bindOverlay{
+      position:fixed; inset:0; z-index:40;
+      display:none; align-items:center; justify-content:center;
+      background:rgba(0,0,0,.62);
+      padding:18px;
     }
-    .navBtn{
-      height:44px; width:100%;
-      border-radius:14px;
-      border:1px solid var(--bd);
-      background:rgba(12,14,22,.35);
-      color:var(--ink);
-      cursor:pointer;
-      text-align:left;
-      padding:0 14px;
-      display:flex; align-items:center; justify-content:space-between;
-      gap:10px;
+    #bindOverlay.active{ display:flex; }
+    .bindCard{
+      width:min(860px, 96vw); height:min(720px, 92vh);
+      background:var(--panel); border:1px solid var(--bd); border-radius:22px;
+      box-shadow:0 20px 70px rgba(0,0,0,.55);
+      overflow:hidden;
+      display:flex; flex-direction:column;
     }
-    .navBtn.active{
-      background:rgba(124,92,255,.20);
-      border-color:rgba(124,92,255,.55);
+    .bindList{ padding:14px; overflow:auto; display:flex; flex-direction:column; gap:10px; }
+    .bindRow{
+      display:flex; align-items:center; justify-content:space-between; gap:12px;
+      padding:12px;
+      border:1px solid rgba(255,255,255,.10);
+      border-radius:16px;
+      background:rgba(12,14,22,.28);
     }
-    .navBtn small{ color:var(--muted); font-size:12px; font-weight:600; }
-
-    /* Right content */
-    .pauseContent{ flex:1; padding:14px; overflow:auto; }
-    .sectionTitle{
-      margin:0 0 10px; font-size:14px; color:var(--muted); font-weight:800; letter-spacing:.2px;
-      text-transform:uppercase;
+    .bindRow .a{ font-weight:750; }
+    .bindRow .k{ color:var(--muted); font-size:13px; }
+    #bindPrompt{
+      padding:12px 14px;
+      border-top:1px solid var(--bd);
+      color:var(--muted);
+      font-size:13px;
     }
-    .grid{ display:grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap:12px; }
-    @media (max-width: 900px){
-      .pauseNav{ width:200px; }
-      .grid{ grid-template-columns: 1fr; }
-    }
-    .card{
-      background:rgba(12,14,22,.35);
-      border:1px solid var(--bd); border-radius:18px; padding:14px;
-    }
-    .row{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
-    .label{ font-size:12px; color:var(--muted); margin-bottom:6px; font-weight:700; }
-    .help{ font-size:12px; color:var(--muted); margin-top:8px; line-height:1.35; }
-    input, select{
-      width:100%; height:40px; border-radius:12px;
-      border:1px solid var(--bd); background:rgba(8,10,16,.55); color:var(--ink);
-      padding:0 10px;
-      outline:none;
-    }
-    input[type="range"]{ padding:0; height:38px; }
-    .btn{
-      height:40px; padding:0 12px; border-radius:12px;
-      border:1px solid var(--bd); background:rgba(12,14,22,.45); color:var(--ink);
-      cursor:pointer;
-    }
-    .btnPrimary{
-      background:rgba(124,92,255,.22);
-      border-color:rgba(124,92,255,.55);
-    }
-
-    .hidden{ display:none !important; }
 
     /* Skins */
-    .skinsGrid{
-      display:grid;
-      grid-template-columns: repeat(3, minmax(0,1fr));
-      gap:12px;
+    .skinsGrid{ display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:12px; }
+    .skinBtn{
+      display:flex; align-items:center; gap:12px;
+      height:52px; padding:0 12px;
+      border-radius:16px; border:1px solid var(--bd);
+      background:rgba(12,14,22,.35); color:var(--ink);
+      cursor:pointer; font-weight:750;
     }
-    @media (max-width: 900px){
-      .skinsGrid{ grid-template-columns: repeat(2, minmax(0,1fr)); }
-    }
-    @media (max-width: 540px){
-      .skinsGrid{ grid-template-columns: 1fr; }
-    }
-    .skinTile{
-      border:1px solid var(--bd);
-      background:rgba(12,14,22,.30);
-      border-radius:18px;
-      padding:14px;
-      cursor:pointer;
-      display:flex;
-      flex-direction:column;
-      gap:8px;
-      min-height:120px;
-    }
-    .skinTile.active{
-      border-color:rgba(124,92,255,.75);
-      box-shadow:0 0 0 2px rgba(124,92,255,.15) inset;
-      background:rgba(124,92,255,.10);
-    }
-    .skinName{ font-weight:850; }
-    .skinMeta{ color:var(--muted); font-size:12px; line-height:1.35; }
+    .swatch{ width:18px; height:18px; border-radius:999px; border:1px solid rgba(255,255,255,.25); }
 
-    /* Mobile touch UI (optional) */
-    #touchUI{ position:fixed; inset:0; z-index:25; pointer-events:none; }
-    #touchUI.hidden{ display:none; }
-    .stick{
-      position:absolute; width:150px; height:150px; border-radius:999px;
-      border:1px solid var(--bd); background:rgba(12,14,22,.22);
-      pointer-events:auto;
-    }
-    .stick .knob{
-      position:absolute; left:50%; top:50%;
-      width:58px; height:58px; border-radius:999px;
-      border:1px solid var(--bd); background:rgba(124,92,255,.20);
-      transform:translate(-50%,-50%);
-    }
-    #stickMove{ left:18px; bottom:18px; }
-    #stickLook{ right:18px; bottom:18px; }
-    #btnJump{
-      position:absolute; right:24px; bottom:190px;
-      width:72px; height:72px; border-radius:999px;
-      border:1px solid var(--bd); background:rgba(255,255,255,.06); color:var(--ink);
-      pointer-events:auto;
+    @media (max-width: 640px){
+      #hudHint{ display:none; }
+      .grid4{ grid-template-columns: 1fr; }
+      .skinsGrid{ grid-template-columns: 1fr; }
+      select{ min-width: 160px; }
     }
   </style>
 </head>
 
 <body>
-  <div id="hudBar">
-    <button id="btnPause">Menu</button>
-    <div id="hudPills">
-      <div class="pill" id="pillWs">WS: <strong>…</strong></div>
-      <div class="pill" id="pillPlayers">Joueurs: <strong>…</strong></div>
-      <div class="pill" id="pillSkin">Skin: <strong>…</strong></div>
+  <div id="hudTop">
+    <div id="hudLeft">
+      <button id="btnMenu">Menu</button>
+      <div id="hudHint">ZQSD pour bouger • Souris pour regarder • Échap/P pour menu</div>
     </div>
-    <div id="hudHint">Déplacement ZQSD • Souris = caméra • Échap ou P = pause</div>
-  </div>
-
-  <div id="toast"></div>
-
-  <div id="touchUI" class="hidden">
-    <div id="stickMove" class="stick"><div class="knob"></div></div>
-    <div id="stickLook" class="stick"><div class="knob"></div></div>
-    <button id="btnJump">⤒</button>
+    <div id="hudRight">
+      <div id="wsBadge">WS: …</div>
+    </div>
   </div>
 
   <div id="pauseOverlay" aria-hidden="true">
-    <div class="pauseCard">
-      <div class="pauseHeader">
-        <div class="title">Pause</div>
-        <button id="btnClosePause">✕</button>
+    <div class="card">
+      <div class="cardHeader">
+        <div>
+          <div class="title">Pause</div>
+          <div class="sub" id="pauseSub">Tu peux modifier les options ou changer de skin.</div>
+        </div>
+        <button class="btn" id="btnClosePause">✕</button>
       </div>
 
-      <div class="pauseBody">
-        <div class="pauseNav">
-          <button class="navBtn active" data-view="resume">
-            <span>Reprendre</span><small>Retour jeu</small>
-          </button>
-          <button class="navBtn" data-view="options">
-            <span>Options</span><small>Réglages</small>
-          </button>
-          <button class="navBtn" data-view="skins">
-            <span>Skins</span><small>Synchro live</small>
-          </button>
-          <button class="navBtn" data-view="home">
-            <span>Accueil</span><small>Quitter hub</small>
-          </button>
-
-          <div style="margin-top:auto;color:var(--muted);font-size:12px;line-height:1.35">
-            Astuce : en pointer lock, Échap libère la souris. Ici, la perte du lock ouvre automatiquement le menu.
+      <div class="cardBody">
+        <!-- MAIN MENU: exactly 4 buttons -->
+        <div class="page active" id="pageMain">
+          <div class="grid4">
+            <button class="bigBtn primary" id="btnResume">Reprendre</button>
+            <button class="bigBtn" id="btnOptions">Options</button>
+            <button class="bigBtn" id="btnSkins">Skins</button>
+            <button class="bigBtn" id="btnHome">Accueil</button>
           </div>
         </div>
 
-        <div class="pauseContent">
-          <div id="view_resume">
-            <h3 class="sectionTitle">Reprendre</h3>
-            <div class="grid">
-              <div class="card">
-                <div class="label">Actions rapides</div>
-                <div class="row">
-                  <button class="btn btnPrimary" id="btnResume">Reprendre</button>
-                  <button class="btn" id="btnResetPos">Reset position</button>
-                </div>
-                <div class="help">Reprendre relock la souris (si activé) et te remet en jeu.</div>
+        <!-- OPTIONS -->
+        <div class="page" id="pageOptions">
+          <div class="row">
+            <div class="section" style="flex:1; min-width:280px;">
+              <h3>Contrôles</h3>
+
+              <div class="field">
+                <label>Sensibilité souris</label>
+                <div class="val"><span id="sensLabel">0.45</span></div>
               </div>
-              <div class="card">
-                <div class="label">Contrôles</div>
-                <div class="help">
-                  Z/Q/S/D : déplacement • Shift : sprint • Espace : saut<br/>
-                  P : pause • Échap : pause (via sortie pointer lock)
+              <div class="field" style="justify-content:flex-start;">
+                <input id="optSens" type="range" min="0.2" max="1.2" step="0.01" />
+              </div>
+
+              <div class="field">
+                <label>Inverser axe Y</label>
+                <div class="val"><button class="btn" id="optInvertY">OFF</button></div>
+              </div>
+
+              <div class="field">
+                <label>Touches</label>
+                <div class="val"><button class="btn primary" id="btnOpenBinds">Configurer</button></div>
+              </div>
+              <div class="sub" style="margin-top:8px;">
+                Par défaut: Avancer Z, Gauche Q, Reculer S, Droite D.
+              </div>
+            </div>
+
+            <div class="section" style="flex:1; min-width:280px;">
+              <h3>Graphismes</h3>
+
+              <div class="field">
+                <label>Qualité</label>
+                <div class="val">
+                  <select id="optQuality">
+                    <option value="low">Basse</option>
+                    <option value="med">Moyenne</option>
+                    <option value="high">Haute</option>
+                  </select>
                 </div>
+              </div>
+
+              <div class="field">
+                <label>Ombres</label>
+                <div class="val"><button class="btn" id="optShadows">ON</button></div>
+              </div>
+
+              <div class="field">
+                <label>Caméra (distance)</label>
+                <div class="val"><span id="camDistLabel">3.3</span></div>
+              </div>
+              <div class="field" style="justify-content:flex-start;">
+                <input id="optCamDist" type="range" min="2.0" max="6.0" step="0.1" />
+              </div>
+
+              <div class="sub" style="margin-top:8px;">
+                Astuce: si tu perds le contrôle souris, appuie sur Échap pour revenir au menu.
               </div>
             </div>
           </div>
 
-          <div id="view_options" class="hidden">
-            <h3 class="sectionTitle">Options</h3>
-
-            <div class="grid">
-              <div class="card">
-                <div class="label">Contrôles (souris)</div>
-                <div class="row">
-                  <div style="flex:1">
-                    <div class="label">Sensibilité</div>
-                    <input id="optSens" type="number" min="0.05" max="5" step="0.05" />
-                  </div>
-                  <div style="flex:1">
-                    <div class="label">Smoothing caméra</div>
-                    <input id="optCamSmooth" type="number" min="0" max="0.35" step="0.01" />
-                  </div>
-                </div>
-                <div class="row" style="margin-top:10px">
-                  <button class="btn" id="optInvertX">Invert X: OFF</button>
-                  <button class="btn" id="optInvertY">Invert Y: OFF</button>
-                  <button class="btn" id="optPointerLock">Pointer lock: ON</button>
-                </div>
-                <div class="help">Objectif: mouvement de souris = rotation caméra dans le même sens (gamer). Invert X/Y si tu préfères.</div>
-              </div>
-
-              <div class="card">
-                <div class="label">Caméra</div>
-                <div class="row">
-                  <div style="flex:1">
-                    <div class="label">Distance</div>
-                    <input id="optCamDist" type="number" min="2" max="12" step="0.25" />
-                  </div>
-                  <div style="flex:1">
-                    <div class="label">Hauteur</div>
-                    <input id="optCamHeight" type="number" min="0" max="4" step="0.05" />
-                  </div>
-                </div>
-                <div class="row" style="margin-top:10px">
-                  <div style="flex:1">
-                    <div class="label">FOV</div>
-                    <input id="optFov" type="number" min="40" max="110" step="1" />
-                  </div>
-                  <div style="flex:1">
-                    <div class="label">Look height</div>
-                    <input id="optLookH" type="number" min="0.5" max="2.2" step="0.05" />
-                  </div>
-                </div>
-                <div class="help">Le même set est appliqué à tous les skins, avec un ajustement automatique léger pour le Fox.</div>
-              </div>
-
-              <div class="card">
-                <div class="label">Graphiques</div>
-                <div class="row">
-                  <div style="flex:1">
-                    <div class="label">Qualité</div>
-                    <select id="optQuality">
-                      <option value="low">Basse</option>
-                      <option value="med">Moyenne</option>
-                      <option value="high">Haute</option>
-                    </select>
-                  </div>
-                  <div style="flex:1">
-                    <div class="label">Pixel ratio</div>
-                    <select id="optPixelRatio">
-                      <option value="auto">Auto</option>
-                      <option value="1">1</option>
-                      <option value="1.5">1.5</option>
-                      <option value="2">2</option>
-                    </select>
-                  </div>
-                </div>
-                <div class="row" style="margin-top:10px">
-                  <button class="btn" id="optShadows">Ombres: ON</button>
-                </div>
-                <div class="help">Qualité ajuste aussi les ombres et la distance de rendu.</div>
-              </div>
-
-              <div class="card">
-                <div class="label">Gameplay</div>
-                <div class="row">
-                  <div style="flex:1">
-                    <div class="label">Vitesse</div>
-                    <input id="optSpeed" type="number" min="1" max="10" step="0.1" />
-                  </div>
-                  <div style="flex:1">
-                    <div class="label">Sprint (x)</div>
-                    <input id="optSprintMul" type="number" min="1" max="2.5" step="0.05" />
-                  </div>
-                </div>
-                <div class="row" style="margin-top:10px">
-                  <button class="btn" id="optSprintToggle">Sprint: HOLD</button>
-                </div>
-                <div class="help">HOLD = maintenir Shift. TOGGLE = appui pour activer/désactiver.</div>
-              </div>
-
-              <div class="card">
-                <div class="label">Réseau (hub)</div>
-                <div class="row">
-                  <div style="flex:1">
-                    <div class="label">Taux envoi (Hz)</div>
-                    <input id="optSendHz" type="number" min="5" max="30" step="1" />
-                  </div>
-                  <div style="flex:1">
-                    <div class="label">Interpolation</div>
-                    <input id="optNetLerp" type="number" min="0.05" max="0.5" step="0.01" />
-                  </div>
-                </div>
-                <div class="help">Si ça lag chez un ami, baisse le Hz (10–12 conseillé) et augmente légèrement l’interpolation.</div>
-              </div>
-
-              <div class="card">
-                <div class="label">Sauvegarde</div>
-                <div class="row">
-                  <button class="btn btnPrimary" id="btnSaveSettings">Sauvegarder</button>
-                  <button class="btn" id="btnResetSettings">Reset</button>
-                </div>
-                <div class="help">Les réglages s’appliquent instantanément. Sauvegarde = localStorage.</div>
-              </div>
-            </div>
+          <div class="row" style="justify-content:flex-end; margin-top:12px;">
+            <button class="btn" id="btnBackFromOptions">Retour</button>
           </div>
+        </div>
 
-          <div id="view_skins" class="hidden">
-            <h3 class="sectionTitle">Skins (synchro temps réel)</h3>
+        <!-- SKINS -->
+        <div class="page" id="pageSkins">
+          <div class="section">
+            <h3>Skins (couleurs)</h3>
             <div class="skinsGrid" id="skinsGrid"></div>
-            <div class="help" style="margin-top:10px">
-              Tout changement est envoyé au serveur hub instantanément et visible chez les autres joueurs.
+            <div class="sub" style="margin-top:8px;">
+              Le changement est synchronisé en temps réel dans le hub.
             </div>
           </div>
+          <div class="row" style="justify-content:flex-end; margin-top:12px;">
+            <button class="btn" id="btnBackFromSkins">Retour</button>
+          </div>
+        </div>
 
-          <div id="view_home" class="hidden">
-            <h3 class="sectionTitle">Retour à l’accueil</h3>
-            <div class="card">
-              <div class="label">Quitter le hub</div>
-              <div class="row">
-                <button class="btn btnPrimary" id="btnGoHome">Retour accueil</button>
-                <button class="btn" id="btnStay">Rester dans le hub</button>
-              </div>
-              <div class="help">Retourne au menu d’accueil (index.html).</div>
+        <!-- HOME -->
+        <div class="page" id="pageHome">
+          <div class="section">
+            <h3>Retour à l'accueil</h3>
+            <div class="sub">Tu vas quitter le hub.</div>
+            <div class="row" style="margin-top:12px;">
+              <button class="btn primary" id="btnConfirmHome">Retour accueil</button>
+              <button class="btn" id="btnCancelHome">Annuler</button>
             </div>
           </div>
-
+          <div class="row" style="justify-content:flex-end; margin-top:12px;">
+            <button class="btn" id="btnBackFromHome">Retour</button>
+          </div>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- Keybind overlay -->
+  <div id="bindOverlay" aria-hidden="true">
+    <div class="bindCard">
+      <div class="cardHeader">
+        <div>
+          <div class="title">Configurer les touches</div>
+          <div class="sub">Clique “Changer”, puis appuie sur la touche voulue.</div>
+        </div>
+        <button class="btn" id="btnCloseBinds">✕</button>
+      </div>
+      <div class="bindList" id="bindList"></div>
+      <div id="bindPrompt">Aucune touche en attente.</div>
     </div>
   </div>
 
