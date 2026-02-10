@@ -579,9 +579,9 @@
       gameplay: { camDist: 3.6, camHeight: 1.65, sprintMode:"hold", joyVisible:"on" },
       keys: {
         // 2 binds par action: primary + secondary
-        forward:  ["KeyZ","KeyW"],
+        forward:  ["KeyW","ArrowUp"],
         back:     ["KeyS","ArrowDown"],
-        left:     ["KeyQ","ArrowLeft"],
+        left:     ["KeyA","ArrowLeft"],
         right:    ["KeyD","ArrowRight"],
         sprint:   ["ShiftLeft","ShiftRight"],
         crouch:   ["ControlLeft","KeyC"],
@@ -601,6 +601,21 @@
         // merge shallow + nested
         const out = structuredClone(DEFAULTS);
         deepMerge(out, parsed);
+
+        // migration AZERTY (ancien défaut KeyZ/KeyQ) -> codes physiques KeyW/KeyA
+        try{
+          const k = out.keys || {};
+          const looksOldDefault =
+            (k.forward?.[0]==="KeyZ" && k.forward?.[1]==="KeyW") &&
+            (k.left?.[0]==="KeyQ" && k.left?.[1]==="ArrowLeft") &&
+            (k.right?.[0]==="KeyD" && k.right?.[1]==="ArrowRight") &&
+            (k.back?.[0]==="KeyS" && k.back?.[1]==="ArrowDown");
+          if(looksOldDefault){
+            out.keys.forward = ["KeyW","ArrowUp"];
+            out.keys.left = ["KeyA","ArrowLeft"];
+          }
+        }catch(e){}
+
         return out;
       }catch(e){
         return structuredClone(DEFAULTS);
@@ -692,7 +707,7 @@
       if(!code) return "—";
       // rendu plus lisible
       const map = {
-        "KeyZ":"Z","KeyQ":"Q","KeyS":"S","KeyD":"D","KeyW":"W","KeyA":"A","KeyC":"C","KeyJ":"J",
+        "KeyZ":"W","KeyQ":"A","KeyS":"S","KeyD":"D","KeyW":"Z","KeyA":"Q","KeyC":"C","KeyJ":"J",
         "Space":"Espace","Escape":"Échap",
         "ShiftLeft":"Shift","ShiftRight":"Shift",
         "ControlLeft":"Ctrl","ControlRight":"Ctrl",
