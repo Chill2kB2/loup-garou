@@ -1009,7 +1009,9 @@ if(!isPaused() && !isCoarse && !camState.pointerLocked){
 
     let currentAvatar = null;
     let currentMixer = null;
+    let avatarBaseScale = 1.0; // auto-scale par modèle (GLB)
     function clearAvatar(){
+      avatarBaseScale = 1.0;
       if(currentMixer){ currentMixer.stopAllAction(); currentMixer = null; }
       if(currentAvatar){
         avatarRoot.remove(currentAvatar);
@@ -1110,6 +1112,9 @@ if(!isPaused() && !isCoarse && !camState.pointerLocked){
           // recentrer au sol
           const box = new THREE.Box3().setFromObject(currentAvatar);
           const size = new THREE.Vector3(); box.getSize(size);
+          // auto-scale: ramène le modèle à une hauteur cohérente dans le hub
+          const TARGET_H = 1.65;
+          avatarBaseScale = clamp(TARGET_H / Math.max(size.y, 1e-6), 0.001, 10.0);
           const center = new THREE.Vector3(); box.getCenter(center);
           currentAvatar.position.x -= center.x;
           currentAvatar.position.z -= center.z;
@@ -1139,7 +1144,8 @@ if(!isPaused() && !isCoarse && !camState.pointerLocked){
 
     function setAvatarScale(s){
       SET.skin.scale = s;
-      avatarRoot.scale.setScalar(s);
+      const ss = (avatarBaseScale || 1.0) * s;
+      avatarRoot.scale.setScalar(ss);
       saveSettings();
     }
 
@@ -1322,12 +1328,14 @@ if(!isPaused() && !isCoarse && !camState.pointerLocked){
       // appliquer au modèle
       avatarRoot.position.copy(player.pos);
 
-      // petit “crouch” visuel
+      // petit “crouch” visuel (conserve l’auto-scale GLB)
+      const s = (avatarBaseScale || 1.0) * SET.skin.scale;
       const desiredScaleY = crouch ? 0.90 : 1.0;
-      avatarRoot.scale.y = lerp(avatarRoot.scale.y, desiredScaleY * SET.skin.scale, 1 - Math.pow(0.0008, dt));
-      avatarRoot.scale.x = SET.skin.scale;
-      avatarRoot.scale.z = SET.skin.scale;
-    }
+      const targetY = s * desiredScaleY;
+      avatarRoot.scale.y = lerp(avatarRoot.scale.y, targetY, 1 - Math.pow(0.0008, dt));
+      avatarRoot.scale.x = s;
+      avatarRoot.scale.z = s;
+}
 
     /***********************
      * Mouse + Touch camera
