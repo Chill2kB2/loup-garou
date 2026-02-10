@@ -217,7 +217,12 @@
   renderer.domElement.addEventListener("click", () => {
     if (PAUSED) return;
     if (SETTINGS.controls.mouseMode !== "lock") return;
-    renderer.domElement.requestPointerLock?.();
+
+    try {
+      renderer.domElement.requestPointerLock?.();
+    } catch (e) {
+      toast("Impossible de capturer la souris (Pointer Lock). Essaie de cliquer dans la scène puis réessaie.");
+    }
   });
 
   document.addEventListener("pointerlockchange", () => {
@@ -234,11 +239,11 @@
 
   function setStickKnob(stickEl, nx, ny) {
     const knob = stickEl.querySelector(".knob");
-    const r = 40; // radius px for knob movement
-    knob.style.left = (50 + nx * r / 75 * 50) + "%";
-    knob.style.top  = (50 + ny * r / 75 * 50) + "%";
-    // simple alternative: pixel translate, but % is ok here
-    knob.style.transform = "translate(-50%,-50%)";
+    if (!knob) return;
+    const r = 42; // px radius
+    const x = clamp(nx, -1, 1) * r;
+    const y = clamp(ny, -1, 1) * r;
+    knob.style.transform = `translate(-50%,-50%) translate(${x}px, ${y}px)`;
   }
 
   function makeStick(stickEl, onMove) {
@@ -265,7 +270,7 @@
       const nx = clamp(dx / max, -1, 1);
       const ny = clamp(dy / max, -1, 1);
       onMove(nx, ny);
-      setStickKnob(stickEl, nx * 40, ny * 40);
+      setStickKnob(stickEl, nx, ny);
       e.preventDefault();
     });
 
@@ -439,7 +444,7 @@
       camRig.pitch -= (Input.lookY * 1.10) * dt * sens * invert;
     }
 
-    camRig.pitch = clamp(camRig.pitch, -0.95, 0.25);
+    camRig.pitch = clamp(camRig.pitch, -1.35, 0.55);
 
     // Target = player head
     const target = new THREE.Vector3(
@@ -449,7 +454,7 @@
     );
 
     // Camera offset (rotated by yaw/pitch)
-    const offset = new THREE.Vector3(0, 0, camRig.dist);
+    const offset = new THREE.Vector3(0, 0, -camRig.dist);
     const rot = new THREE.Euler(camRig.pitch, camRig.yaw, 0, "YXZ");
     offset.applyEuler(rot);
 
@@ -491,21 +496,50 @@
     }
   }
 
+  function computeVisibleBounds(root) {
+    // More robust than Box3.setFromObject for skinned meshes / weird hierarchies.
+    const box = new THREE.Box3();
+    const tmp = new THREE.Box3();
+    let has = false;
+
+    root.updateWorldMatrix(true, true);
+    root.traverse((o) => {
+      if (!o.isMesh || !o.geometry) return;
+      const g = o.geometry;
+      if (!g.boundingBox) g.computeBoundingBox?.();
+      if (!g.boundingBox) return;
+
+      tmp.copy(g.boundingBox);
+      tmp.applyMatrix4(o.matrixWorld);
+
+      if (!has) { box.copy(tmp); has = true; }
+      else box.union(tmp);
+    });
+
+    return has ? box : null;
+  }
+
   function fitModelToPlayer(m) {
-    // recentre + scale raisonnable
-    const box = new THREE.Box3().setFromObject(m);
+    // recentre + scale raisonnable, stable même avec des GLB "capricieux"
+    m.position.set(0, 0, 0);
+    m.rotation.set(0, 0, 0);
+    m.scale.set(1, 1, 1);
+    m.updateWorldMatrix(true, true);
+
+    const box = computeVisibleBounds(m) || new THREE.Box3().setFromObject(m);
     const size = new THREE.Vector3();
     box.getSize(size);
     const center = new THREE.Vector3();
     box.getCenter(center);
 
-    // Move pivot to ground
+    // Move pivot to center, then drop to ground
     m.position.sub(center);
-    // put feet on ground
-    const box2 = new THREE.Box3().setFromObject(m);
+
+    m.updateWorldMatrix(true, true);
+    const box2 = computeVisibleBounds(m) || new THREE.Box3().setFromObject(m);
     m.position.y -= box2.min.y;
 
-    // scale to ~1.6m
+    // scale to ~1.55m
     const h = Math.max(0.01, size.y);
     const targetH = 1.55;
     const s = targetH / h;
@@ -595,7 +629,7 @@
     PAUSED = v;
 
     const overlay = $("#pauseOverlay");
-    overlay.classList.toggle("active", v);
+    overlay?.classList.toggle("active", v);
 
     // Release pointer lock in pause
     if (v && document.pointerLockElement) document.exitPointerLock?.();
@@ -603,7 +637,8 @@
     // Show/hide touch UI depending
     applyAutoTouchUI();
 
-    $("#hudHint").textContent = v ? "Pause (menu ouvert)" : "Clique / touche l’écran pour contrôler la caméra";
+    const hint = $("#hudHint");
+    if (hint) hint.textContent = v ? "Pause (menu ouvert)" : "Clique / touche l’écran pour contrôler la caméra";
   }
 
   function teleportSpawn() {
@@ -660,7 +695,7 @@
     let desiredDir = new THREE.Vector3(ix, 0, iz);
     if (SETTINGS.gameplay.moveRelativeCamera) {
       // rotate by camera yaw only
-      const yaw = camRig.yaw;
+      const yaw = camRig.yaw + Math.PI;
       desiredDir.applyAxisAngle(new THREE.Vector3(0,1,0), yaw);
     }
 
@@ -727,13 +762,13 @@
   --------------------------- */
 
   // Pause toggles
-  $("#btnPause").addEventListener("click", () => setPaused(!PAUSED));
-  $("#btnClosePause").addEventListener("click", () => setPaused(false));
-  $("#btnResume").addEventListener("click", () => setPaused(false));
-  $("#btnStay").addEventListener("click", () => setPaused(false));
-  $("#btnGoHome").addEventListener("click", () => { location.href = "index.html"; });
-  $("#btnResetPos").addEventListener("click", () => teleportSpawn());
-  $("#btnJoystick").addEventListener("click", () => toggleTouchUI());
+  $("#btnPause")?.addEventListener("click", () => setPaused(!PAUSED));
+  $("#btnClosePause")?.addEventListener("click", () => setPaused(false));
+  $("#btnResume")?.addEventListener("click", () => setPaused(false));
+  $("#btnStay")?.addEventListener("click", () => setPaused(false));
+  $("#btnGoHome")?.addEventListener("click", () => { location.href = "index.html"; });
+  $("#btnResetPos")?.addEventListener("click", () => teleportSpawn());
+  $("#btnJoystick")?.addEventListener("click", () => toggleTouchUI());
 
   // Escape
   window.addEventListener("keydown", (e) => {
@@ -801,7 +836,7 @@
   refreshOptionsUI();
 
   // Graphics handlers
-  $("#optQuality").addEventListener("change", (e) => {
+  $("#optQuality")?.addEventListener("change", (e) => {
     SETTINGS.graphics.quality = e.target.value;
     // quality affects shadow map size & fog density lightly
     if (SETTINGS.graphics.quality === "low") {
@@ -818,64 +853,64 @@
     toast("Graphiques: " + SETTINGS.graphics.quality);
   });
 
-  $("#optShadows").addEventListener("click", () => {
+  $("#optShadows")?.addEventListener("click", () => {
     SETTINGS.graphics.shadows = !SETTINGS.graphics.shadows;
     renderer.shadowMap.enabled = SETTINGS.graphics.shadows;
     $("#optShadows").textContent = SETTINGS.graphics.shadows ? "ON" : "OFF";
     saveSettings();
   });
 
-  $("#optFov").addEventListener("change", (e) => {
+  $("#optFov")?.addEventListener("change", (e) => {
     SETTINGS.graphics.fov = clamp(parseInt(e.target.value || "60", 10), 45, 85);
     camera.fov = SETTINGS.graphics.fov;
     camera.updateProjectionMatrix();
     saveSettings();
   });
 
-  $("#optPixelRatio").addEventListener("change", (e) => {
+  $("#optPixelRatio")?.addEventListener("change", (e) => {
     SETTINGS.graphics.pixelRatio = e.target.value;
     applyPixelRatio();
     saveSettings();
   });
 
   // Controls handlers
-  $("#optSens").addEventListener("change", (e) => {
+  $("#optSens")?.addEventListener("change", (e) => {
     SETTINGS.controls.sens = clamp(parseFloat(e.target.value || "1.2"), 0.3, 3);
     saveSettings();
   });
 
-  $("#optInvertY").addEventListener("click", () => {
+  $("#optInvertY")?.addEventListener("click", () => {
     SETTINGS.controls.invertY = !SETTINGS.controls.invertY;
     $("#optInvertY").textContent = SETTINGS.controls.invertY ? "ON" : "OFF";
     saveSettings();
   });
 
-  $("#optMouseMode").addEventListener("change", (e) => {
+  $("#optMouseMode")?.addEventListener("change", (e) => {
     SETTINGS.controls.mouseMode = e.target.value;
     saveSettings();
     toast("Souris: " + (SETTINGS.controls.mouseMode === "lock" ? "Pointer Lock" : "Drag"));
   });
 
   // Gameplay handlers
-  $("#optMoveRel").addEventListener("click", () => {
+  $("#optMoveRel")?.addEventListener("click", () => {
     SETTINGS.gameplay.moveRelativeCamera = !SETTINGS.gameplay.moveRelativeCamera;
     $("#optMoveRel").textContent = SETTINGS.gameplay.moveRelativeCamera ? "ON" : "OFF";
     saveSettings();
   });
 
-  $("#optSprintMode").addEventListener("change", (e) => {
+  $("#optSprintMode")?.addEventListener("change", (e) => {
     SETTINGS.gameplay.sprintMode = e.target.value;
     sprintToggled = false;
     saveSettings();
   });
 
-  $("#optDash").addEventListener("click", () => {
+  $("#optDash")?.addEventListener("click", () => {
     SETTINGS.gameplay.dash = !SETTINGS.gameplay.dash;
     $("#optDash").textContent = SETTINGS.gameplay.dash ? "ON" : "OFF";
     saveSettings();
   });
 
-  $("#optAutoJoy").addEventListener("click", () => {
+  $("#optAutoJoy")?.addEventListener("click", () => {
     SETTINGS.gameplay.autoJoy = !SETTINGS.gameplay.autoJoy;
     $("#optAutoJoy").textContent = SETTINGS.gameplay.autoJoy ? "ON" : "OFF";
     applyAutoTouchUI();
@@ -908,13 +943,13 @@
   }
   renderSkinsGrid();
 
-  $("#optScale").addEventListener("change", (e) => {
+  $("#optScale")?.addEventListener("change", (e) => {
     SETTINGS.skin.scale = clamp(parseFloat(e.target.value || "1.0"), 0.8, 1.2);
     saveSettings();
     applyPlayerAppearance();
   });
 
-  $("#optColor").addEventListener("change", (e) => {
+  $("#optColor")?.addEventListener("change", (e) => {
     SETTINGS.skin.color = e.target.value;
     saveSettings();
     applyPlayerAppearance();
@@ -931,12 +966,25 @@
   let waitingAction = null;
 
   function niceKey(code) {
+    // e.code is a PHYSICAL key. We display a friendlier label for AZERTY FR users.
+    const lang = (navigator.language || "").toLowerCase();
+    const isFR = lang.startsWith("fr");
+    const azerty = {
+      KeyW: "Z",
+      KeyA: "Q",
+      KeyQ: "A",
+      KeyZ: "W",
+    };
+
+    if (isFR && azerty[code]) return azerty[code];
+
     if (code.startsWith("Key")) return code.slice(3);
     if (code.startsWith("Digit")) return code.slice(5);
     if (code === "Space") return "Espace";
     if (code.startsWith("Arrow")) return code.replace("Arrow", "Flèche ");
     if (code === "ShiftLeft" || code === "ShiftRight") return "Shift";
     if (code === "ControlLeft" || code === "ControlRight") return "Ctrl";
+    if (code === "AltLeft" || code === "AltRight") return "Alt";
     return code;
   }
 
