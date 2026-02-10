@@ -1,1 +1,1 @@
-websockets>=11,<13
+websockets>=11.0
