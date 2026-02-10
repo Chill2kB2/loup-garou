@@ -195,7 +195,7 @@ async def handle_hub_state(conn: Conn, data: Dict[str, Any]) -> None:
         return
     conn.st = dict(st)
     conn.last_seen = time.time()
-    await broadcast("hub", {"t": "hub_state", "id": conn.id, "st": conn.st}, exclude_id=conn.id)
+    await broadcast("hub", {"t": "hub_state", "id": conn.id, "st": conn.st, "skin": conn.skin}, exclude_id=conn.id)
 
 
 async def handle_hub_skin(conn: Conn, data: Dict[str, Any]) -> None:
