@@ -1,6 +1,8 @@
 (() => {
   "use strict";
 
+  const HUB_VERSION = "5.7.3";
+
   // Signal that hub_world.js is executing (for the HTML watchdog)
   window.__HUB_OK = true;
 
@@ -90,6 +92,8 @@
     mouseSens: 0.45,
     invertY: false,
     invertX: false,
+    autoFaceMove: false,   // rotate avatar toward movement (OFF = camera never rotates avatar)
+    touchUIVisible: true,  // mobile: show joysticks
     quality: "high",      // low | med | high
     shadows: true,
     camDist: 3.3,
@@ -480,30 +484,48 @@ function makeFallbackBody(colorHex = settings.skin.color) {
     dist: settings.camDist,
     yawVel: 0,
     pitchVel: 0,
+    posSm: new THREE.Vector3(),
+    targetSm: new THREE.Vector3(),
+    smoothInit: false,
   };
 
   function updateCamera(dt) {
-    cam.dist = settings.camDist;
+cam.dist = settings.camDist;
 
-    const target = new THREE.Vector3(
-      player.root.position.x,
-      player.root.position.y + player.camTargetY,
-      player.root.position.z
-    );
+const desiredTarget = new THREE.Vector3(
+  player.root.position.x,
+  player.root.position.y + player.camTargetY,
+  player.root.position.z
+);
 
-    // Clamp pitch to avoid flipping.
-    cam.pitch = clamp(cam.pitch, -0.55, 1.05);
+// Clamp pitch to avoid flipping.
+cam.pitch = clamp(cam.pitch, -0.55, 1.05);
 
-    const horiz = cam.dist * Math.cos(cam.pitch);
-    const yOff = cam.dist * Math.sin(cam.pitch);
+const horiz = cam.dist * Math.cos(cam.pitch);
+const yOff = cam.dist * Math.sin(cam.pitch);
 
-    // Behind-the-player orbit
-    const cx = target.x + (Math.sin(cam.yaw) * horiz);
-    const cz = target.z - (Math.cos(cam.yaw) * horiz);
-    const cy = target.y + yOff;
+// Behind-the-player orbit (camera-only: does not rotate the avatar)
+const desiredPos = new THREE.Vector3(
+  desiredTarget.x + (Math.sin(cam.yaw) * horiz),
+  desiredTarget.y + yOff,
+  desiredTarget.z - (Math.cos(cam.yaw) * horiz)
+);
 
-    camera.position.set(cx, cy, cz);
-    camera.lookAt(target);
+// Smooth follow for a stable, centered feel
+const aT = 1 - Math.exp(-dt * 14.0);
+const aP = 1 - Math.exp(-dt * 12.0);
+
+if (!cam.smoothInit) {
+  cam.targetSm.copy(desiredTarget);
+  cam.posSm.copy(desiredPos);
+  cam.smoothInit = true;
+} else {
+  cam.targetSm.lerp(desiredTarget, aT);
+  cam.posSm.lerp(desiredPos, aP);
+}
+
+camera.position.copy(cam.posSm);
+camera.lookAt(cam.targetSm);
   }
 
   // ------------------------------------------------------------
@@ -514,13 +536,34 @@ function makeFallbackBody(colorHex = settings.skin.color) {
 
   // Touch UI (two sticks + jump)
   const touchUI = $("touchUI");
+  const btnTouchToggle = $("btnTouchToggle");
   const stickMoveEl = $("stickMove");
   const stickLookEl = $("stickLook");
   const btnJump = $("btnJump");
 
+
+function applyTouchVisibility(){
+  if (!touchUI) return;
+  const visible = isTouch && !!settings.touchUIVisible;
+  touchUI.classList.toggle("hidden", !visible);
+  touchUI.setAttribute("aria-hidden", visible ? "false" : "true");
+  if (btnTouchToggle) {
+    btnTouchToggle.classList.toggle("hidden", !isTouch);
+    btnTouchToggle.textContent = visible ? "🕹️" : "🕹️";
+    btnTouchToggle.style.opacity = visible ? "1" : ".72";
+  }
+  if (!visible) {
+    // stop any movement drift
+    stickReset(touchMove);
+    stickReset(touchLook);
+    touchJumpQueued = false;
+  }
+}
+
   const touchMove = { id: null, sx: 0, sy: 0, x: 0, y: 0, knob: stickMoveEl ? stickMoveEl.querySelector(".knob") : null };
   const touchLook = { id: null, sx: 0, sy: 0, x: 0, y: 0, knob: stickLookEl ? stickLookEl.querySelector(".knob") : null };
   const STICK_R = 60;
+  const STICK_DEADZONE = 0.10;
 
   let touchJumpQueued = false;
 
@@ -532,6 +575,8 @@ function makeFallbackBody(colorHex = settings.skin.color) {
     }
     st.x = dx / STICK_R;
     st.y = dy / STICK_R;
+    if (Math.abs(st.x) < STICK_DEADZONE) st.x = 0;
+    if (Math.abs(st.y) < STICK_DEADZONE) st.y = 0;
     if (st.knob) st.knob.style.transform = `translate(${dx}px, ${dy}px) translate(-50%, -50%)`;
   }
 
@@ -542,6 +587,7 @@ function makeFallbackBody(colorHex = settings.skin.color) {
   }
 
   function handleStickStart(el, st, e){
+    if (!settings.touchUIVisible) return;
     if (!el || st.id !== null) return;
     const t = e.changedTouches[0];
     st.id = t.identifier;
@@ -552,6 +598,7 @@ function makeFallbackBody(colorHex = settings.skin.color) {
   }
 
   function handleStickMove(st, e){
+    if (!settings.touchUIVisible) return;
     if (st.id === null) return;
     for (const t of e.changedTouches) {
       if (t.identifier !== st.id) continue;
@@ -562,6 +609,7 @@ function makeFallbackBody(colorHex = settings.skin.color) {
   }
 
   function handleStickEnd(st, e){
+    if (!settings.touchUIVisible) return;
     if (st.id === null) return;
     for (const t of e.changedTouches) {
       if (t.identifier !== st.id) continue;
@@ -708,7 +756,7 @@ function makeFallbackBody(colorHex = settings.skin.color) {
     // Movement direction relative to camera yaw
     let f = (hasAnyBindPressed(settings.binds.forward, pressed) ? 1 : 0) - (hasAnyBindPressed(settings.binds.back, pressed) ? 1 : 0);
     let r = (hasAnyBindPressed(settings.binds.right, pressed) ? 1 : 0) - (hasAnyBindPressed(settings.binds.left, pressed) ? 1 : 0);
-    if (isTouch) {
+    if (isTouch && settings.touchUIVisible) {
       // Left stick: up = forward (negative y), right = strafe right
       f += -touchMove.y;
       r += touchMove.x;
@@ -730,10 +778,14 @@ function makeFallbackBody(colorHex = settings.skin.color) {
 
       player.root.position.add(v);
 
-      // Face movement direction
-      const desiredYaw = Math.atan2(v.x, v.z);
-      player.modelYaw = lerp(player.modelYaw, desiredYaw, clamp(dt * 10.5, 0, 1));
-      player.root.rotation.y = player.modelYaw;
+      // Avatar rotation:
+      // - If autoFaceMove OFF: the mouse/camera never rotates the avatar (pure strafing).
+      // - If autoFaceMove ON: avatar faces movement direction (classic 3rd-person).
+      if (settings.autoFaceMove) {
+        const desiredYaw = Math.atan2(v.x, v.z);
+        player.modelYaw = lerp(player.modelYaw, desiredYaw, clamp(dt * 10.5, 0, 1));
+        player.root.rotation.y = player.modelYaw;
+      }
     }
   }
 
@@ -1050,6 +1102,8 @@ function makeFallbackBody(colorHex = settings.skin.color) {
     try {
     await initPlayerModel();
     setupTouchUI();
+    applyTouchVisibility();
+
     connectWS();
     updateWsBadge();
     if (bootBadge) bootBadge.remove();
