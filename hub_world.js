@@ -1,8 +1,6 @@
 (() => {
   "use strict";
 
-  const HUB_VERSION = "5.7.3";
-
   // Signal that hub_world.js is executing (for the HTML watchdog)
   window.__HUB_OK = true;
 
@@ -92,8 +90,8 @@
     mouseSens: 0.45,
     invertY: false,
     invertX: false,
-    autoFaceMove: false,   // rotate avatar toward movement (OFF = camera never rotates avatar)
-    touchUIVisible: true,  // mobile: show joysticks
+    touchUIVisible: true, // mobile: afficher les joysticks
+    moveStyle: "rpg",      // rpg | strafe
     quality: "high",      // low | med | high
     shadows: true,
     camDist: 3.3,
@@ -484,49 +482,53 @@ function makeFallbackBody(colorHex = settings.skin.color) {
     dist: settings.camDist,
     yawVel: 0,
     pitchVel: 0,
-    posSm: new THREE.Vector3(),
     targetSm: new THREE.Vector3(),
+    posSm: new THREE.Vector3(),
     smoothInit: false,
   };
 
   function updateCamera(dt) {
-cam.dist = settings.camDist;
+  cam.dist = settings.camDist;
 
-const desiredTarget = new THREE.Vector3(
-  player.root.position.x,
-  player.root.position.y + player.camTargetY,
-  player.root.position.z
-);
+  // Slight look-ahead in the camera facing direction (classic RPG framing)
+  const lookFwd = new THREE.Vector3(Math.sin(cam.yaw), 0, Math.cos(cam.yaw));
+  const lookAhead = 0.45;
 
-// Clamp pitch to avoid flipping.
-cam.pitch = clamp(cam.pitch, -0.55, 1.05);
+  const desiredTarget = new THREE.Vector3(
+    player.root.position.x + lookFwd.x * lookAhead,
+    player.root.position.y + player.camTargetY,
+    player.root.position.z + lookFwd.z * lookAhead
+  );
 
-const horiz = cam.dist * Math.cos(cam.pitch);
-const yOff = cam.dist * Math.sin(cam.pitch);
+  // Clamp pitch to avoid flipping.
+  cam.pitch = clamp(cam.pitch, -0.55, 1.05);
 
-// Behind-the-player orbit (camera-only: does not rotate the avatar)
-const desiredPos = new THREE.Vector3(
-  desiredTarget.x + (Math.sin(cam.yaw) * horiz),
-  desiredTarget.y + yOff,
-  desiredTarget.z - (Math.cos(cam.yaw) * horiz)
-);
+  const horiz = cam.dist * Math.cos(cam.pitch);
+  const yOff = cam.dist * Math.sin(cam.pitch);
 
-// Smooth follow for a stable, centered feel
-const aT = 1 - Math.exp(-dt * 14.0);
-const aP = 1 - Math.exp(-dt * 12.0);
+  // Orbit around the target (mouse/joystick rotates camera only)
+  const desiredPos = new THREE.Vector3(
+    desiredTarget.x + (Math.sin(cam.yaw) * horiz),
+    desiredTarget.y + yOff,
+    desiredTarget.z - (Math.cos(cam.yaw) * horiz)
+  );
 
-if (!cam.smoothInit) {
-  cam.targetSm.copy(desiredTarget);
-  cam.posSm.copy(desiredPos);
-  cam.smoothInit = true;
-} else {
-  cam.targetSm.lerp(desiredTarget, aT);
-  cam.posSm.lerp(desiredPos, aP);
-}
+  // Smooth follow (prevents jitter and keeps framing stable)
+  const aT = 1 - Math.exp(-dt * 14.0);
+  const aP = 1 - Math.exp(-dt * 12.0);
 
-camera.position.copy(cam.posSm);
-camera.lookAt(cam.targetSm);
+  if (!cam.smoothInit) {
+    cam.targetSm.copy(desiredTarget);
+    cam.posSm.copy(desiredPos);
+    cam.smoothInit = true;
+  } else {
+    cam.targetSm.lerp(desiredTarget, aT);
+    cam.posSm.lerp(desiredPos, aP);
   }
+
+  camera.position.copy(cam.posSm);
+  camera.lookAt(cam.targetSm);
+}
 
   // ------------------------------------------------------------
   // Input
@@ -536,34 +538,13 @@ camera.lookAt(cam.targetSm);
 
   // Touch UI (two sticks + jump)
   const touchUI = $("touchUI");
-  const btnTouchToggle = $("btnTouchToggle");
   const stickMoveEl = $("stickMove");
   const stickLookEl = $("stickLook");
   const btnJump = $("btnJump");
 
-
-function applyTouchVisibility(){
-  if (!touchUI) return;
-  const visible = isTouch && !!settings.touchUIVisible;
-  touchUI.classList.toggle("hidden", !visible);
-  touchUI.setAttribute("aria-hidden", visible ? "false" : "true");
-  if (btnTouchToggle) {
-    btnTouchToggle.classList.toggle("hidden", !isTouch);
-    btnTouchToggle.textContent = visible ? "🕹️" : "🕹️";
-    btnTouchToggle.style.opacity = visible ? "1" : ".72";
-  }
-  if (!visible) {
-    // stop any movement drift
-    stickReset(touchMove);
-    stickReset(touchLook);
-    touchJumpQueued = false;
-  }
-}
-
   const touchMove = { id: null, sx: 0, sy: 0, x: 0, y: 0, knob: stickMoveEl ? stickMoveEl.querySelector(".knob") : null };
   const touchLook = { id: null, sx: 0, sy: 0, x: 0, y: 0, knob: stickLookEl ? stickLookEl.querySelector(".knob") : null };
   const STICK_R = 60;
-  const STICK_DEADZONE = 0.10;
 
   let touchJumpQueued = false;
 
@@ -575,8 +556,6 @@ function applyTouchVisibility(){
     }
     st.x = dx / STICK_R;
     st.y = dy / STICK_R;
-    if (Math.abs(st.x) < STICK_DEADZONE) st.x = 0;
-    if (Math.abs(st.y) < STICK_DEADZONE) st.y = 0;
     if (st.knob) st.knob.style.transform = `translate(${dx}px, ${dy}px) translate(-50%, -50%)`;
   }
 
@@ -587,7 +566,6 @@ function applyTouchVisibility(){
   }
 
   function handleStickStart(el, st, e){
-    if (!settings.touchUIVisible) return;
     if (!el || st.id !== null) return;
     const t = e.changedTouches[0];
     st.id = t.identifier;
@@ -598,7 +576,6 @@ function applyTouchVisibility(){
   }
 
   function handleStickMove(st, e){
-    if (!settings.touchUIVisible) return;
     if (st.id === null) return;
     for (const t of e.changedTouches) {
       if (t.identifier !== st.id) continue;
@@ -609,7 +586,6 @@ function applyTouchVisibility(){
   }
 
   function handleStickEnd(st, e){
-    if (!settings.touchUIVisible) return;
     if (st.id === null) return;
     for (const t of e.changedTouches) {
       if (t.identifier !== st.id) continue;
@@ -619,11 +595,25 @@ function applyTouchVisibility(){
     }
   }
 
+  function applyTouchUIVisibility(){
+    if (!touchUI) return;
+    const shouldShow = !!(isTouch && settings.touchUIVisible);
+    touchUI.classList.toggle("hidden", !shouldShow);
+    touchUI.setAttribute("aria-hidden", shouldShow ? "false" : "true");
+    if (btnTouchToggle) btnTouchToggle.classList.toggle("off", !shouldShow);
+    // reset sticks when hiding to avoid drift
+    if (!shouldShow) {
+      touchMove.x = touchMove.y = 0;
+      touchLook.x = touchLook.y = 0;
+      if (touchMove.knob) touchMove.knob.style.transform = "translate(-50%,-50%)";
+      if (touchLook.knob) touchLook.knob.style.transform = "translate(-50%,-50%)";
+    }
+  }
+
   function setupTouchUI(){
     if (!isTouch || !touchUI || !stickMoveEl || !stickLookEl || !btnJump) return;
 
-    touchUI.classList.remove("hidden");
-    touchUI.setAttribute("aria-hidden", "false");
+    applyTouchUIVisibility();
 
     // Better hint on mobile
     const hint = $("hudHint");
@@ -756,7 +746,7 @@ function applyTouchVisibility(){
     // Movement direction relative to camera yaw
     let f = (hasAnyBindPressed(settings.binds.forward, pressed) ? 1 : 0) - (hasAnyBindPressed(settings.binds.back, pressed) ? 1 : 0);
     let r = (hasAnyBindPressed(settings.binds.right, pressed) ? 1 : 0) - (hasAnyBindPressed(settings.binds.left, pressed) ? 1 : 0);
-    if (isTouch && settings.touchUIVisible) {
+    if (isTouch) {
       // Left stick: up = forward (negative y), right = strafe right
       f += -touchMove.y;
       r += touchMove.x;
@@ -778,10 +768,8 @@ function applyTouchVisibility(){
 
       player.root.position.add(v);
 
-      // Avatar rotation:
-      // - If autoFaceMove OFF: the mouse/camera never rotates the avatar (pure strafing).
-      // - If autoFaceMove ON: avatar faces movement direction (classic 3rd-person).
-      if (settings.autoFaceMove) {
+      // Rotation style (RPG: face movement; Strafe: keep orientation)
+      if (settings.moveStyle !== "strafe") {
         const desiredYaw = Math.atan2(v.x, v.z);
         player.modelYaw = lerp(player.modelYaw, desiredYaw, clamp(dt * 10.5, 0, 1));
         player.root.rotation.y = player.modelYaw;
@@ -1102,7 +1090,18 @@ function applyTouchVisibility(){
     try {
     await initPlayerModel();
     setupTouchUI();
-    applyTouchVisibility();
+
+// Touch toggle button (mobile)
+if (btnTouchToggle) {
+  // show button only on touch devices
+  btnTouchToggle.style.display = isTouch ? "inline-flex" : "none";
+  btnTouchToggle.classList.toggle("off", !(isTouch && settings.touchUIVisible));
+  btnTouchToggle.addEventListener("click", () => {
+    settings.touchUIVisible = !settings.touchUIVisible;
+    saveSettings();
+    applyTouchUIVisibility();
+  });
+}
 
     connectWS();
     updateWsBadge();
