@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="fr">
 <head>
-  <!-- HUB_WORLD_HTML_VERSION: 5.7.1 -->
+  <!-- HUB_WORLD_HTML_VERSION: 5.7.2 -->
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
   <meta name="theme-color" content="#07090d" />
@@ -193,6 +193,7 @@
       touch-action:none;
     }
 
+  </style>
 </head>
 
 <body>
@@ -250,11 +251,13 @@
               <div class="field">
                 <label>Inverser axe Y</label>
                 <div class="val"><button class="btn" id="optInvertY">OFF</button></div>
-              
+              </div>
+
               <div class="field">
                 <label>Inverser axe X</label>
                 <div class="val"><button class="btn" id="optInvertX">OFF</button></div>
               </div>
+</div>
 
 
               <div class="field">
@@ -353,23 +356,23 @@
 
 
 <!-- Three.js (CDN) with local fallback -->
-<script src="https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.min.js?v=571"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.min.js?v=572"></script>
 <script>
   // Local fallback if CDN blocked
   if (typeof THREE === "undefined") {
-    document.write('<script src="three.min.js?v=571"><\/script>');
+    document.write('<script src="three.min.js?v=572"><\/script>');
   }
 </script>
 
 <!-- GLTFLoader (CDN) with local fallback -->
-<script src="https://unpkg.com/three@0.152.2/examples/js/loaders/GLTFLoader.js?v=571"></script>
+<script src="https://unpkg.com/three@0.152.2/examples/js/loaders/GLTFLoader.js?v=572"></script>
 <script>
   if (typeof THREE === "undefined" || typeof THREE.GLTFLoader === "undefined") {
-    document.write('<script src="GLTFLoader.js?v=571"><\/script>');
+    document.write('<script src="GLTFLoader.js?v=572"><\/script>');
   }
 </script>
 
-<script src="hub_world.js?v=571"></script>
+<script src="hub_world.js?v=572"></script>
 
 <script>
   // Watchdog: if hub_world.js is blocked (404/MIME/CSP), show a clear hint.
