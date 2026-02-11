@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="fr">
 <head>
-  <!-- HUB_WORLD_HTML_VERSION: 5.7.2 -->
+  <!-- HUB_WORLD_HTML_VERSION: 5.7.3 -->
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
   <meta name="theme-color" content="#07090d" />
@@ -34,6 +34,20 @@
       border:1px solid var(--bd); background:rgba(12,14,22,.55); color:var(--ink);
       cursor:pointer;
     }
+
+.iconBtn{
+  pointer-events:auto;
+  width:42px; height:42px;
+  border-radius:14px;
+  border:1px solid var(--bd);
+  background:rgba(12,14,22,.55);
+  color:var(--ink);
+  cursor:pointer;
+  display:grid;
+  place-items:center;
+  font-size:18px;
+  line-height:1;
+}
     #hudHint, #wsBadge{
       pointer-events:none;
       font-size:13px; color:var(--muted);
@@ -200,6 +214,7 @@
   <div id="hudTop">
     <div id="hudLeft">
       <button id="btnMenu">Menu</button>
+      <button id="btnTouchToggle" class="iconBtn hidden" title="Afficher / masquer les joysticks" aria-label="Joysticks">🕹️</button>
       <div id="hudHint">ZQSD pour bouger • Souris pour regarder • Échap/P pour menu</div>
     </div>
     <div id="hudRight">
@@ -356,23 +371,23 @@
 
 
 <!-- Three.js (CDN) with local fallback -->
-<script src="https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.min.js?v=572"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.min.js?v=573"></script>
 <script>
   // Local fallback if CDN blocked
   if (typeof THREE === "undefined") {
-    document.write('<script src="three.min.js?v=572"><\/script>');
+    document.write('<script src="three.min.js?v=573"><\/script>');
   }
 </script>
 
 <!-- GLTFLoader (CDN) with local fallback -->
-<script src="https://unpkg.com/three@0.152.2/examples/js/loaders/GLTFLoader.js?v=572"></script>
+<script src="https://unpkg.com/three@0.152.2/examples/js/loaders/GLTFLoader.js?v=573"></script>
 <script>
   if (typeof THREE === "undefined" || typeof THREE.GLTFLoader === "undefined") {
-    document.write('<script src="GLTFLoader.js?v=572"><\/script>');
+    document.write('<script src="GLTFLoader.js?v=573"><\/script>');
   }
 </script>
 
-<script src="hub_world.js?v=572"></script>
+<script src="hub_world.js?v=573"></script>
 
 <script>
   // Watchdog: if hub_world.js is blocked (404/MIME/CSP), show a clear hint.
