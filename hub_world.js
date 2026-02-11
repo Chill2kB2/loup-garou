@@ -36,6 +36,18 @@
 
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   const lerp = (a, b, t) => a + (b - a) * t;
+  const TAU = Math.PI * 2;
+  function wrapPi(a) {
+    // wrap to (-pi, pi]
+    a = (a + Math.PI) % TAU;
+    if (a < 0) a += TAU;
+    return a - Math.PI;
+  }
+  function lerpAngle(a, b, t) {
+    const d = wrapPi(b - a);
+    return a + d * t;
+  }
+
 
   const LS_KEY = "hubSettingsV5";
 
@@ -491,7 +503,7 @@ function makeFallbackBody(colorHex = settings.skin.color) {
   cam.dist = settings.camDist;
 
   // Slight look-ahead in the camera facing direction (classic RPG framing)
-  const lookFwd = new THREE.Vector3(Math.sin(cam.yaw), 0, Math.cos(cam.yaw));
+  const lookFwd = new THREE.Vector3(-Math.sin(cam.yaw), 0, Math.cos(cam.yaw));
   const lookAhead = 0.45;
 
   const desiredTarget = new THREE.Vector3(
@@ -658,6 +670,7 @@ function makeFallbackBody(colorHex = settings.skin.color) {
     const k = settings.mouseSens * 0.0026;
     const multX = settings.invertX ? -1 : 1;
     cam.yaw += e.movementX * k * multX;
+    cam.yaw = wrapPi(cam.yaw);
 
     // movementY < 0 (mouse up) => look up. Default: pitch -= movementY*k
     const mult = settings.invertY ? -1 : 1;
@@ -759,8 +772,8 @@ function makeFallbackBody(colorHex = settings.skin.color) {
     const sp = hasAnyBindPressed(settings.binds.sprint, pressed) ? SPRINT : SPEED;
 
     if (moving) {
-      const forward = new THREE.Vector3(Math.sin(cam.yaw), 0, Math.cos(cam.yaw));
-      const right = new THREE.Vector3(Math.cos(cam.yaw), 0, -Math.sin(cam.yaw));
+      const forward = new THREE.Vector3(-Math.sin(cam.yaw), 0, Math.cos(cam.yaw));
+      const right = new THREE.Vector3(Math.cos(cam.yaw), 0, Math.sin(cam.yaw));
       const v = new THREE.Vector3();
       v.addScaledVector(forward, f);
       v.addScaledVector(right, r);
@@ -771,7 +784,7 @@ function makeFallbackBody(colorHex = settings.skin.color) {
       // Rotation style (RPG: face movement; Strafe: keep orientation)
       if (settings.moveStyle !== "strafe") {
         const desiredYaw = Math.atan2(v.x, v.z);
-        player.modelYaw = lerp(player.modelYaw, desiredYaw, clamp(dt * 10.5, 0, 1));
+        player.modelYaw = lerpAngle(player.modelYaw, desiredYaw, clamp(dt * 10.5, 0, 1));
         player.root.rotation.y = player.modelYaw;
       }
     }
@@ -1117,6 +1130,7 @@ if (btnTouchToggle) {
         const multX = settings.invertX ? -1 : 1;
         const multY = settings.invertY ? -1 : 1;
         cam.yaw += touchLook.x * lookRate * dt * multX;
+        cam.yaw = wrapPi(cam.yaw);
         cam.pitch -= touchLook.y * lookRate * dt * multY;
       }
 
@@ -1130,7 +1144,7 @@ if (btnTouchToggle) {
         const x = lerp(r.lastSt.x || 0, r.st.x || 0, t);
         const y = lerp(r.lastSt.y || 0, r.st.y || 0, t);
         const z = lerp(r.lastSt.z || 0, r.st.z || 0, t);
-        const yaw = lerp(r.lastSt.yaw || 0, r.st.yaw || 0, t);
+        const yaw = lerpAngle(r.lastSt.yaw || 0, r.st.yaw || 0, t);
         r.root.position.set(x, y, z);
         r.root.rotation.y = yaw;
         r.lastSt = { x, y, z, yaw };
