@@ -1,7 +1,13 @@
 (() => {
   "use strict";
 
+  // Signal that hub_world.js is executing (for the HTML watchdog)
+  window.__HUB_OK = true;
+  try { console.log("[Hub] hub_world.js chargé"); } catch(_) {}
+
   const bootBadge = document.getElementById("bootBadge");
+  function setBoot(text){ if (bootBadge) bootBadge.textContent = text; }
+
 
   // Fatal error helper (only shows if something breaks)
   function fatal(msg, err) {
@@ -293,8 +299,15 @@
   // ------------------------------------------------------------
   // Scene / Three.js
   // ------------------------------------------------------------
+  setBoot("Chargement… (Three.js)");
   if (typeof THREE === "undefined") {
-    fatal("Three.js (THREE) est introuvable. Vérifie que three.min.js est bien servi à la racine.");
+    fatal("Three.js (THREE) est introuvable. Vérifie que le chargement Three (CDN ou local) fonctionne.");
+    return;
+  }
+
+  // GLTFLoader availability
+  if (!THREE.GLTFLoader) {
+    fatal("GLTFLoader est introuvable. Vérifie que GLTFLoader.js est bien chargé (CDN ou local).");
     return;
   }
 
@@ -302,7 +315,14 @@
   scene.background = new THREE.Color(0x0a0f1a);
 
   const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.05, 250);
-  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  setBoot("Chargement… (WebGL)");
+  let renderer;
+  try {
+    renderer = new THREE.WebGLRenderer({ antialias: true });
+  } catch (e) {
+    fatal("WebGL indisponible ou bloqué (renderer impossible).", e);
+    return;
+  }
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
   // Color space compatibility (old/new three)
@@ -433,6 +453,7 @@ function makeFallbackBody(colorHex = settings.skin.color) {
   }
 
   async function initPlayerModel() {
+    setBoot("Chargement… (modèle)");
     // clear previous
     if (player.model) {
       player.root.remove(player.model);
@@ -1038,7 +1059,8 @@ function makeFallbackBody(colorHex = settings.skin.color) {
     setupTouchUI();
     connectWS();
     updateWsBadge();
-    if (bootBadge) bootBadge.remove();
+    // Keep boot badge until first frames are running
+    setTimeout(() => { if (bootBadge) bootBadge.remove(); }, 650);
 
     function frame(now) {
       const dt = clamp((now - last) / 1000, 0, 0.05);
