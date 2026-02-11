@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="fr">
 <head>
-  <!-- HUB_WORLD_HTML_VERSION: 5.6.1 -->
+  <!-- HUB_WORLD_HTML_VERSION: 5.7.1 -->
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
   <meta name="theme-color" content="#07090d" />
@@ -353,23 +353,37 @@
 
 
 <!-- Three.js (CDN) with local fallback -->
-<script src="https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.min.js?v=561"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.min.js?v=571"></script>
 <script>
   // Local fallback if CDN blocked
   if (typeof THREE === "undefined") {
-    document.write('<script src="three.min.js?v=561"><\/script>');
+    document.write('<script src="three.min.js?v=571"><\/script>');
   }
 </script>
 
 <!-- GLTFLoader (CDN) with local fallback -->
-<script src="https://unpkg.com/three@0.152.2/examples/js/loaders/GLTFLoader.js?v=561"></script>
+<script src="https://unpkg.com/three@0.152.2/examples/js/loaders/GLTFLoader.js?v=571"></script>
 <script>
   if (typeof THREE === "undefined" || typeof THREE.GLTFLoader === "undefined") {
-    document.write('<script src="GLTFLoader.js?v=561"><\/script>');
+    document.write('<script src="GLTFLoader.js?v=571"><\/script>');
   }
 </script>
 
-<script src="hub_world.js?v=561"></script>
+<script src="hub_world.js?v=571"></script>
+
+<script>
+  // Watchdog: if hub_world.js is blocked (404/MIME/CSP), show a clear hint.
+  window.__HUB_OK = false;
+  setTimeout(() => {
+    if (window.__HUB_OK) return;
+    const b = document.getElementById("bootBadge");
+    if (b) {
+      b.textContent = "Erreur: hub_world.js ne s’exécute pas (Console + Réseau).";
+      b.style.borderColor = "rgba(255,90,90,.55)";
+      b.style.background = "rgba(255,90,90,.10)";
+    }
+  }, 1600);
+</script>
 
 </body>
 </html>
